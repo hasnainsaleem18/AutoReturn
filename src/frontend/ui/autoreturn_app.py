@@ -836,27 +836,25 @@ class AutoReturnApp(QMainWindow):
                         pass
                 
                 msg['summary'] = clean_summary
-            msg['ai_analysis'] = full_analysis
-            
-            # Also update priority if needed? (optional enhancement)
-            break
-    
-    # Refresh the table row specifically instead of full heavy reload
-    # For now, full reload is safer but we can optimize later
-    # self.populate_table() 
-    
-    # Actually, let's keep it simple: just trigger a repaint or reload
-    # We'll use a delayed timer to batch UI updates so we don't flash too much
-    if not hasattr(self, '_update_timer'):
-        self._update_timer = QTimer()
-        self._update_timer.setSingleShot(True)
-        self._update_timer.timeout.connect(self.populate_table)
-    
-    self._update_timer.start(200) # Buffer updates by 200ms
-    
-    # Clean up thread
-    if message_id in self.summary_threads:
-        del self.summary_threads[message_id]
+                msg['ai_analysis'] = full_analysis
+                break
+        
+        # Refresh the table row specifically instead of full heavy reload
+        # For now, full reload is safer but we can optimize later
+        # self.populate_table() 
+        
+        # Actually, let's keep it simple: just trigger a repaint or reload
+        # We'll use a delayed timer to batch UI updates so we don't flash too much
+        if not hasattr(self, '_update_timer'):
+            self._update_timer = QTimer()
+            self._update_timer.setSingleShot(True)
+            self._update_timer.timeout.connect(self.populate_table)
+        
+        self._update_timer.start(200) # Buffer updates by 200ms
+        
+        # Clean up thread
+        if message_id in self.summary_threads:
+            del self.summary_threads[message_id]
     
     def on_summary_error(self, message_id: str, error: str):
         """Handle errors during summary generation.
