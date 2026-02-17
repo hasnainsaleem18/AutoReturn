@@ -132,6 +132,10 @@ class AutoReturnApp(QMainWindow):
         self.gmail_service = self.gmail_agent.backend
         self.ollama_service = self.orchestrator.ai_service
         
+        # NEW: Initialize Tone Integration System
+        from src.frontend.ui.tone_integration import integrate_tone_system
+        self.tone_integration = integrate_tone_system(self, self.orchestrator)
+        
         # Slack listener
         self.slack_listener = None
         self.slack_users = []
@@ -940,6 +944,10 @@ class AutoReturnApp(QMainWindow):
         main_layout.addWidget(self.create_header())
         main_layout.addWidget(self.create_main_content(), 1)
         main_layout.addWidget(self.create_status_bar())
+        
+        # NEW: Integrate tone system into main UI
+        if hasattr(self, 'tone_integration'):
+            self.tone_integration.integrate_into_main_ui(main_layout)
     
     # -------------------------
     # UI COMPONENT CREATION

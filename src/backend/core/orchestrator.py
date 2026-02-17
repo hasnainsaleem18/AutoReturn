@@ -14,6 +14,7 @@ from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
 from src.backend.services.ai_service import OllamaService
 from src.backend.core.task_extractor import TaskExtractor
 from src.backend.core.draft_manager import DraftManager
+from src.backend.core.tone_manager import ToneManager
 
 
 # -------------------------
@@ -59,11 +60,15 @@ class Orchestrator:
         self.task_extractor = TaskExtractor(self.ai_service)
         self.draft_manager = DraftManager(self.ai_service)
         
+        # NEW: Tone Management System
+        self.tone_manager = ToneManager(ai_service=self.ai_service)
+        
         # Pydantic AI Agent for intent classification
         self._setup_pydantic_agent(ollama_model)
         
         print(f"🧠 Orchestrator initialized with model {ollama_model}")
         print(f"   Available agents: {list(self.agents.keys())}")
+        print(f"🎨 Tone Manager initialized")
 
     def _setup_pydantic_agent(self, model_name: str):
         """Set up Pydantic AI agent for intent classification."""
@@ -211,6 +216,10 @@ class Orchestrator:
     def get_agent(self, name: str) -> Optional[BaseAgent]:
         """Get a specific agent by name."""
         return self.agents.get(name)
+    
+    def get_tone_manager(self) -> ToneManager:
+        """Get the tone manager instance."""
+        return self.tone_manager
     
     def check_ollama_status(self) -> bool:
         """Check if Ollama is accessible."""

@@ -76,6 +76,9 @@ pip install -r requirement.txt
 # Pull the required AI model
 ollama pull kimi-k2.5:cloud
 
+# Authenticate with Ollama Cloud (required for cloud models)
+ollama signin
+
 # Launch the app
 ./run.sh
 ```
