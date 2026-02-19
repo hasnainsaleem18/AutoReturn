@@ -24,6 +24,10 @@ from PySide6.QtGui import QPixmap
 # Local application imports
 from src.frontend.ui.styles import get_stylesheet
 
+# Local imports for tone features
+from src.frontend.widgets.tone_selector import ToneSelector
+from src.backend.models.tone_models import ToneType, get_tone_display_name
+
 # -------------------------
 # STYLE CONSTANTS
 # -------------------------
@@ -102,7 +106,7 @@ class SettingsDialog(QDialog):
     # -------------------------
     # INITIALIZATION
     # -------------------------
-    def __init__(self, user_data=None, parent=None, gmail_status=None):
+    def __init__(self, user_data=None, parent=None, gmail_status=None, orchestrator=None):
         super().__init__(parent)
         
         # Initialize user data with defaults if not provided
@@ -113,6 +117,9 @@ class SettingsDialog(QDialog):
         self.connect_gmail_callback = None
         self.sync_gmail_callback = None
         self.get_gmail_status_callback = None
+        
+        # NEW: Add orchestrator for tone features
+        self.orchestrator = orchestrator
         
         # -------------------------
         # DIALOG SETUP
@@ -328,6 +335,10 @@ class SettingsDialog(QDialog):
         tabs.addTab(self._create_quiet_hours_tab(), "Quiet Hours")
         tabs.addTab(self._create_priority_rules_tab(), "Priority Rules")
         tabs.addTab(self._create_integrations_tab(), "Integrations")
+        
+        # NEW: Add tone settings tab if orchestrator is available
+        if self.orchestrator:
+            tabs.addTab(self._create_tone_settings_tab(), "Tone Settings")
 
         return tabs
     
@@ -1661,6 +1672,333 @@ class EditProfileDialog(QDialog):
         )
     
     # -------------------------
+    # TONE SETTINGS TAB
+    # -------------------------
+    def _create_tone_settings_tab(self):
+        """Create tone settings tab with default tone and preferences."""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+        
+        # Title
+        title = QLabel("Tone Settings")
+        title.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_HERO}px;
+            font-weight: 600;
+            color: {StyleConstants.COLOR_DARKEST};
+            margin-bottom: {StyleConstants.SPACING_MEDIUM}px;
+        """)
+        layout.addWidget(title)
+        
+        # Description
+        desc = QLabel("Configure your default tone preferences and auto-suggestion settings.")
+        desc.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+            color: {StyleConstants.COLOR_GRAY_MEDIUM};
+            margin-bottom: {StyleConstants.SPACING_LARGE}px;
+        """)
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+        
+        # Default Tone Section
+        tone_section = self._create_default_tone_section()
+        layout.addWidget(tone_section)
+        
+        # Auto-Tone Toggle Section
+        auto_section = self._create_auto_tone_section()
+        layout.addWidget(auto_section)
+        
+        # Statistics Section
+        stats_section = self._create_tone_statistics_section()
+        layout.addWidget(stats_section)
+        
+        # Learning Section
+        learning_section = self._create_learning_section()
+        layout.addWidget(learning_section)
+        
+        layout.addStretch()
+        
+        return tab
+    
+    def _create_default_tone_section(self):
+        """Create default tone selection section."""
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        
+        layout = QVBoxLayout(section)
+        
+        # Section title
+        title = QLabel("Default Tone")
+        title.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_LARGE}px;
+            font-weight: 600;
+            color: {StyleConstants.COLOR_DARK_PRIMARY};
+            margin-bottom: {StyleConstants.SPACING_SMALL}px;
+        """)
+        layout.addWidget(title)
+        
+        # Current default tone display
+        if self.orchestrator:
+            current_default = self.orchestrator.tone_manager.user_profile.default_tone
+            current_label = QLabel(f"Current default: {get_tone_display_name(current_default)}")
+            current_label.setStyleSheet(f"""
+                font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+                color: {StyleConstants.COLOR_GRAY_MEDIUM};
+                margin-bottom: {StyleConstants.SPACING_MEDIUM}px;
+            """)
+            layout.addWidget(current_label)
+            
+            # Tone selector for changing default
+            self.default_tone_selector = ToneSelector(self.orchestrator)
+            self.default_tone_selector.set_tone(current_default)
+            self.default_tone_selector.tone_changed.connect(self._on_default_tone_changed)
+            layout.addWidget(self.default_tone_selector)
+        
+        return section
+    
+    def _create_auto_tone_section(self):
+        """Create auto-tone toggle section."""
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        
+        layout = QVBoxLayout(section)
+        
+        # Section title
+        title = QLabel("Auto-Tone Suggestions")
+        title.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_LARGE}px;
+            font-weight: 600;
+            color: {StyleConstants.COLOR_DARK_PRIMARY};
+            margin-bottom: {StyleConstants.SPACING_SMALL}px;
+        """)
+        layout.addWidget(title)
+        
+        # Description
+        desc = QLabel("Enable AI-powered tone suggestions based on message content and context.")
+        desc.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+            color: {StyleConstants.COLOR_GRAY_MEDIUM};
+            margin-bottom: {StyleConstants.SPACING_MEDIUM}px;
+        """)
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+        
+        # Auto-tone toggle
+        if self.orchestrator:
+            auto_enabled = self.orchestrator.tone_manager.user_profile.auto_tone_enabled
+            self.auto_tone_status = QLabel(f"Status: {'Enabled' if auto_enabled else 'Disabled'}")
+            self.auto_tone_status.setStyleSheet(f"""
+                font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+                color: {'#28a745' if auto_enabled else '#6c757d'};
+                margin-bottom: {StyleConstants.SPACING_MEDIUM}px;
+            """)
+            layout.addWidget(self.auto_tone_status)
+            
+            # Toggle button
+            toggle_btn = QPushButton(f"{'Disable' if auto_enabled else 'Enable'} Auto-Tone")
+            toggle_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {'#dc3545' if auto_enabled else '#28a745'};
+                    color: white;
+                    border: none;
+                    padding: {StyleConstants.SPACING_SMALL}px {StyleConstants.SPACING_LARGE}px;
+                    border-radius: 6px;
+                    font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+                    font-weight: 500;
+                }}
+                QPushButton:hover {{
+                    background-color: {'#c82333' if auto_enabled else '#218838'};
+                }}
+            """)
+            toggle_btn.clicked.connect(self._toggle_auto_tone)
+            layout.addWidget(toggle_btn)
+        
+        return section
+    
+    def _create_tone_statistics_section(self):
+        """Create tone usage statistics section."""
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        
+        layout = QVBoxLayout(section)
+        
+        # Section title
+        title = QLabel("Usage Statistics")
+        title.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_LARGE}px;
+            font-weight: 600;
+            color: {StyleConstants.COLOR_DARK_PRIMARY};
+            margin-bottom: {StyleConstants.SPACING_SMALL}px;
+        """)
+        layout.addWidget(title)
+        
+        # Statistics display
+        if self.orchestrator:
+            stats = self.orchestrator.tone_manager.get_tone_statistics()
+            
+            stats_text = f"""
+            <b>Default Tone:</b> {stats.get('default_tone', 'N/A')}<br>
+            <b>Auto-Tone:</b> {'Enabled' if stats.get('auto_tone_enabled') else 'Disabled'}<br>
+            <b>Manual Overrides:</b> {stats.get('total_manual_overrides', 0)}<br>
+            <b>Sender Preferences:</b> {stats.get('sender_preferences_count', 0)}<br>
+            <b>Domain Preferences:</b> {stats.get('domain_preferences_count', 0)}
+            """
+            
+            stats_label = QLabel(stats_text)
+            stats_label.setStyleSheet(f"""
+                font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+                color: {StyleConstants.COLOR_GRAY_MEDIUM};
+            """)
+            stats_label.setTextFormat(Qt.RichText)
+            layout.addWidget(stats_label)
+            
+            # Most used tones
+            most_used = stats.get('most_used_tones', {})
+            if most_used:
+                most_used_text = "<b>Most Used Tones:</b><br>"
+                for tone, count in list(most_used.items())[:5]:
+                    most_used_text += f"• {tone.title()}: {count}<br>"
+                
+                most_used_label = QLabel(most_used_text)
+                most_used_label.setStyleSheet(f"""
+                    font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+                    color: {StyleConstants.COLOR_GRAY_MEDIUM};
+                    margin-top: {StyleConstants.SPACING_MEDIUM}px;
+                """)
+                most_used_label.setTextFormat(Qt.RichText)
+                layout.addWidget(most_used_label)
+        
+        return section
+    
+    def _create_learning_section(self):
+        """Create learning and reset section."""
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        
+        layout = QVBoxLayout(section)
+        
+        # Section title
+        title = QLabel("Learning & Reset")
+        title.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_LARGE}px;
+            font-weight: 600;
+            color: {StyleConstants.COLOR_DARK_PRIMARY};
+            margin-bottom: {StyleConstants.SPACING_SMALL}px;
+        """)
+        layout.addWidget(title)
+        
+        # Description
+        desc = QLabel("The system learns from your manual tone selections to improve suggestions.")
+        desc.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+            color: {StyleConstants.COLOR_GRAY_MEDIUM};
+            margin-bottom: {StyleConstants.SPACING_MEDIUM}px;
+        """)
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+        
+        # Reset button
+        reset_btn = QPushButton("Reset Learning Data")
+        reset_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {StyleConstants.COLOR_DANGER};
+                color: white;
+                border: none;
+                padding: {StyleConstants.SPACING_SMALL}px {StyleConstants.SPACING_LARGE}px;
+                border-radius: 6px;
+                font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: #7d2f2f;
+            }}
+        """)
+        reset_btn.clicked.connect(self._reset_learning_data)
+        layout.addWidget(reset_btn)
+        
+        return section
+    
+    def _on_default_tone_changed(self, tone):
+        """Handle default tone change"""
+        if self.orchestrator:
+            self.orchestrator.tone_manager.set_default_tone(tone)
+            QMessageBox.information(self, "Default Tone Updated", 
+                                   f"Default tone changed to {get_tone_display_name(tone)}")
+    
+    def _toggle_auto_tone(self):
+        """Toggle auto-tone suggestions"""
+        if self.orchestrator:
+            current_state = self.orchestrator.tone_manager.user_profile.auto_tone_enabled
+            new_state = not current_state
+            self.orchestrator.tone_manager.set_auto_tone_enabled(new_state)
+            
+            # Update UI
+            self.auto_tone_status.setText(f"Status: {'Enabled' if new_state else 'Disabled'}")
+            self.auto_tone_status.setStyleSheet(f"""
+                font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+                color: {'#28a745' if new_state else '#6c757d'};
+                margin-bottom: {StyleConstants.SPACING_MEDIUM}px;
+            """)
+            
+            QMessageBox.information(self, "Auto-Tone Updated", 
+                                   f"Auto-tone suggestions {'enabled' if new_state else 'disabled'}")
+    
+    def _reset_learning_data(self):
+        """Reset learning data"""
+        reply = QMessageBox.question(self, "Reset Learning Data", 
+                                   "Are you sure you want to reset all learning data? This will clear:\n"
+                                   "• Manual override history\n"
+                                   "• Sender preferences\n"
+                                   "• Domain preferences\n"
+                                   "• Tone effectiveness scores",
+                                   QMessageBox.Yes | QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            if self.orchestrator:
+                # Reset user profile learning data
+                self.orchestrator.tone_manager.user_profile.manual_override_history = []
+                self.orchestrator.tone_manager.user_profile.sender_preferences = {}
+                self.orchestrator.tone_manager.user_profile.domain_preferences = {}
+                self.orchestrator.tone_manager.user_profile.tone_effectiveness_scores = {
+                    tone: 0.5 for tone in ToneType
+                }
+                
+                # Save changes
+                self.orchestrator.tone_manager._save_user_profile()
+                
+                QMessageBox.information(self, "Learning Data Reset", 
+                                       "All learning data has been successfully reset.")
+    
+    # -------------------------
     # DATA RETRIEVAL
     # -------------------------
     def get_updated_data(self):
@@ -1670,3 +2008,8 @@ class EditProfileDialog(QDialog):
             dict: Updated user data
         """
         return self.user_data
+
+
+# -------------------------
+# EDIT PROFILE DIALOG CLASS
+# -------------------------

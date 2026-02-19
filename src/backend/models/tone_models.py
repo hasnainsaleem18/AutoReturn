@@ -42,7 +42,12 @@ class ToneRecommendation(BaseModel):
     """AI-generated tone recommendation"""
     recommended_tone: ToneType
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score 0.0 to 1.0")
-    reasoning: str = Field(description="Why this tone was recommended")
+    reasoning: str = Field(description="Explanation for the recommendation")
+    sentiment_score: float = Field(ge=-1.0, le=1.0, description="Sentiment analysis -1.0 to 1.0")
+    urgency_level: str = Field(description="Message urgency: low, medium, high, critical")
+    detected_sentiment: Optional[str] = Field(description="Detected sentiment polarity")
+    detected_tone: Optional[ToneType] = Field(description="Detected tone from analysis")
+    fallback_used: bool = Field(default=False, description="Whether LLM fallback was used")
     context_factors: Dict[str, Any] = Field(default_factory=dict, description="Factors influencing recommendation")
 
 
@@ -128,3 +133,47 @@ class ToneAwareAgentResponse(BaseModel):
     tone_analysis: Optional[ToneAnalysis] = None
     applied_tone: Optional[ToneType] = None
     tone_adjustments: List[str] = Field(default_factory=list)
+
+
+# -------------------------
+# UTILITY FUNCTIONS
+# -------------------------
+
+def get_tone_display_name(tone: ToneType) -> str:
+    """Get display name for tone"""
+    display_names = {
+        ToneType.FORMAL: "Formal",
+        ToneType.PROFESSIONAL: "Professional",
+        ToneType.CASUAL: "Casual",
+        ToneType.FRIENDLY: "Friendly",
+        ToneType.ASSERTIVE: "Assertive",
+        ToneType.PERSUASIVE: "Persuasive",
+        ToneType.APOLOGETIC: "Apologetic",
+        ToneType.EMPATHETIC: "Empathetic",
+        ToneType.DIPLOMATIC: "Diplomatic",
+        ToneType.CONCISE: "Concise",
+        ToneType.HUMOROUS: "Humorous",
+        ToneType.APPRECIATIVE: "Appreciative",
+        ToneType.URGENT: "Urgent"
+    }
+    return display_names.get(tone, tone.value.title())
+
+
+def get_tone_description(tone: ToneType) -> str:
+    """Get description for tone"""
+    descriptions = {
+        ToneType.FORMAL: "Formal and respectful with proper titles",
+        ToneType.PROFESSIONAL: "Business-appropriate and balanced",
+        ToneType.CASUAL: "Relaxed and conversational",
+        ToneType.FRIENDLY: "Warm and approachable",
+        ToneType.ASSERTIVE: "Confident and direct",
+        ToneType.PERSUASIVE: "Convincing and influential",
+        ToneType.APOLOGETIC: "Sincere and apologetic",
+        ToneType.EMPATHETIC: "Understanding and compassionate",
+        ToneType.DIPLOMATIC: "Tactful and careful",
+        ToneType.CONCISE: "Brief and to-the-point",
+        ToneType.HUMOROUS: "Light-hearted and amusing",
+        ToneType.APPRECIATIVE: "Grateful and thankful",
+        ToneType.URGENT: "Time-sensitive and action-oriented"
+    }
+    return descriptions.get(tone, "Professional communication tone")

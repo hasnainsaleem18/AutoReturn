@@ -132,10 +132,6 @@ class AutoReturnApp(QMainWindow):
         self.gmail_service = self.gmail_agent.backend
         self.ollama_service = self.orchestrator.ai_service
         
-        # NEW: Initialize Tone Integration System
-        from src.frontend.ui.tone_integration import integrate_tone_system
-        self.tone_integration = integrate_tone_system(self, self.orchestrator)
-        
         # Slack listener
         self.slack_listener = None
         self.slack_users = []
@@ -567,7 +563,13 @@ class AutoReturnApp(QMainWindow):
                 QMessageBox.warning(self, "Loading", "Slack users are still loading. Please wait.")
                 return
             
-            dialog = SendSlackMessageDialog(self.slack_users, self)
+            # NEW: Use enhanced Slack message dialog with tone features
+            dialog = SendSlackMessageDialog(
+                users=self.slack_users, 
+                parent=self,
+                orchestrator=self.orchestrator,
+                original_message=message_data
+            )
             
             if message_data.get('is_dm'):
                 sender = message_data.get('sender', '')
@@ -579,9 +581,21 @@ class AutoReturnApp(QMainWindow):
             if dialog.exec() == QDialog.Accepted:
                 selected_user = dialog.get_selected_user()
                 message_text = dialog.get_message_text()
+                selected_tone = dialog.get_selected_tone()
                 
                 if selected_user and message_text:
+                    # NEW: Include tone information in message
+                    message_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {message_text}"
+                    self.slack_service.send_dm_by_id(selected_user['id'], message_with_tone)
+                    
+                    # NEW: Show tone usage feedback
+                    QMessageBox.information(self, "Message Sent", 
+                        f"Message sent with {selected_tone.value if selected_tone else 'Default'} tone!")
+                else:
                     self.slack_service.send_dm_by_id(selected_user['id'], message_text)
+                    # NEW: Include tone information in message
+                    message_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {message_text}"
+                    self.slack_service.send_dm_by_id(selected_user['id'], message_with_tone)
         
         elif source == 'gmail':
             if not self.gmail_service.is_connected:
@@ -589,13 +603,37 @@ class AutoReturnApp(QMainWindow):
                 return
             to_email = message_data.get('email', '')
             subject = message_data.get('subject', '(No Subject)')
-            dialog = SendGmailReplyDialog(to_email, subject, self)
+            # NEW: Use enhanced Gmail reply dialog with tone features
+            dialog = SendGmailReplyDialog(
+                to_email=to_email, 
+                subject=subject, 
+                parent=self,
+                orchestrator=self.orchestrator,
+                original_message=message_data
+            )
             if dialog.exec() == QDialog.Accepted:
                 reply_text = dialog.get_message_text()
+                selected_tone = dialog.get_selected_tone()
+                
                 if reply_text:
+                    # NEW: Include tone information in reply
+                    reply_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {reply_text}"
+                    success, msg = self.gmail_service.reply_to_message(message_data, reply_with_tone)
+                    
+                    # NEW: Show tone usage feedback
+                    QMessageBox.information(self, "Reply Sent", 
+                        f"Reply sent with {selected_tone.value if selected_tone else 'Default'} tone!")
+                else:
+                    success, msg = self.gmail_service.reply_to_message(message_data, reply_text)
+                    reply_data = {
+                        'original_message_id': message_data.get('id'),
+                        'reply_text': reply_text,
+                        'selected_tone': selected_tone.value if selected_tone else None,
+                        'timestamp': datetime.now().isoformat()
+                    }
                     success, msg = self.gmail_service.reply_to_message(message_data, reply_text)
                     if success:
-                        QMessageBox.information(self, "Gmail Reply", msg)
+                        QMessageBox.information(self, "Gmail Reply", f"Reply sent with tone: {selected_tone.value if selected_tone else 'Default'}\n{msg}")
                     else:
                         QMessageBox.warning(self, "Gmail Reply", msg)
         else:
@@ -944,10 +982,6 @@ class AutoReturnApp(QMainWindow):
         main_layout.addWidget(self.create_header())
         main_layout.addWidget(self.create_main_content(), 1)
         main_layout.addWidget(self.create_status_bar())
-        
-        # NEW: Integrate tone system into main UI
-        if hasattr(self, 'tone_integration'):
-            self.tone_integration.integrate_into_main_ui(main_layout)
     
     # -------------------------
     # UI COMPONENT CREATION
@@ -1114,7 +1148,9 @@ class AutoReturnApp(QMainWindow):
             ("Total Messages: 0", "statusItem"),
             ("Gmail: 0", "statusItem"),
             ("Slack: 0", "statusItem"),
-            ("Urgent: 0", "statusItem")
+            ("Urgent: 0", "statusItem"),
+            # NEW: Add tone status indicator
+            ("Tone: Professional", "toneStatusItem")
         ]
         
         self.status_labels = {}
@@ -1745,6 +1781,16 @@ class AutoReturnApp(QMainWindow):
         self.status_labels.get("Gmail").setText(f"Gmail: {gmail_count}")
         self.status_labels.get("Slack").setText(f"Slack: {slack_count}")
         self.status_labels.get("Urgent").setText(f"Urgent: {urgent_count}")
+        
+        # NEW: Update tone status indicator
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            try:
+                default_tone = self.orchestrator.tone_manager.user_profile.default_tone
+                tone_display = default_tone.value.title() if default_tone else "None"
+                self.status_labels.get("Tone").setText(f"Tone: {tone_display}")
+            except Exception as e:
+                print(f"Error updating tone status: {e}")
+                self.status_labels.get("Tone").setText("Tone: Error")
 
     def show_status_message(self, message: str, timeout: int = 5000):
         """Display a temporary message in the status region (fallback to console)."""
@@ -1921,7 +1967,13 @@ class AutoReturnApp(QMainWindow):
     def show_settings(self):
         """Show the application settings dialog."""
         gmail_status = self.gmail_service.get_status_snapshot()
-        dialog = SettingsDialog(self.user_data, self, gmail_status=gmail_status)
+        # NEW: Use enhanced settings dialog with tone features
+        dialog = SettingsDialog(
+            user_data=self.user_data, 
+            parent=self, 
+            gmail_status=gmail_status,
+            orchestrator=self.orchestrator
+        )
         dialog.connect_slack_callback = self.connect_slack
         dialog.upload_gmail_json_callback = self.upload_gmail_credentials
         dialog.connect_gmail_callback = self.authorize_gmail
