@@ -93,6 +93,16 @@ class PriorityEngine:
               f"{len(self.action_call_words)} action words, "
               f"{len(self.user_priority_list)} sender rules")
 
+        # Initialize SpaCy for Semantic Analysis (AI-Context Check)
+        try:
+            import spacy
+            print("🧠 PriorityEngine: Loading Semantic Analysis model (en_core_web_md)...")
+            self.nlp = spacy.load("en_core_web_md")
+            print("✅ Semantic Analysis ready. Engine will detect negations like 'not urgent'.")
+        except Exception as e:
+            print(f"⚠️ Semantic Analysis model failed to load: {e}")
+            self.nlp = None
+
     def _load_dataset(self, path: str) -> dict:
         """Load the priority dataset JSON file."""
         try:
@@ -172,24 +182,60 @@ class PriorityEngine:
         time_pressure = 0.0
         action_call = 0.0
 
-        # Calc_Value_Direct: Check each word in the Direct Urgency set
+        # --- AI-CONTEXT CHECK (Semantic Analysis) ---
+        # If SpaCy is loaded, we intelligently check for negations (e.g., "NOT urgent")
+        if getattr(self, 'nlp', None):
+            try:
+                doc = self.nlp(text)
+                lemmas = [t.lemma_.lower() for t in doc if t.is_alpha]
+                # Words that flip or cancel urgency
+                negations = {"not", "never", "no", "none", "hardly", "barely", "n't"}
+                
+                # Check single-word tokens with context
+                for i, lemma in enumerate(lemmas):
+                    # Look back 3 words for a negation
+                    context = lemmas[max(0, i-3):i]
+                    is_negated = any(n in context for n in negations)
+                    
+                    if not is_negated:
+                        if lemma in self.direct_urgency_words:
+                            direct_urgency += self.direct_urgency_words[lemma]
+                        if lemma in self.time_pressure_words:
+                            time_pressure += self.time_pressure_words[lemma]
+                        if lemma in self.action_call_words:
+                            action_call += self.action_call_words[lemma]
+
+                # Multi-word phrase fallback
+                for phrase, value in self.direct_urgency_words.items():
+                    if " " in phrase and phrase in text:
+                        direct_urgency += value
+                for phrase, value in self.time_pressure_words.items():
+                    if " " in phrase and phrase in text:
+                        time_pressure += value
+                for phrase, value in self.action_call_words.items():
+                    if " " in phrase and phrase in text:
+                        action_call += value
+                        
+                total = direct_urgency + time_pressure + action_call
+                return min(total, self.delta)
+                
+            except Exception as e:
+                print(f"⚠️ Semantic context check failed: {e}. Falling back to basic match.")
+
+        # --- FALLBACK (Basic String Matching) ---
         for word, value in self.direct_urgency_words.items():
             if word in text:
                 direct_urgency += value
 
-        # Calc_Value_TimePressure: Check each phrase in Time Pressure set
         for phrase, value in self.time_pressure_words.items():
             if phrase in text:
                 time_pressure += value
 
-        # Calc_Value_Action: Check each phrase in Action Call set
         for phrase, value in self.action_call_words.items():
             if phrase in text:
                 action_call += value
 
         total = direct_urgency + time_pressure + action_call
-
-        # Cap at delta (10)
         return min(total, self.delta)
 
     # =========================================================

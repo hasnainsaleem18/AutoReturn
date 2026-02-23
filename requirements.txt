@@ -31,7 +31,6 @@ aiosqlite>=0.19.0      # Used for local data storage, also supports JSON-based l
 
 # Core NLP Processing (MUST use medium model for vectors)
 spacy>=3.7.0
-en-core-web-md>=3.7.0  # Required for word vectors in sentiment analysis
 
 # Scientific Computing (Used in sentiment analysis for vector operations)
 numpy>=1.24.0

@@ -61,8 +61,11 @@ class Orchestrator:
         # NEW: Tone Management System
         self.tone_manager = ToneManager(ai_service=self.ai_service)
         
-        # Update draft manager with tone manager
+        # Update draft manager and agents with tone manager
         self.draft_manager.tone_manager = self.tone_manager
+        for agent in self.agents.values():
+            if hasattr(agent, 'set_tone_manager'):
+                agent.set_tone_manager(self.tone_manager)
         
         # Pydantic AI Agent for intent classification
         self._setup_pydantic_agent(ollama_model)

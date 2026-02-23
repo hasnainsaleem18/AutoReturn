@@ -25,8 +25,13 @@ class SlackAgent(BaseAgent):
         
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
+        self.tone_manager = None
         
         print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
+
+    def set_tone_manager(self, tone_manager):
+        """Set the tone manager for sentiment analysis."""
+        self.tone_manager = tone_manager
 
     async def process_request(self, request: AgentRequest) -> AgentResponse:
         """Process Slack related requests with AI intelligence."""
@@ -139,9 +144,12 @@ class SlackAgent(BaseAgent):
             return "Medium"
 
     async def _analyze_sentiment(self, message: Dict) -> str:
-        """Use AI to analyze sentiment of message."""
+        """Use deterministic analysis to analyze sentiment of message."""
         try:
-            # Placeholder - can use AI prompt for sentiment analysis
+            if self.tone_manager:
+                text = message.get('full_content', '') or message.get('content_preview', '')
+                sentiment_result = self.tone_manager.analyze_message_sentiment(text)
+                return sentiment_result.get('sentiment', 'neutral')
             return "neutral"
         except Exception as e:
             print(f"Sentiment analysis failed: {e}")
