@@ -9,6 +9,7 @@ from src.backend.agents.base_agent import BaseAgent
 from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
 from src.backend.services.gmail_backend import GmailIntegrationService
 from src.backend.services.ai_service import OllamaService
+from src.backend.core.priority_engine import PriorityEngine
 
 
 class GmailAgent(BaseAgent):
@@ -26,7 +27,10 @@ class GmailAgent(BaseAgent):
         # AI service for intelligence
         self.ai_service = ai_service
         
-        print(f"✅ {self.name} initialized with AI capabilities")
+        # Priority Engine (New Algorithm Implementation)
+        self.priority_engine = PriorityEngine()
+        
+        print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
 
     async def process_request(self, request: AgentRequest) -> AgentResponse:
         """Process Gmail related requests with AI intelligence."""
@@ -79,7 +83,9 @@ class GmailAgent(BaseAgent):
                 async def process_msg_light(msg):
                     try:
                         # Priority and tasks are fast, so we do them now
-                        msg['ai_priority_score'] = await self._analyze_priority(msg)
+                        priority_label = await self._analyze_priority(msg)
+                        msg['ai_priority_score'] = priority_label
+                        msg['priority'] = priority_label  # UI reads this field
                         msg['ai_tasks'] = await self._extract_tasks(msg)
                         # Mark for background summarization
                         if not msg.get('summary'):
@@ -145,32 +151,15 @@ class GmailAgent(BaseAgent):
             print(f"❌ Summary generation failed for {message.get('id')}: {e}")
             return "Summary unavailable"
 
-    async def _analyze_priority(self, message: Dict) -> float:
-        """Use AI to analyze email priority (0.0 to 1.0)."""
+    async def _analyze_priority(self, message: Dict) -> str:
+        """Algorithm: Email/Message Priority Classification"""
         try:
-            # Simple heuristic for now - can be replaced with AI prompt
-            subject = message.get('subject', '').lower()
-            content = message.get('full_content', '').lower()
-            
-            urgent_keywords = ['urgent', 'asap', 'immediately', 'critical', 'emergency']
-            high_keywords = ['important', 'priority', 'deadline', 'action required']
-            
-            score = 0.3  # Base score
-            
-            for keyword in urgent_keywords:
-                if keyword in subject or keyword in content:
-                    score = max(score, 0.9)
-                    break
-            
-            for keyword in high_keywords:
-                if keyword in subject or keyword in content:
-                    score = max(score, 0.7)
-                    break
-            
-            return min(score, 1.0)
+            # Pass full message to the Priority Engine
+            priority_label = self.priority_engine.calculate_priority(message)
+            return priority_label
         except Exception as e:
             print(f"Priority analysis failed: {e}")
-            return 0.5
+            return "Medium"
 
     async def _extract_tasks(self, message: Dict) -> List[str]:
         """Use AI to extract actionable tasks from email."""

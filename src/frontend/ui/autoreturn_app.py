@@ -332,8 +332,18 @@ class AutoReturnApp(QMainWindow):
 
         print(f"Processing {len(new_messages)} new messages")
 
+        # Run priority classification on messages that don't have it yet
+        if hasattr(self, 'orchestrator') and hasattr(self.orchestrator, 'agents'):
+            slack_agent = self.orchestrator.agents.get('slack')
+            if slack_agent and hasattr(slack_agent, 'priority_engine'):
+                for msg in new_messages:
+                    if not msg.get('priority') or msg.get('priority') == 'normal':
+                        msg['priority'] = slack_agent.priority_engine.calculate_priority(msg)
+
         self.messages.extend(new_messages)
-        self.messages.sort(key=lambda x: float(x.get('timestamp', 0)), reverse=True)
+        # Sort by Priority (Rank) then Timestamp
+        p_map = {'High': 3, 'Medium': 2, 'Low': 1}
+        self.messages.sort(key=lambda x: (p_map.get(x.get('priority', 'Low'), 1), float(x.get('timestamp', 0))), reverse=True)
         
         self.populate_table()
         
@@ -633,7 +643,9 @@ class AutoReturnApp(QMainWindow):
             return
             
         self.messages.extend(new_items)
-        self.messages.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+        # Sort by Priority (Rank) then Timestamp
+        p_map = {'High': 3, 'Medium': 2, 'Low': 1}
+        self.messages.sort(key=lambda x: (p_map.get(x.get('priority', 'Low'), 1), float(x.get('timestamp', 0))), reverse=True)
         self.populate_table()
         
         # Queue for background AI summarization (progressive loading)
@@ -1230,27 +1242,29 @@ class AutoReturnApp(QMainWindow):
                     summary_label.setCursor(Qt.PointingHandCursor)
                 self.table.setCellWidget(row_idx, 4, summary_label)
                 
-                priority = msg.get('priority', 'normal')
-                priority_icons = {'urgent': '', 'high': '', 'normal': ''}
-                priority_order = {'urgent': 3, 'high': 2, 'normal': 1}
+                priority_val = msg.get('priority', 'Low')
+                # Standardize to High/Medium/Low if it comes as something else
+                if priority_val.lower() == 'urgent': priority_val = 'High'
+                elif priority_val.lower() == 'high': priority_val = 'Medium'
+                elif priority_val.lower() == 'normal': priority_val = 'Low'
                 
-                priority_item = QTableWidgetItem(f"{priority_icons[priority]} {priority.upper()}")
+                priority_icons = {'High': '🔴', 'Medium': '⭐', 'Low': '⚪'}
+                priority_order = {'High': 3, 'Medium': 2, 'Low': 1}
+                
+                display_label = priority_val.upper()
+                priority_item = QTableWidgetItem(f"{priority_icons.get(priority_val, '')} {display_label}")
                 priority_item.setTextAlignment(Qt.AlignCenter)
-                priority_item.setData(Qt.UserRole, priority_order[priority])
+                priority_item.setData(Qt.UserRole, priority_order.get(priority_val, 1))
                 
-                if priority == 'urgent':
+                if priority_val == 'High':
                     priority_item.setBackground(QColor(255, 229, 224))
                     priority_item.setForeground(QColor(150, 71, 52))
-                elif priority == 'high':
+                elif priority_val == 'Medium':
                     priority_item.setBackground(QColor(212, 244, 247))
                     priority_item.setForeground(QColor(2, 73, 80))
                 else:
                     priority_item.setBackground(QColor(175, 221, 229))
                     priority_item.setForeground(QColor(0, 49, 53))
-                
-                font = priority_item.font()
-                font.setBold(True)
-                priority_item.setFont(font)
                 
                 self.table.setItem(row_idx, 5, priority_item)
                 
@@ -1404,7 +1418,7 @@ class AutoReturnApp(QMainWindow):
         elif self.active_filter == 'slack':
             filter_match = msg.get('source') == 'slack'
         elif self.active_filter == 'urgent':
-            filter_match = msg.get('priority') == 'urgent'
+            filter_match = msg.get('priority') in ['High', 'urgent']
         else:
             filter_match = True
         

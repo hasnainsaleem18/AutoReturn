@@ -8,6 +8,7 @@ from src.backend.agents.base_agent import BaseAgent
 from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
 from src.backend.services.slack_backend import SlackService
 from src.backend.services.ai_service import OllamaService
+from src.backend.core.priority_engine import PriorityEngine
 
 
 class SlackAgent(BaseAgent):
@@ -22,7 +23,10 @@ class SlackAgent(BaseAgent):
         # AI service for intelligence
         self.ai_service = ai_service
         
-        print(f"✅ {self.name} initialized with AI capabilities")
+        # Priority Engine (New Algorithm Implementation)
+        self.priority_engine = PriorityEngine()
+        
+        print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
 
     async def process_request(self, request: AgentRequest) -> AgentResponse:
         """Process Slack related requests with AI intelligence."""
@@ -61,7 +65,9 @@ class SlackAgent(BaseAgent):
             async def process_slack_msg_light(msg):
                 try:
                     # AI Priority Analysis
-                    msg['ai_priority_score'] = await self._analyze_priority(msg)
+                    priority_label = await self._analyze_priority(msg)
+                    msg['ai_priority_score'] = priority_label
+                    msg['priority'] = priority_label  # UI reads this field
                     
                     # Sentiment analysis
                     msg['ai_sentiment'] = await self._analyze_sentiment(msg)
@@ -122,30 +128,15 @@ class SlackAgent(BaseAgent):
             print(f"Summary generation failed: {e}")
             return "Summary unavailable"
 
-    async def _analyze_priority(self, message: Dict) -> float:
-        """Use AI to analyze Slack message priority (0.0 to 1.0)."""
+    async def _analyze_priority(self, message: Dict) -> str:
+        """Algorithm: Email/Message Priority Classification"""
         try:
-            text = message.get('full_content', '').lower()
-            
-            urgent_keywords = ['urgent', 'asap', 'emergency', 'critical', 'immediately']
-            high_keywords = ['important', 'priority', 'deadline', 'soon', 'quick']
-            
-            score = 0.3  # Base score
-            
-            for keyword in urgent_keywords:
-                if keyword in text:
-                    score = max(score, 0.9)
-                    break
-            
-            for keyword in high_keywords:
-                if keyword in text:
-                    score = max(score, 0.7)
-                    break
-            
-            return min(score, 1.0)
+            # Pass full message to the Priority Engine
+            priority_label = self.priority_engine.calculate_priority(message)
+            return priority_label
         except Exception as e:
             print(f"Priority analysis failed: {e}")
-            return 0.5
+            return "Medium"
 
     async def _analyze_sentiment(self, message: Dict) -> str:
         """Use AI to analyze sentiment of message."""

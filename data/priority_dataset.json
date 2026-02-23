@@ -1,0 +1,208 @@
+{
+    "_description": "Priority Classification Dataset for AutoReturn. All scores are on a 0-10 scale.",
+    "_version": "1.0",
+
+    "keyword_scores": {
+        "_info": "Algorithm 02: Keyword scoring. Words are grouped into 3 categories.",
+
+        "direct_urgency": {
+            "_description": "Words that directly indicate urgency or emergency.",
+            "urgent": 9,
+            "emergency": 10,
+            "critical": 9,
+            "asap": 8,
+            "immediately": 8,
+            "now": 7,
+            "blocking": 8,
+            "broken": 7,
+            "down": 6,
+            "outage": 9,
+            "fire": 8,
+            "alert": 7,
+            "severe": 8,
+            "crash": 8,
+            "failure": 7,
+            "stopped": 6,
+            "breach": 9,
+            "escalate": 7,
+            "escalation": 7,
+            "sos": 10,
+            "help": 5,
+            "stuck": 5,
+            "dying": 6,
+            "desperate": 7,
+            "panic": 7
+        },
+
+        "time_pressure": {
+            "_description": "Words that imply time sensitivity or a deadline.",
+            "today": 7,
+            "tonight": 7,
+            "tomorrow": 5,
+            "deadline": 8,
+            "due": 6,
+            "overdue": 9,
+            "eod": 8,
+            "eob": 7,
+            "end of day": 8,
+            "end of business": 7,
+            "by noon": 8,
+            "by morning": 7,
+            "this week": 4,
+            "next week": 2,
+            "soon": 4,
+            "quickly": 5,
+            "hurry": 6,
+            "rush": 7,
+            "time-sensitive": 8,
+            "expiring": 8,
+            "expires": 7,
+            "last chance": 8,
+            "final notice": 9,
+            "reminder": 4,
+            "follow up": 3,
+            "follow-up": 3,
+            "within 24 hours": 8,
+            "within the hour": 9,
+            "right away": 8,
+            "at the earliest": 6
+        },
+
+        "action_call": {
+            "_description": "Words that request a specific action from the reader.",
+            "action required": 8,
+            "action needed": 7,
+            "please respond": 6,
+            "please reply": 6,
+            "reply needed": 7,
+            "response required": 7,
+            "respond": 5,
+            "reply": 4,
+            "send": 3,
+            "submit": 5,
+            "approve": 6,
+            "sign": 5,
+            "confirm": 5,
+            "review": 4,
+            "look into": 4,
+            "investigate": 5,
+            "fix": 5,
+            "resolve": 5,
+            "update": 3,
+            "complete": 4,
+            "fill out": 4,
+            "schedule": 3,
+            "attend": 4,
+            "join": 2,
+            "call me": 6,
+            "waiting for": 5,
+            "awaiting": 5,
+            "need your": 6,
+            "require your": 6,
+            "requesting": 4,
+            "mandatory": 7,
+            "compulsory": 7,
+            "must": 6
+        }
+    },
+
+    "deadline_scores": {
+        "_info": "Algorithm 03: Deadline detection patterns and their base scores (0-10).",
+
+        "relative_deadlines": {
+            "_description": "Relative time references found in message body.",
+            "right now": 10,
+            "within the hour": 9,
+            "within 24 hours": 8,
+            "today": 8,
+            "tonight": 7,
+            "by morning": 7,
+            "by noon": 8,
+            "tomorrow": 5,
+            "day after tomorrow": 4,
+            "this week": 3,
+            "next week": 2,
+            "this month": 1,
+            "next month": 1,
+            "asap": 9,
+            "eod": 8,
+            "eob": 7,
+            "end of day": 8,
+            "end of week": 4,
+            "immediately": 10
+        },
+
+        "absolute_deadline_base_score": 5,
+        "_absolute_note": "When a date like 12/25/2026 is found, this base score is used. It is then adjusted by time_remaining logic."
+    },
+
+    "sender_scores": {
+        "_info": "Algorithm 04: Sender importance scoring. These are keywords matched against the sender name/email.",
+
+        "user_priority_list": {
+            "_description": "Known sender keywords and their importance scores (0-10).",
+            "boss": 10,
+            "ceo": 10,
+            "cto": 9,
+            "cfo": 9,
+            "director": 8,
+            "manager": 8,
+            "supervisor": 7,
+            "lead": 6,
+            "head": 7,
+            "principal": 7,
+            "professor": 6,
+            "teacher": 5,
+            "instructor": 5,
+            "advisor": 6,
+            "client": 8,
+            "customer": 7,
+            "partner": 7,
+            "investor": 9,
+            "vp": 8,
+            "president": 9,
+            "founder": 8,
+            "recruiter": 5,
+            "hr": 6,
+            "admin": 4,
+            "support": 3,
+            "noreply": 0,
+            "no-reply": 0,
+            "newsletter": 0,
+            "promo": 0,
+            "marketing": 1,
+            "notification": 1,
+            "automated": 0,
+            "donotreply": 0,
+            "slackbot": 1
+        },
+
+        "cc_weight_multiplier": 0.5,
+        "_cc_note": "CC recipients get half the sender weight. If boss is CC'd, the CC score is 10 * 0.5 = 5."
+    },
+
+    "weights": {
+        "_info": "Algorithm 01: Weights for combining the three sub-scores. Must sum to 1.0.",
+        "w_keyword": 0.45,
+        "w_deadline": 0.30,
+        "w_sender": 0.25
+    },
+
+    "thresholds": {
+        "_info": "Clustering thresholds for the final 0-10 urgency score.",
+        "high": 6.7,
+        "medium": 3.4,
+        "_low_note": "Anything below 3.4 is Low."
+    },
+
+    "delta": {
+        "_info": "Maximum cap for any individual sub-score (Algorithm 03).",
+        "value": 10
+    },
+
+    "time_remaining_bonus": {
+        "_info": "Algorithm 03 extension: If remaining time < 24 hours, add delta/2.",
+        "bonus_value": 5,
+        "_note": "This is delta (10) / 2 = 5. Added when deadline is within 24 hours."
+    }
+}
