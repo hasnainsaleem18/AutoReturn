@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+# -------------------------
+# TONE SELECTOR TEST
+# -------------------------
+"""
+Test script for Phase 1 tone selector widget implementation.
+"""
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QPushButton, QLabel
+from PySide6.QtCore import Qt
+
+from src.backend.core.orchestrator import Orchestrator
+from src.frontend.widgets.tone_selector import ToneSelector
+from src.frontend.widgets.sentiment_display import SentimentDisplay
+
+
+class TestWindow(QMainWindow):
+    """Test window for tone selector widget"""
+    
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Tone Selector Test - Phase 1")
+        self.setGeometry(100, 100, 600, 400)
+        
+        # Initialize orchestrator
+        try:
+            self.orchestrator = Orchestrator()
+            print("✅ Orchestrator initialized successfully")
+        except Exception as e:
+            print(f"❌ Orchestrator initialization failed: {e}")
+            self.orchestrator = None
+        
+        # Setup UI
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Setup test UI"""
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        
+        layout = QVBoxLayout(central_widget)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Test message data
+        test_message = {
+            'id': 'test_123',
+            'sender': 'test@example.com',
+            'subject': 'Test Message',
+            'content': 'This is a test message for tone analysis. Please respond professionally.',
+            'full_content': 'This is a test message for tone analysis. Please respond professionally. Thank you for your consideration.',
+            'source': 'gmail',
+            'priority': 'normal'
+        }
+        
+        # Tone selector
+        self.tone_selector = ToneSelector(self.orchestrator, test_message)
+        layout.addWidget(self.tone_selector)
+        
+        # Sentiment display
+        self.sentiment_display = SentimentDisplay(test_message)
+        layout.addWidget(self.sentiment_display)
+        
+        # Test buttons
+        test_button = QPushButton("Test Auto-Suggest")
+        test_button.clicked.connect(self.test_auto_suggest)
+        layout.addWidget(test_button)
+        
+        update_button = QPushButton("Update Message Data")
+        update_button.clicked.connect(self.update_message_data)
+        layout.addWidget(update_button)
+        
+        # Status label
+        self.status_label = QLabel("Ready for testing")
+        layout.addWidget(self.status_label)
+        
+        # Connect signals
+        self.tone_selector.tone_changed.connect(self.on_tone_changed)
+        
+        # Initial sentiment analysis
+        self.perform_sentiment_analysis(test_message)
+    
+    def test_auto_suggest(self):
+        """Test auto-suggest functionality"""
+        if self.orchestrator:
+            self.tone_selector.on_auto_suggest()
+            self.status_label.setText("Auto-suggest triggered")
+        else:
+            self.status_label.setText("❌ No orchestrator available")
+    
+    def update_message_data(self):
+        """Update message data with new content"""
+        new_message = {
+            'id': 'test_456',
+            'sender': 'urgent@example.com',
+            'subject': 'URGENT: Action Required',
+            'content': 'This is extremely urgent and requires immediate attention!',
+            'full_content': 'This is extremely urgent and requires immediate attention! Please respond as soon as possible.',
+            'source': 'slack',
+            'priority': 'high'
+        }
+        
+        self.tone_selector.set_message_data(new_message)
+        self.sentiment_display.set_message_data(new_message)
+        self.perform_sentiment_analysis(new_message)
+        self.status_label.setText("Message data updated")
+    
+    def perform_sentiment_analysis(self, message_data):
+        """Perform sentiment analysis on message"""
+        if not self.orchestrator:
+            return
+        
+        try:
+            content = message_data.get('full_content', '')
+            if content:
+                sentiment_result = self.orchestrator.tone_manager.analyze_message_sentiment(content)
+                
+                # Add sentiment data to message
+                message_data['sentiment_analysis'] = sentiment_result
+                
+                # Update displays
+                self.sentiment_display.set_message_data(message_data)
+                
+                print(f"✅ Sentiment analysis: {sentiment_result.get('sentiment')} ({sentiment_result.get('confidence'):.2f})")
+        except Exception as e:
+            print(f"❌ Sentiment analysis error: {e}")
+    
+    def on_tone_changed(self, tone):
+        """Handle tone change"""
+        if isinstance(tone, ToneType):
+            self.status_label.setText(f"Tone changed to: {tone.value}")
+        else:
+            self.status_label.setText(f"Tone changed to: {tone}")
+
+
+def main():
+    """Main test function"""
+    app = QApplication(sys.argv)
+    
+    # Create test window
+    window = TestWindow()
+    window.show()
+    
+    # Run application
+    sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

@@ -21,6 +21,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+# Local imports for tone features
+from src.frontend.widgets.tone_selector import ToneSelector
+from src.frontend.widgets.sentiment_display import SentimentDisplay
+
 
 # -------------------------
 # GMAIL REPLY DIALOG CLASS
@@ -36,18 +40,23 @@ class SendGmailReplyDialog(QDialog):
     # -------------------------
     # INITIALIZATION
     # -------------------------
-    def __init__(self, to_email: str, subject: str, parent=None):
+    def __init__(self, to_email: str, subject: str, parent=None, orchestrator=None, original_message=None):
         """Initialize the Gmail reply dialog.
         
         Args:
             to_email: Email address of the recipient
             subject: Original email subject (will be prefixed with 'Re: ')
             parent: Parent widget (optional)
+            orchestrator: Orchestrator instance for tone features (optional)
+            original_message: Original message data for sentiment analysis (optional)
         """
         super().__init__(parent)
 
         self.to_email = to_email
         self.subject = subject or "(No Subject)"
+        self.orchestrator = orchestrator
+        self.original_message = original_message or {}
+        self.selected_tone = None
 
         self.setWindowTitle("Reply via Gmail")
         self.setMinimumSize(600, 450)
@@ -86,6 +95,27 @@ class SendGmailReplyDialog(QDialog):
             "font-size: 13px; color: #003135;"
         )
         subject_value.setWordWrap(True)
+
+        # NEW: Add sentiment display for incoming message
+        self.sentiment_display = None
+        if self.orchestrator and self.original_message:
+            # Add tone selector and sentiment display
+            info_label = QLabel("📊 Analyze incoming message mood, then select tone for your reply:")
+            info_label.setStyleSheet("font-size: 12px; color: #024950; margin-bottom: 8px;")
+            layout.addWidget(info_label)
+            
+            # Sentiment display for incoming message
+            self.sentiment_display = SentimentDisplay(self.original_message)
+            layout.addWidget(self.sentiment_display)
+            
+            # Tone selector for outgoing message
+            self.tone_selector = ToneSelector(self.orchestrator, self.original_message)
+            self.tone_selector.tone_changed.connect(self._on_tone_changed)
+            layout.addWidget(self.tone_selector)
+        
+        # Perform sentiment analysis
+        if self.sentiment_display:
+            self._perform_sentiment_analysis()
 
         body_label = QLabel("Message:")
         body_label.setStyleSheet(
@@ -158,6 +188,7 @@ class SendGmailReplyDialog(QDialog):
         btn_layout.addWidget(cancel_btn)
         btn_layout.addStretch()
 
+        # Add widgets to layout
         layout.addWidget(title)
         layout.addSpacing(8)
         layout.addWidget(to_label)
@@ -165,6 +196,17 @@ class SendGmailReplyDialog(QDialog):
         layout.addSpacing(4)
         layout.addWidget(subject_label)
         layout.addWidget(subject_value)
+        
+        # NEW: Add sentiment display if available
+        if self.sentiment_display:
+            layout.addSpacing(8)
+            layout.addWidget(self.sentiment_display)
+        
+        # NEW: Add tone selector if available
+        if self.tone_selector:
+            layout.addSpacing(8)
+            layout.addWidget(self.tone_selector)
+        
         layout.addSpacing(8)
         layout.addWidget(body_label)
         layout.addWidget(self.message_text, 1)
@@ -206,3 +248,95 @@ class SendGmailReplyDialog(QDialog):
             str: The trimmed message text
         """
         return self.message_text.toPlainText().strip()
+    
+    def get_selected_tone(self):
+        """Get the selected tone for the message.
+        
+        Returns:
+            ToneType or None: The selected tone
+        """
+        return self.selected_tone if self.tone_selector else None
+    
+    # -------------------------
+    # TONE AND SENTIMENT METHODS
+    # -------------------------
+    def _perform_sentiment_analysis(self):
+        """Perform sentiment analysis on the original message"""
+        if not self.orchestrator or not self.original_message:
+            return
+        
+        try:
+            content = self.original_message.get('full_content', '') or self.original_message.get('content', '')
+            if content:
+                sentiment_result = self.orchestrator.tone_manager.analyze_message_sentiment(content)
+                
+                # Add sentiment data to message
+                self.original_message['sentiment_analysis'] = sentiment_result
+                
+                # Update sentiment display
+                if self.sentiment_display:
+                    self.sentiment_display.set_sentiment_data(sentiment_result)
+                
+        except Exception as e:
+            print(f"Sentiment analysis error: {e}")
+    
+    def _on_tone_changed(self, tone):
+        """Handle tone selection change"""
+        self.selected_tone = tone
+        
+        # Learn from user's manual tone selection
+        if self.orchestrator and self.original_message:
+            try:
+                self.orchestrator.tone_manager.update_user_preferences(tone, self.original_message)
+                print(f"� Learned tone preference: {tone.value} for message")
+            except Exception as e:
+                print(f"Error learning tone preference: {e}")
+        
+        # Optionally adjust message text based on tone
+        if self.orchestrator and self.message_text.toPlainText().strip():
+            self._adjust_message_tone(tone)
+    
+    def _adjust_message_tone(self, tone):
+        """Adjust message text based on selected tone"""
+        if not self.orchestrator:
+            return
+        
+        try:
+            import asyncio
+            
+            current_text = self.message_text.toPlainText()
+            if current_text.strip():
+                # Create message context for tone adjustment
+                message_context = {
+                    'sender': self.to_email,
+                    'subject': f"Re: {self.subject}",
+                    'source': 'gmail',
+                    'original_message': self.original_message
+                }
+                
+                # Perform tone adjustment asynchronously
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                result = loop.run_until_complete(
+                    self.orchestrator.tone_manager.adjust_message_tone(
+                        current_text, tone, message_context
+                    )
+                )
+                
+                if result.success and result.adjusted_text != current_text:
+                    # Store cursor position
+                    cursor = self.message_text.textCursor()
+                    position = cursor.position()
+                    
+                    # Update text
+                    self.message_text.setPlainText(result.adjusted_text)
+                    
+                    # Restore cursor position (within bounds)
+                    cursor.setPosition(min(position, len(result.adjusted_text)))
+                    self.message_text.setTextCursor(cursor)
+                
+                loop.close()
+                
+        except Exception as e:
+            print(f"Tone adjustment error: {e}")

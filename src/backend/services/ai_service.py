@@ -216,7 +216,6 @@ class QueueSummaryGenerator(QObject):
     def _on_error(self, message_id: str, error: str):
         """Handle summary generation error"""
         print(f"Error generating summary for {message_id}: {error}")
-        # Optional: Add retry logic here if needed
         self.completed_count += 1
         self.progress_update.emit(self.completed_count, self.total_count)
     
