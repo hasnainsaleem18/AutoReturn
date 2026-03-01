@@ -11,12 +11,13 @@ and user profile settings.
 # -------------------------
 # Standard library imports
 import os
+import json
 
 # Third-party imports
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QWidget, QTabWidget, QScrollArea, QTimeEdit, QLineEdit,
-    QMessageBox, QFileDialog
+    QMessageBox, QFileDialog, QTextEdit
 )
 from PySide6.QtCore import Qt, QTime, Signal
 from PySide6.QtGui import QPixmap
@@ -503,19 +504,106 @@ class SettingsDialog(QDialog):
         
         # Description
         description = self._create_description(
-            "Set up AI-powered rules to automatically prioritize messages based on "
-            "sender, keywords, urgency, and other factors."
+            "Define your priority senders. Format: sender@email.com = score (0-10)\n"
+            "Example: boss@company.com = 10"
         )
         layout.addWidget(description)
         
-        # Coming soon placeholder
-        layout.addWidget(self._create_coming_soon_card(
-            "AI-powered priority rules are under development.\nStay tuned for updates!"
-        ))
+        # Text Edit for Sender Priorities
+        self.priority_text_edit = QTextEdit()
+        self.priority_text_edit.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {StyleConstants.COLOR_WHITE};
+                color: {StyleConstants.COLOR_DARKEST};
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: {StyleConstants.RADIUS_MEDIUM}px;
+                padding: {StyleConstants.PADDING_SMALL}px;
+                font-family: monospace;
+            }}
+        """)
+        self.priority_text_edit.setMinimumHeight(250)
+        
+        self._load_priority_data()
+        layout.addWidget(self.priority_text_edit)
+        
+        # Save Button
+        save_btn = QPushButton("Save Priority Rules")
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {StyleConstants.COLOR_PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {StyleConstants.RADIUS_MEDIUM}px;
+                padding: {StyleConstants.PADDING_MEDIUM}px 0;
+                font-weight: bold;
+                font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+            }}
+            QPushButton:hover {{
+                background-color: {StyleConstants.COLOR_DARK_PRIMARY};
+            }}
+        """)
+        save_btn.clicked.connect(self._save_priority_rules)
+        layout.addWidget(save_btn)
         
         layout.addStretch()
         scroll.setWidget(content)
         return scroll
+    
+    def _load_priority_data(self):
+        dataset_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'data', 'priority_dataset.json')
+        try:
+            with open(dataset_path, 'r') as f:
+                self.priority_data = json.load(f)
+            
+            senders = self.priority_data.get("sender_scores", {}).get("user_priority_list", {})
+            text_lines = []
+            for sender, score in senders.items():
+                if not sender.startswith("_"):
+                    text_lines.append(f"{sender} = {score}")
+            
+            self.priority_text_edit.setPlainText("\\n".join(text_lines))
+        except Exception as e:
+            self.priority_text_edit.setPlainText(f"Error loading data: {e}")
+            self.priority_data = {}
+
+    def _save_priority_rules(self):
+        try:
+            lines = self.priority_text_edit.toPlainText().split('\\n')
+            new_rules = {}
+            for line in lines:
+                if '=' in line:
+                    parts = line.split('=')
+                    sender = parts[0].strip()
+                    try:
+                        score = float(parts[1].strip())
+                        new_rules[sender] = score
+                    except ValueError:
+                        continue
+            
+            # Update the JSON structure
+            if "sender_scores" not in self.priority_data:
+                self.priority_data["sender_scores"] = {}
+            if "user_priority_list" not in self.priority_data["sender_scores"]:
+                self.priority_data["sender_scores"]["user_priority_list"] = {}
+                
+            self.priority_data["sender_scores"]["user_priority_list"] = new_rules
+            
+            dataset_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'data', 'priority_dataset.json')
+            with open(dataset_path, 'w') as f:
+                json.dump(self.priority_data, f, indent=4)
+                
+            QMessageBox.information(self, "Success", "Priority rules saved successfully!")
+            
+            # Update running agents
+            parent = self.parent()
+            if hasattr(parent, 'orchestrator'):
+                for name in ['gmail', 'slack']:
+                    agent = parent.orchestrator.get_agent(name)
+                    if agent and hasattr(agent, 'priority_engine'):
+                        agent.priority_engine.set_user_priority_list(new_rules)
+                        
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save rules: {e}")
     
     # -------------------------
     # INTEGRATIONS TAB
@@ -1408,6 +1496,177 @@ This token will let your desktop app send and receive messages as you, including
         msg.setIcon(QMessageBox.Information)
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec()
+
+    # -------------------------
+    # TONE SETTINGS TAB (partner's Sentiment feature)
+    # -------------------------
+    def _create_tone_settings_tab(self):
+        """Create tone settings tab with default tone and preferences."""
+        from PySide6.QtWidgets import QFrame
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+
+        title = QLabel("Tone Settings")
+        title.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_HERO}px;
+            font-weight: 600;
+            color: {StyleConstants.COLOR_DARKEST};
+            margin-bottom: {StyleConstants.SPACING_MEDIUM}px;
+        """)
+        layout.addWidget(title)
+
+        desc = QLabel("Configure your default tone preferences and auto-suggestion settings.")
+        desc.setStyleSheet(f"""
+            font-size: {StyleConstants.FONT_SIZE_MEDIUM}px;
+            color: {StyleConstants.COLOR_GRAY_MEDIUM};
+            margin-bottom: {StyleConstants.SPACING_LARGE}px;
+        """)
+        desc.setWordWrap(True)
+        layout.addWidget(desc)
+
+        layout.addWidget(self._create_default_tone_section())
+        layout.addWidget(self._create_auto_tone_section())
+        layout.addWidget(self._create_tone_statistics_section())
+        layout.addWidget(self._create_learning_section())
+        layout.addStretch()
+        return tab
+
+    def _create_default_tone_section(self):
+        from PySide6.QtWidgets import QFrame
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        layout = QVBoxLayout(section)
+        title = QLabel("Default Tone")
+        title.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_LARGE}px; font-weight: 600; color: {StyleConstants.COLOR_DARK_PRIMARY};")
+        layout.addWidget(title)
+        if self.orchestrator:
+            current_default = self.orchestrator.tone_manager.user_profile.default_tone
+            current_lbl = QLabel(f"Current default: {get_tone_display_name(current_default)}")
+            current_lbl.setStyleSheet("font-size: 13px; color: #024950;")
+            layout.addWidget(current_lbl)
+            self.default_tone_selector = ToneSelector(self.orchestrator)
+            self.default_tone_selector.set_tone(current_default)
+            self.default_tone_selector.tone_changed.connect(self._on_default_tone_changed)
+            layout.addWidget(self.default_tone_selector)
+        return section
+
+    def _create_auto_tone_section(self):
+        from PySide6.QtWidgets import QFrame
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        layout = QVBoxLayout(section)
+        title = QLabel("Auto-Tone Suggestions")
+        title.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_LARGE}px; font-weight: 600; color: {StyleConstants.COLOR_DARK_PRIMARY};")
+        layout.addWidget(title)
+        if self.orchestrator:
+            auto_enabled = self.orchestrator.tone_manager.user_profile.auto_tone_enabled
+            self.auto_tone_status = QLabel(f"Status: {'Enabled ✅' if auto_enabled else 'Disabled ❌'}")
+            self.auto_tone_status.setStyleSheet("font-size: 13px; color: #024950; padding: 4px 0;")
+            layout.addWidget(self.auto_tone_status)
+            toggle_btn = QPushButton(f"{'Disable' if auto_enabled else 'Enable'} Auto-Tone")
+            toggle_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #0FA4AF; color: white; border: none;
+                    padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 600;
+                }
+                QPushButton:hover { background-color: #024950; }
+            """)
+            toggle_btn.clicked.connect(self._toggle_auto_tone)
+            layout.addWidget(toggle_btn)
+        return section
+
+    def _create_tone_statistics_section(self):
+        from PySide6.QtWidgets import QFrame
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        layout = QVBoxLayout(section)
+        title = QLabel("Usage Statistics")
+        title.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_LARGE}px; font-weight: 600; color: {StyleConstants.COLOR_DARK_PRIMARY};")
+        layout.addWidget(title)
+        if self.orchestrator:
+            stats = self.orchestrator.tone_manager.get_tone_statistics()
+            stats_text = (f"<b>Default Tone:</b> {stats.get('default_tone', 'N/A')}<br>"
+                          f"<b>Auto-Tone:</b> {'Enabled' if stats.get('auto_tone_enabled') else 'Disabled'}<br>"
+                          f"<b>Manual Overrides:</b> {stats.get('total_manual_overrides', 0)}<br>"
+                          f"<b>Sender Preferences:</b> {stats.get('sender_preferences_count', 0)}")
+            stats_label = QLabel(stats_text)
+            stats_label.setTextFormat(Qt.RichText)
+            layout.addWidget(stats_label)
+        return section
+
+    def _create_learning_section(self):
+        from PySide6.QtWidgets import QFrame
+        section = QFrame()
+        section.setStyleSheet(f"""
+            QFrame {{
+                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border-radius: 8px;
+                background-color: {StyleConstants.COLOR_WHITE};
+                padding: {StyleConstants.SPACING_MEDIUM}px;
+            }}
+        """)
+        layout = QVBoxLayout(section)
+        title = QLabel("Learning & Reset")
+        title.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_LARGE}px; font-weight: 600; color: {StyleConstants.COLOR_DARK_PRIMARY};")
+        layout.addWidget(title)
+        reset_btn = QPushButton("🗑 Reset Learning Data")
+        reset_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #964734; color: white; border: none;
+                padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 600;
+            }
+            QPushButton:hover { background-color: #7d2f2f; }
+        """)
+        reset_btn.clicked.connect(self._reset_learning_data)
+        layout.addWidget(reset_btn)
+        return section
+
+    def _on_default_tone_changed(self, tone):
+        if self.orchestrator:
+            self.orchestrator.tone_manager.set_default_tone(tone)
+            QMessageBox.information(self, "Default Tone Updated", f"Default tone changed to {get_tone_display_name(tone)}")
+
+    def _toggle_auto_tone(self):
+        if self.orchestrator:
+            current_state = self.orchestrator.tone_manager.user_profile.auto_tone_enabled
+            new_state = not current_state
+            self.orchestrator.tone_manager.set_auto_tone_enabled(new_state)
+            self.auto_tone_status.setText(f"Status: {'Enabled' if new_state else 'Disabled'}")
+            QMessageBox.information(self, "Auto-Tone Updated", f"Auto-tone suggestions {'enabled' if new_state else 'disabled'}")
+
+    def _reset_learning_data(self):
+        reply = QMessageBox.question(self, "Reset Learning Data",
+                                     "Are you sure you want to reset all learning data?",
+                                     QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes and self.orchestrator:
+            self.orchestrator.tone_manager.user_profile.manual_override_history = []
+            self.orchestrator.tone_manager.user_profile.sender_preferences = {}
+            self.orchestrator.tone_manager.user_profile.domain_preferences = {}
+            self.orchestrator.tone_manager._save_user_profile()
+            QMessageBox.information(self, "Learning Data Reset", "All learning data has been successfully reset.")
 
 
 # -------------------------

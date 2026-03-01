@@ -22,8 +22,23 @@ class SendSlackMessageDialog(QDialog):
         self.selected_tone = None
         
         self.setWindowTitle("Send Slack Direct Message")
-        self.setMinimumSize(500, 400)
-        
+        self.setMinimumSize(520, 430)
+
+        # Force white background - same dark theme inheritance issue as gmail dialog
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+            }
+            QLabel {
+                color: #003135;
+                background-color: transparent;
+            }
+            QTextEdit {
+                background-color: #ffffff;
+                color: #003135;
+            }
+        """)
+
         self._build_ui()
     
     def _build_ui(self):

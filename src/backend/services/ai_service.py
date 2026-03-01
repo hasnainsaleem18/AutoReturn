@@ -151,7 +151,7 @@ class QueueSummaryGenerator(QObject):
     batch_complete = Signal(int)  # total summaries generated
     progress_update = Signal(int, int)  # current, total
     
-    def __init__(self, ollama_service: OllamaService, max_concurrent: int = 2):
+    def __init__(self, ollama_service: OllamaService, max_concurrent: int = 5):
         super().__init__()
         self.ollama_service = ollama_service
         self.max_concurrent = max_concurrent
@@ -195,7 +195,7 @@ class QueueSummaryGenerator(QObject):
             thread = SummaryGeneratorThread(
                 self.ollama_service,
                 msg.get('id', ''),
-                msg.get('full_content', msg.get('preview', '')),
+                msg.get('full_content', msg.get('content_preview', msg.get('preview', ''))),
                 msg.get('sender', ''),
                 msg.get('subject', '')
             )

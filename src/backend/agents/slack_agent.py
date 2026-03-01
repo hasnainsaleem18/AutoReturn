@@ -56,11 +56,11 @@ class SlackAgent(BaseAgent):
 
     async def _handle_fetch(self, request: AgentRequest) -> AgentResponse:
         """Fetch Slack messages and add AI intelligence."""
-        limit = request.parameters.get("limit", 50)
+        limit = request.parameters.get("limit", 200)
         add_ai = request.parameters.get("add_ai_analysis", True)
         
-        # Use backend service to fetch messages
-        messages = self.backend.fetch_all_messages(limit=limit)
+        # Use backend service to fetch messages - use sync_all_messages to clear filters
+        messages = self.backend.sync_all_messages(limit=limit)
         
         # Add lightweight AI intelligence (Priority & Sentiment)
         # We skip heavy summarization here to return to UI instantly.

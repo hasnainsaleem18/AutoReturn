@@ -101,7 +101,9 @@ class SlackMessage:
         
         # Get user info
         user_info = user_cache.get(self.user_id, {})
-        self.user_name = user_info.get('name', 'Unknown')
+        
+        fallback_name = message_data.get('username') or message_data.get('bot_profile', {}).get('name') or 'Unknown'
+        self.user_name = user_info.get('name', fallback_name)
         self.user_real_name = user_info.get('real_name', self.user_name)
         self.user_email = user_info.get('email', '')
         
@@ -138,8 +140,8 @@ class SlackMessage:
             'sender': self.user_real_name,
             'email': f'@{self.user_name}',
             'subject': subject,
-            'content_preview': self.text[:100],
-            'preview': self.text[:150] + '...' if len(self.text) > 150 else self.text,
+            'content_preview': self.text[:500],
+            'preview': self.text[:200] + '...' if len(self.text) > 200 else self.text,
             'summary': '',  # Leave empty for AI to generate
             'priority': self._detect_priority(),
             'time': format_message_time(self.datetime),
@@ -240,8 +242,9 @@ class SlackService(QObject):
             users_list = []
             
             for user in response['members']:
-                if user.get('deleted') or user.get('is_bot'):
+                if user.get('deleted'):
                     continue
+
                 
                 user_info = {
                     'id': user['id'],
@@ -260,7 +263,7 @@ class SlackService(QObject):
         except SlackApiError as e:
             self.error_occurred.emit(f"Failed to load users: {e.response.get('error', str(e))}")
 
-    def fetch_all_messages(self, limit: int = 10) -> List[dict]:
+    def fetch_all_messages(self, limit: int = 200) -> List[dict]:
         if not self.is_connected:
             return []
         
@@ -275,20 +278,45 @@ class SlackService(QObject):
             for conv in conversations:
                 channel_id = conv['id']
                 
-                history = self.client.conversations_history(
-                    channel=channel_id,
-                    limit=limit
-                )
+                try:
+                    history = self.client.conversations_history(
+                        channel=channel_id,
+                        limit=limit
+                    )
+                except SlackApiError:
+                    continue  # Skip channels we can't access
                 
-                messages = history['messages']
+                messages = history.get('messages', [])
                 
                 for msg_data in reversed(messages):
-                    if msg_data.get('user') == self.my_user_id:
-                        continue
+
                     
                     msg_ts = msg_data.get('ts', '')
                     if msg_ts in self.processed_messages:
                         continue
+
+                    # Fetch thread replies if this message has a thread
+                    reply_count = msg_data.get('reply_count', 0)
+                    if reply_count > 0:
+                        try:
+                            replies_resp = self.client.conversations_replies(
+                                channel=channel_id,
+                                ts=msg_ts,
+                                limit=20
+                            )
+                            # Append reply texts to the message text
+                            reply_texts = [
+                                r.get('text', '') for r in replies_resp.get('messages', [])[1:]
+                                if r.get('text')
+                            ]
+
+                            if reply_texts:
+                                msg_data = dict(msg_data)  # don't mutate original
+                                msg_data['text'] = (msg_data.get('text', '') +
+                                                    '\n--- Thread replies ---\n' +
+                                                    '\n'.join(reply_texts))
+                        except SlackApiError:
+                            pass  # Thread fetch failed, use original message
                     
                     message = SlackMessage(msg_data, conv, self.users_cache)
                     all_messages.append(message.to_dict())
@@ -300,7 +328,7 @@ class SlackService(QObject):
             self.error_occurred.emit(f"Failed to fetch messages: {e.response.get('error', str(e))}")
             return []
     
-    def sync_all_messages(self, limit: int = 50) -> List[dict]:
+    def sync_all_messages(self, limit: int = 200) -> List[dict]:
         if not self.is_connected:
             return []
         

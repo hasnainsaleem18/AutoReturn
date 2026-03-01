@@ -141,7 +141,7 @@ class AutoReturnApp(QMainWindow):
         self._connect_gmail_signals()
         
         # Summary generation queue
-        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=2)
+        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=5)
         self.queue_summary_generator.summary_generated.connect(self.on_summary_generated)
         self.queue_summary_generator.progress_update.connect(self.on_summary_progress)
         self.queue_summary_generator.batch_complete.connect(self.on_batch_summary_complete)
@@ -306,7 +306,7 @@ class AutoReturnApp(QMainWindow):
             self.start_slack_listener()
             
             print("Fetching initial messages...")
-            initial_messages = self.slack_service.fetch_all_messages(limit=50)
+            initial_messages = self.slack_service.sync_all_messages(limit=200)
             if initial_messages:
                 self.on_slack_new_messages(initial_messages)
             
@@ -340,7 +340,14 @@ class AutoReturnApp(QMainWindow):
                     if not msg.get('priority') or msg.get('priority') == 'normal':
                         msg['priority'] = slack_agent.priority_engine.calculate_priority(msg)
 
-        self.messages.extend(new_messages)
+        # Filter out duplicates
+        existing_ids = {msg.get('id') for msg in self.messages}
+        unique_new_messages = [m for m in new_messages if m.get('id') not in existing_ids]
+        
+        if not unique_new_messages:
+            return
+
+        self.messages.extend(unique_new_messages)
         # Sort by Priority (Rank) then Timestamp
         p_map = {'High': 3, 'Medium': 2, 'Low': 1}
         self.messages.sort(key=lambda x: (p_map.get(x.get('priority', 'Low'), 1), float(x.get('timestamp', 0))), reverse=True)
@@ -457,12 +464,18 @@ class AutoReturnApp(QMainWindow):
     
     def sync_all_messages(self):
         """Synchronize all messages from connected services using the Orchestrator."""
+        if self._is_syncing_gmail:
+            self.show_status_message("A sync is already in progress...")
+            print("⏳ All-Sync skipped: Previous sync still running")
+            return
+
         # Reset filters so new messages are visible
         self.active_filter = 'all'
         self.search_filters = None
-        self.search_bar.clear()
+        self.search_field.clear()
         
         self.show_status_message("Syncing all messages via Orchestrator...")
+        self._is_syncing_gmail = True
         
         # We can use a natural language command or direct routing
         # For simplicity in code, let's use the natural language entry point
@@ -483,6 +496,7 @@ class AutoReturnApp(QMainWindow):
 
     def on_all_sync_complete(self, response: AgentResponse):
         """Handle completion of unified sync from Orchestrator."""
+        self._is_syncing_gmail = False
         if response.success:
             messages = response.data.get("messages", [])
             errors = response.data.get("errors", [])

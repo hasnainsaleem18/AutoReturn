@@ -59,7 +59,25 @@ class SendGmailReplyDialog(QDialog):
         self.selected_tone = None
 
         self.setWindowTitle("Reply via Gmail")
-        self.setMinimumSize(600, 450)
+        self.setMinimumSize(620, 500)
+
+        # Force white background - dialog inherits dark theme from main window otherwise
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+            }
+            QLabel {
+                color: #003135;
+                background-color: transparent;
+            }
+            QTextEdit {
+                background-color: #ffffff;
+                color: #003135;
+            }
+            QFrame {
+                background-color: #ffffff;
+            }
+        """)
 
         self._build_ui()
 
