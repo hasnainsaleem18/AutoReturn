@@ -335,7 +335,7 @@ class SlackService(QObject):
         self.processed_messages.clear()
         return self.fetch_all_messages(limit)
     
-    def send_dm_by_id(self, user_id: str, message_text: str) -> bool:
+    def send_dm_by_id(self, user_id: str, message_text: str, attachments: Optional[List[str]] = None) -> bool:
         if not self.is_connected:
             self.error_occurred.emit("Not connected to Slack")
             return False
@@ -347,8 +347,31 @@ class SlackService(QObject):
                 dm_response = self.client.conversations_open(users=[user_id])
                 channel_id = dm_response['channel']['id']
                 self.dm_channels_cache[user_id] = channel_id
-            
-            self.client.chat_postMessage(channel=channel_id, text=message_text)
+
+            # If attachments exist, upload files and include message as initial_comment
+            if attachments:
+                for idx, file_path in enumerate(attachments):
+                    try:
+                        # Try files_upload_v2 if available, fallback to files_upload
+                        if hasattr(self.client, "files_upload_v2"):
+                            self.client.files_upload_v2(
+                                channel=channel_id,
+                                file=file_path,
+                                initial_comment=message_text if idx == 0 else None
+                            )
+                        else:
+                            self.client.files_upload(
+                                channels=channel_id,
+                                file=file_path,
+                                initial_comment=message_text if idx == 0 else None
+                            )
+                    except SlackApiError as e:
+                        error_msg = f"File upload failed: {e.response.get('error', str(e))}"
+                        self.error_occurred.emit(error_msg)
+                        self.message_sent.emit(False, error_msg)
+                        return False
+            else:
+                self.client.chat_postMessage(channel=channel_id, text=message_text)
             
             user_info = self.users_cache.get(user_id, {})
             user_name = user_info.get('real_name', user_id)

@@ -17,7 +17,7 @@ from typing import Optional
 # Third-party imports
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QTextEdit
+    QPushButton, QTextEdit, QFileDialog
 )
 from PySide6.QtCore import Qt
 
@@ -57,6 +57,7 @@ class SendGmailReplyDialog(QDialog):
         self.orchestrator = orchestrator
         self.original_message = original_message or {}
         self.selected_tone = None
+        self.attachments = []
 
         self.setWindowTitle("Reply via Gmail")
         self.setMinimumSize(620, 500)
@@ -161,6 +162,28 @@ class SendGmailReplyDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
 
+        attach_btn = QPushButton("📎 Attach")
+        attach_btn.setCursor(Qt.PointingHandCursor)
+        attach_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 2px solid #AFDDE5;
+                background-color: white;
+                border-radius: 8px;
+                font-size: 13px;
+                color: #024950;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #AFDDE5;
+            }
+        """)
+        attach_btn.clicked.connect(self._select_attachments)
+        self.attach_btn = attach_btn
+
+        self.attachments_label = QLabel("No attachments")
+        self.attachments_label.setStyleSheet("font-size: 12px; color: #024950;")
+
         send_btn = QPushButton("Send Reply")
         send_btn.setCursor(Qt.PointingHandCursor)
         send_btn.setStyleSheet("""
@@ -203,6 +226,7 @@ class SendGmailReplyDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
 
         btn_layout.addWidget(send_btn)
+        btn_layout.addWidget(attach_btn)
         btn_layout.addWidget(cancel_btn)
         btn_layout.addStretch()
 
@@ -228,6 +252,7 @@ class SendGmailReplyDialog(QDialog):
         layout.addSpacing(8)
         layout.addWidget(body_label)
         layout.addWidget(self.message_text, 1)
+        layout.addWidget(self.attachments_label)
         layout.addLayout(btn_layout)
 
         self.message_text.textChanged.connect(self._update_send_button_state)
@@ -242,7 +267,8 @@ class SendGmailReplyDialog(QDialog):
         Enables the send button only when there is text in the message body.
         """
         text = self.message_text.toPlainText().strip()
-        self.send_btn.setEnabled(len(text) > 0)
+        has_attachments = bool(self.attachments)
+        self.send_btn.setEnabled(len(text) > 0 or has_attachments)
 
     # -------------------------
     # EVENT HANDLERS
@@ -274,6 +300,37 @@ class SendGmailReplyDialog(QDialog):
             ToneType or None: The selected tone
         """
         return self.selected_tone if self.tone_selector else None
+
+    def get_attachments(self):
+        """Return list of attachment file paths."""
+        return list(self.attachments)
+
+    def set_attachments(self, files):
+        self.attachments = list(files or [])
+        self._refresh_attachment_label()
+
+    # -------------------------
+    # ATTACHMENT HANDLERS
+    # -------------------------
+    def _select_attachments(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select Attachment(s)",
+            "",
+            "All Files (*.*)"
+        )
+        if files:
+            self.attachments.extend([f for f in files if f not in self.attachments])
+            self._refresh_attachment_label()
+
+    def _refresh_attachment_label(self):
+        if not self.attachments:
+            self.attachments_label.setText("No attachments")
+            self._update_send_button_state()
+            return
+        names = [f.split("/")[-1] for f in self.attachments]
+        self.attachments_label.setText("Attachments: " + ", ".join(names))
+        self._update_send_button_state()
     
     # -------------------------
     # TONE AND SENTIMENT METHODS

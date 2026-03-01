@@ -224,7 +224,7 @@ class GmailIntegrationService(QObject):
     # -------------------------
     # MESSAGE OPERATIONS (CONTINUED)
     # -------------------------
-    def reply_to_message(self, ui_message: dict, reply_body: str) -> tuple[bool, str]:
+    def reply_to_message(self, ui_message: dict, reply_body: str, attachments: list = None) -> tuple[bool, str]:
         """Send a reply to a message.
         
         Args:
@@ -248,7 +248,8 @@ class GmailIntegrationService(QObject):
             return False, message
 
         try:
-            self.gmail_api.reply(thread_id, to_email, reply_body)
+            subject = ui_message.get("subject", "")
+            self.gmail_api.reply(thread_id, to_email, reply_body, subject=subject, attachments=attachments or [])
             return True, "Reply sent successfully."
         except Exception as exc:
             message = str(exc)

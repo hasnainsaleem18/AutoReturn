@@ -38,6 +38,11 @@ numpy>=1.24.0
 # Data Processing (Used for sentiment analysis data structures)
 pandas>=2.0.0
 
+# Event extraction and calendar export
+dateparser>=1.2.0
+ics>=0.7.2
+tzlocal>=5.2
+
 
 # Optional: For enhanced performance
 # spacy-transformers>=1.2.0  # For transformer-based models

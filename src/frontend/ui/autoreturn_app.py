@@ -33,11 +33,13 @@ from src.frontend.ui.styles import get_stylesheet
 from src.frontend.dialogs.notification_dialog import NotificationDialog
 from src.frontend.dialogs.settings_dialog import SettingsDialog
 from src.frontend.dialogs.send_slack_message_dialog import SendSlackMessageDialog
+from src.frontend.dialogs.event_review_dialog import EventReviewDialog
 
 # Backend services
 from src.backend.services.slack_backend import SlackService, SlackMessage
 from src.backend.services.gmail_backend import GmailIntegrationService
 from src.backend.services.ai_service import OllamaService, QueueSummaryGenerator
+from src.backend.services.calendar_service import CalendarService
 from src.frontend.dialogs.send_gmail_reply_dialog import SendGmailReplyDialog
 from src.frontend.ui.styles import get_stylesheet
 
@@ -131,6 +133,8 @@ class AutoReturnApp(QMainWindow):
         self.slack_service = self.slack_agent.backend
         self.gmail_service = self.gmail_agent.backend
         self.ollama_service = self.orchestrator.ai_service
+        self.calendar_service = CalendarService(self._get_gmail_data_dir())
+        self.ics_output_dir = self._get_ics_output_dir()
         
         # Slack listener
         self.slack_listener = None
@@ -168,8 +172,8 @@ class AutoReturnApp(QMainWindow):
         
         self.gmail_refresh_timer = QTimer()
         self.gmail_refresh_timer.timeout.connect(self.auto_sync_gmail)
-        # Check every 30 seconds to allow time for AI processing without overload
-        self.gmail_refresh_timer.start(30000)
+        # Check every 15 seconds for near real-time Gmail updates
+        self.gmail_refresh_timer.start(15000)
         
         self._try_auto_connect_slack()
         self._try_auto_connect_gmail()
@@ -234,6 +238,16 @@ class AutoReturnApp(QMainWindow):
         except Exception as exc:
             print(f"Failed to prepare Gmail data dir: {exc}")
         return base_dir
+
+    def _get_ics_output_dir(self):
+        """Get directory for ICS exports."""
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+        output_dir = os.path.join(project_root, "data", "ics_exports")
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as exc:
+            print(f"Failed to prepare ICS export dir: {exc}")
+        return output_dir
 
     # -------------------------
     # GMAIL INTEGRATION - SIGNAL HANDLING
@@ -351,8 +365,8 @@ class AutoReturnApp(QMainWindow):
         # Sort by Priority (Rank) then Timestamp
         p_map = {'High': 3, 'Medium': 2, 'Low': 1}
         self.messages.sort(key=lambda x: (p_map.get(x.get('priority', 'Low'), 1), float(x.get('timestamp', 0))), reverse=True)
-        
-        self.populate_table()
+        self._schedule_table_refresh()
+        self._schedule_table_refresh()
         
         # Generate AI summaries for new messages
         self.generate_summaries_for_messages(new_messages)
@@ -375,6 +389,7 @@ class AutoReturnApp(QMainWindow):
             })
             
             print(f"{notif_message}")
+            self._notify_desktop("Slack Message", notif_message)
 
         unread_count = sum(1 for n in self.notifications if not n.get('read', False))
         if hasattr(self, 'notif_badge'):
@@ -419,11 +434,11 @@ class AutoReturnApp(QMainWindow):
         if self.slack_listener:
             self.slack_listener.stop()
         
-        self.slack_listener = SlackMessageListener(self.slack_service, poll_interval=10)
+        self.slack_listener = SlackMessageListener(self.slack_service, poll_interval=5)
         self.slack_listener.new_messages.connect(self.on_slack_new_messages)
         self.slack_listener.error_occurred.connect(self.on_slack_error)
         self.slack_listener.start()
-        print("Slack listener started (10s interval)")
+        print("Slack listener started (5s interval)")
 
     def stop_slack_listener(self):
         """Stop listening for real-time Slack messages."""
@@ -577,6 +592,7 @@ class AutoReturnApp(QMainWindow):
             message_data (dict): Message data for pre-filling the dialog
         """
         source = message_data.get('source', '')
+        preselected_files = message_data.get('_attachments', [])
         
         if source == 'slack':
             if not self.slack_service.is_connected:
@@ -602,24 +618,23 @@ class AutoReturnApp(QMainWindow):
                         dialog.user_combo.setCurrentText(f"{user['real_name']} (@{user['name']})")
                         break
             
+            if preselected_files:
+                dialog.set_attachments(preselected_files)
+
             if dialog.exec() == QDialog.Accepted:
                 selected_user = dialog.get_selected_user()
                 message_text = dialog.get_message_text()
                 selected_tone = dialog.get_selected_tone()
+                attachments = dialog.get_attachments()
                 
-                if selected_user and message_text:
-                    # NEW: Include tone information in message
-                    message_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {message_text}"
-                    self.slack_service.send_dm_by_id(selected_user['id'], message_with_tone)
-                    
-                    # NEW: Show tone usage feedback
+                if selected_user and (message_text or attachments):
+                    if message_text:
+                        message_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {message_text}".strip()
+                    else:
+                        message_with_tone = ""
+                    self.slack_service.send_dm_by_id(selected_user['id'], message_with_tone, attachments=attachments)
                     QMessageBox.information(self, "Message Sent", 
                         f"Message sent with {selected_tone.value if selected_tone else 'Default'} tone!")
-                else:
-                    self.slack_service.send_dm_by_id(selected_user['id'], message_text)
-                    # NEW: Include tone information in message
-                    message_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {message_text}"
-                    self.slack_service.send_dm_by_id(selected_user['id'], message_with_tone)
         
         elif source == 'gmail':
             if not self.gmail_service.is_connected:
@@ -635,31 +650,24 @@ class AutoReturnApp(QMainWindow):
                 orchestrator=self.orchestrator,
                 original_message=message_data
             )
+            if preselected_files:
+                dialog.set_attachments(preselected_files)
+
             if dialog.exec() == QDialog.Accepted:
                 reply_text = dialog.get_message_text()
                 selected_tone = dialog.get_selected_tone()
+                attachments = dialog.get_attachments()
                 
-                if reply_text:
-                    # NEW: Include tone information in reply
-                    reply_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {reply_text}"
-                    success, msg = self.gmail_service.reply_to_message(message_data, reply_with_tone)
+                if reply_text or attachments:
+                    if reply_text:
+                        reply_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {reply_text}".strip()
+                    else:
+                        reply_with_tone = "Please see attached file."
+                    success, msg = self.gmail_service.reply_to_message(message_data, reply_with_tone, attachments=attachments)
                     
                     # NEW: Show tone usage feedback
                     QMessageBox.information(self, "Reply Sent", 
                         f"Reply sent with {selected_tone.value if selected_tone else 'Default'} tone!")
-                else:
-                    success, msg = self.gmail_service.reply_to_message(message_data, reply_text)
-                    reply_data = {
-                        'original_message_id': message_data.get('id'),
-                        'reply_text': reply_text,
-                        'selected_tone': selected_tone.value if selected_tone else None,
-                        'timestamp': datetime.now().isoformat()
-                    }
-                    success, msg = self.gmail_service.reply_to_message(message_data, reply_text)
-                    if success:
-                        QMessageBox.information(self, "Gmail Reply", f"Reply sent with tone: {selected_tone.value if selected_tone else 'Default'}\n{msg}")
-                    else:
-                        QMessageBox.warning(self, "Gmail Reply", msg)
         else:
             QMessageBox.warning(self, "Unknown Source", f"Cannot send to: {source}")
 
@@ -690,15 +698,36 @@ class AutoReturnApp(QMainWindow):
             
         print(f"📥 Gmail Handler: Syncing {len(messages)} messages...")
         
-        existing_ids = {msg.get('id') for msg in self.messages}
-        new_items = [msg for msg in messages if msg.get('id') not in existing_ids]
-        
-        print(f"   - {len(new_items)} are new, {len(messages) - len(new_items)} already exist")
-        
-        if not new_items:
-            return
-            
-        self.messages.extend(new_items)
+        existing_by_id = {msg.get('id'): msg for msg in self.messages if msg.get('id')}
+        new_items = []
+
+        for msg in messages:
+            msg_id = msg.get('id')
+            if msg_id and msg_id in existing_by_id:
+                # Merge in new AI fields (ai_events, summary, etc.)
+                existing_by_id[msg_id].update(msg)
+            else:
+                new_items.append(msg)
+                self.messages.append(msg)
+
+        print(f"   - {len(new_items)} are new, {len(messages) - len(new_items)} updated")
+
+        # Desktop notifications for new Gmail messages
+        for msg in new_items:
+            sender = msg.get('sender', 'Unknown')
+            subject = msg.get('subject', 'No Subject')
+            notif_message = f"New Gmail from {sender}: {subject}"
+            self.notifications.append({
+                'message': notif_message,
+                'time': msg.get('time', 'just now'),
+                'read': False,
+                'priority': msg.get('priority', 'normal')
+            })
+            self._notify_desktop("Gmail Message", notif_message)
+
+        unread_count = sum(1 for n in self.notifications if not n.get('read', False))
+        if hasattr(self, 'notif_badge'):
+            self.notif_badge.setText(str(unread_count))
         # Sort by Priority (Rank) then Timestamp
         p_map = {'High': 3, 'Medium': 2, 'Low': 1}
         self.messages.sort(key=lambda x: (p_map.get(x.get('priority', 'Low'), 1), float(x.get('timestamp', 0))), reverse=True)
@@ -835,21 +864,17 @@ class AutoReturnApp(QMainWindow):
         """
         from PySide6.QtWidgets import QFileDialog
         
-        file_path, _ = QFileDialog.getOpenFileName(
+        file_paths, _ = QFileDialog.getOpenFileNames(
             self,
             "Select File to Attach",
             "",
             "All Files (*.*)"
         )
         
-        if file_path:
-            QMessageBox.information(
-                self,
-                "File Selected",
-                f"File selected: {file_path}\n\n"
-                f"Will be attached to reply to {message_data.get('sender', 'Unknown')}\n\n"
-                "(Full implementation coming soon!)"
-            )
+        if file_paths:
+            message_data = dict(message_data)
+            message_data["_attachments"] = file_paths
+            self.show_send_message_dialog(message_data)
     
     # -------------------------
     # AI SUMMARY GENERATION
@@ -1130,30 +1155,30 @@ class AutoReturnApp(QMainWindow):
             "", "Source", "Sender", "Content Preview", "AI Summary", "Priority", "Time", "Actions"
         ])
         
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Fixed)
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)
         
         self.table.setColumnWidth(0, 40)
-        self.table.setColumnWidth(1, 80)
-        self.table.setColumnWidth(2, 200)
-        self.table.setColumnWidth(4, 200)
-        self.table.setColumnWidth(5, 90)
-        self.table.setColumnWidth(6, 100)
-        self.table.setColumnWidth(7, 260)
+        self.table.setMinimumWidth(800)
+        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.table.setWordWrap(True)
         
         self.table.horizontalHeader().sectionClicked.connect(self.sort_by_column)
         self.table.cellClicked.connect(self.on_table_cell_clicked)
+        self.table.cellDoubleClicked.connect(self.on_table_cell_double_clicked)
         
         layout.addLayout(header_layout)
         layout.addLayout(filter_layout)
@@ -1287,6 +1312,13 @@ class AutoReturnApp(QMainWindow):
                 
                 subject_layout.addWidget(subject_text)
                 subject_layout.addWidget(preview_text)
+
+                # Debug: show extracted event count for Gmail messages
+                if msg.get('source') == 'gmail' and 'ai_events' in msg:
+                    events_count = len(msg.get('ai_events') or [])
+                    events_badge = QLabel(f"Events: {events_count}")
+                    events_badge.setStyleSheet("font-size: 11px; color: #024950;")
+                    subject_layout.addWidget(events_badge)
                 self.table.setCellWidget(row_idx, 3, subject_widget)
                 
                 full_summary = msg.get('summary', '')
@@ -1363,10 +1395,17 @@ class AutoReturnApp(QMainWindow):
                 attach_btn.setToolTip("Attach File")
                 attach_btn.clicked.connect(lambda checked, m=msg: self.attach_file_message(m))
 
+                details_btn = QPushButton("Details")
+                details_btn.setObjectName("actionBtn")
+                details_btn.setFixedSize(70, 28)
+                details_btn.setToolTip("Show message details")
+                details_btn.clicked.connect(lambda checked, m=msg: self.toggle_message_expand(m))
+
                 actions_layout.addWidget(reply_btn)
                 actions_layout.addWidget(auto_reply_btn)
                 actions_layout.addWidget(smart_draft_btn)
                 actions_layout.addWidget(attach_btn)
+                actions_layout.addWidget(details_btn)
                 actions_layout.addStretch()
 
                 self.table.setCellWidget(row_idx, 7, actions_widget)
@@ -1565,8 +1604,29 @@ class AutoReturnApp(QMainWindow):
             full_text = msg.get('ai_analysis') or msg.get('summary', '')
             if full_text:
                 self.show_full_summary_dialog(full_text)
+            return
+
         # Sender (2) or Content Preview (3) → show full message content
-        elif column in (2, 3):
+        if column in (2, 3):
+            self.show_full_message_dialog(msg)
+            return
+
+        # Other columns: no-op (actions handled by button widgets)
+        return
+
+    def on_table_cell_double_clicked(self, row, column):
+        """Handle double-clicks on table cells.
+        
+        Args:
+            row (int): Row index that was clicked
+            column (int): Column index that was clicked
+        """
+        filtered = [m for m in self.messages if self.filter_message(m)]
+        if row >= len(filtered):
+            return
+
+        msg = filtered[row]
+        if column in (2, 3):
             self.show_full_message_dialog(msg)
 
     def show_full_summary_dialog(self, summary_text):
@@ -1830,6 +1890,22 @@ class AutoReturnApp(QMainWindow):
             # Restore after timeout if possible, but for now just leave it or use a timer
         pass
 
+    def _notify_desktop(self, title: str, message: str):
+        """Send a desktop notification if supported (plyer)."""
+        try:
+            from plyer import notification
+            notification.notify(title=title, message=message, timeout=6)
+        except Exception as exc:
+            print(f"Notification error: {exc}")
+
+    def _schedule_table_refresh(self, delay_ms: int = 200):
+        """Debounced table refresh to keep UI responsive."""
+        if not hasattr(self, '_table_refresh_timer'):
+            self._table_refresh_timer = QTimer()
+            self._table_refresh_timer.setSingleShot(True)
+            self._table_refresh_timer.timeout.connect(self.populate_table)
+        self._table_refresh_timer.start(delay_ms)
+
 
     # -------------------------
     # ROW INTERACTION
@@ -1862,8 +1938,19 @@ class AutoReturnApp(QMainWindow):
             
             self.expand_row(row, msg)
             self.expanded_row = row
-        
-        self.populate_table()
+        # Do not repopulate table here; it clears the expanded view.
+
+    def toggle_message_expand(self, msg: dict):
+        """Toggle expand/collapse for a specific message based on ID."""
+        filtered = [m for m in self.messages if self.filter_message(m)]
+        target_id = msg.get('id')
+        if not target_id:
+            return
+
+        for idx, item in enumerate(filtered):
+            if item.get('id') == target_id:
+                self.on_row_clicked(idx, 3)
+                return
     
     def expand_row(self, row, msg):
         """Expand a row to show message details.
@@ -1907,9 +1994,21 @@ class AutoReturnApp(QMainWindow):
         
         insights_label = QLabel(insights)
         insights_label.setWordWrap(True)
-        
+
         ai_layout.addWidget(ai_header)
         ai_layout.addWidget(insights_label)
+
+        # Event review status + button
+        events = msg.get('ai_events') or []
+        events_label = QLabel(f"Events detected: {len(events)}")
+        events_label.setStyleSheet("font-size: 12px; color: #024950;")
+        ai_layout.addWidget(events_label)
+
+        if len(events) > 0:
+            review_btn = QPushButton("Review Events")
+            review_btn.setObjectName("btnSecondary")
+            review_btn.clicked.connect(lambda _, m=msg: self.show_event_review_dialog(m))
+            ai_layout.addWidget(review_btn)
         
         replies_layout = QHBoxLayout()
         replies = [
@@ -1985,6 +2084,23 @@ class AutoReturnApp(QMainWindow):
             return "Important message that should be addressed soon. Contains action items or deadlines."
         else:
             return "Standard message. Review when convenient."
+
+    def show_event_review_dialog(self, msg: dict):
+        """Show extracted events/tasks for review and calendar insertion."""
+        events = msg.get('ai_events', []) or []
+        if not events:
+            QMessageBox.information(self, "Events", "No extracted events for this message.")
+            return
+
+        dialog = EventReviewDialog(
+            events=events,
+            calendar_service=self.calendar_service,
+            auto_select_threshold=0.85,
+            auto_add_high_confidence=True,
+            ics_output_dir=self.ics_output_dir,
+            parent=self
+        )
+        dialog.exec()
 
     # -------------------------
     # SETTINGS

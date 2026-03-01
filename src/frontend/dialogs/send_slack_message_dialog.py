@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QComboBox, QTextEdit
+    QPushButton, QComboBox, QTextEdit, QFileDialog
 )
 from PySide6.QtCore import Qt
 
@@ -20,6 +20,7 @@ class SendSlackMessageDialog(QDialog):
         self.orchestrator = orchestrator
         self.original_message = original_message or {}
         self.selected_tone = None
+        self.attachments = []
         
         self.setWindowTitle("Send Slack Direct Message")
         self.setMinimumSize(520, 430)
@@ -127,6 +128,28 @@ class SendSlackMessageDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(12)
+
+        attach_btn = QPushButton("📎 Attach")
+        attach_btn.setCursor(Qt.PointingHandCursor)
+        attach_btn.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border: 2px solid #AFDDE5;
+                background-color: white;
+                border-radius: 8px;
+                font-size: 13px;
+                color: #024950;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #AFDDE5;
+            }
+        """)
+        attach_btn.clicked.connect(self._select_attachments)
+        self.attach_btn = attach_btn
+
+        self.attachments_label = QLabel("No attachments")
+        self.attachments_label.setStyleSheet("font-size: 12px; color: #024950;")
         
         send_btn = QPushButton("Send Message")
         send_btn.setCursor(Qt.PointingHandCursor)
@@ -170,6 +193,7 @@ class SendSlackMessageDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         
         btn_layout.addWidget(send_btn)
+        btn_layout.addWidget(attach_btn)
         btn_layout.addWidget(cancel_btn)
         btn_layout.addStretch()
         
@@ -212,6 +236,7 @@ class SendSlackMessageDialog(QDialog):
         layout.addWidget(message_label)
         layout.addWidget(self.message_text, 1)
         layout.addWidget(self.char_count_label)
+        layout.addWidget(self.attachments_label)
         layout.addSpacing(8)
         layout.addLayout(btn_layout)
         
@@ -226,7 +251,8 @@ class SendSlackMessageDialog(QDialog):
     
     def _update_send_button_state(self):
         text = self.message_text.toPlainText().strip()
-        self.send_btn.setEnabled(len(text) > 0)
+        has_attachments = bool(self.attachments)
+        self.send_btn.setEnabled(len(text) > 0 or has_attachments)
     
     def _handle_send(self):
         message = self.get_message_text()
@@ -238,6 +264,13 @@ class SendSlackMessageDialog(QDialog):
     
     def get_message_text(self) -> str:
         return self.message_text.toPlainText().strip()
+
+    def get_attachments(self):
+        return list(self.attachments)
+
+    def set_attachments(self, files):
+        self.attachments = list(files or [])
+        self._refresh_attachment_label()
     
     def get_selected_tone(self):
         """Get the selected tone for the message.
@@ -337,3 +370,26 @@ class SendSlackMessageDialog(QDialog):
                 
         except Exception as e:
             print(f"Tone adjustment error: {e}")
+
+    # -------------------------
+    # ATTACHMENTS
+    # -------------------------
+    def _select_attachments(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Select Attachment(s)",
+            "",
+            "All Files (*.*)"
+        )
+        if files:
+            self.attachments.extend([f for f in files if f not in self.attachments])
+            self._refresh_attachment_label()
+
+    def _refresh_attachment_label(self):
+        if not self.attachments:
+            self.attachments_label.setText("No attachments")
+            self._update_send_button_state()
+            return
+        names = [f.split("/")[-1] for f in self.attachments]
+        self.attachments_label.setText("Attachments: " + ", ".join(names))
+        self._update_send_button_state()

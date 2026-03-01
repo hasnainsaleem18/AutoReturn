@@ -19,6 +19,10 @@ import time
 import base64
 from email import message_from_bytes
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+import mimetypes
 import threading
 from datetime import datetime
 
@@ -42,7 +46,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",  # read emails
     "https://www.googleapis.com/auth/gmail.modify",    # mark read/unread, delete
     "https://www.googleapis.com/auth/gmail.send",      # send emails
-    "https://www.googleapis.com/auth/gmail.compose"    # create drafts, send
+    "https://www.googleapis.com/auth/gmail.compose",   # create drafts, send
+    "https://www.googleapis.com/auth/calendar"         # calendar events
 ]
 
 # -------------------------
@@ -135,13 +140,19 @@ class OAuthManager:
         self.token_path = token_path
         self.scopes = scopes or SCOPES
 
-    def load_or_generate_token(self, allow_flow=True):
-        if os.path.exists(self.token_path):
+    def load_or_generate_token(self, allow_flow=True, force_reauth: bool = False):
+        if os.path.exists(self.token_path) and not force_reauth:
             with open(self.token_path, "r") as f:
                 data = json.load(f)
                 self.creds = Credentials.from_authorized_user_info(data, self.scopes)
                 print("[OAuth] Loaded existing token.")
-                return True
+                # Ensure token has required scopes
+                if self.creds.scopes and not set(self.scopes).issubset(set(self.creds.scopes)):
+                    print("[OAuth] Token missing required scopes. Re-auth needed.")
+                    if not allow_flow:
+                        return False
+                else:
+                    return True
 
         if not allow_flow:
             print("[OAuth] Token not found and interactive flow is disabled.")
@@ -286,11 +297,39 @@ class GmailService:
         except Exception as e:
             self._handle_error("[Error] Could not mark as unread", e, None)
 
-    def send_email(self, to, subject, message):
-        msg = MIMEText(message)
+    def _build_mime_message(self, to: str, subject: str, message: str, attachments: list = None):
+        """Build a MIME message with optional attachments."""
+        msg = MIMEMultipart()
         msg["to"] = to
         msg["subject"] = subject
+        msg.attach(MIMEText(message, "plain"))
+
+        for file_path in attachments or []:
+            ctype, encoding = mimetypes.guess_type(file_path)
+            if ctype is None or encoding is not None:
+                ctype = "application/octet-stream"
+            maintype, subtype = ctype.split("/", 1)
+
+            with open(file_path, "rb") as f:
+                part = MIMEBase(maintype, subtype)
+                part.set_payload(f.read())
+                encoders.encode_base64(part)
+
+            filename = os.path.basename(file_path)
+            part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
+            msg.attach(part)
+
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+        return raw
+
+    def send_email(self, to, subject, message, attachments: list = None):
+        if attachments:
+            raw = self._build_mime_message(to, subject, message, attachments)
+        else:
+            msg = MIMEText(message)
+            msg["to"] = to
+            msg["subject"] = subject
+            raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         try:
             return (
                 self.service
@@ -302,10 +341,13 @@ class GmailService:
         except Exception as e:
             return self._handle_error("[Error] Failed to send email", e, None)
 
-    def reply(self, thread_id, to, message):
-        msg = MIMEText(message)
-        msg["to"] = to
-        raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    def reply(self, thread_id, to, message, subject: str = "", attachments: list = None):
+        if attachments:
+            raw = self._build_mime_message(to, subject or "Re:", message, attachments)
+        else:
+            msg = MIMEText(message)
+            msg["to"] = to
+            raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         try:
             return (
                 self.service

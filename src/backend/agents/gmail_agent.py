@@ -10,6 +10,7 @@ from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
 from src.backend.services.gmail_backend import GmailIntegrationService
 from src.backend.services.ai_service import OllamaService
 from src.backend.core.priority_engine import PriorityEngine
+from src.backend.core.event_extractor import EventExtractor
 
 
 class GmailAgent(BaseAgent):
@@ -30,6 +31,11 @@ class GmailAgent(BaseAgent):
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
         self.tone_manager = None
+        self.event_extractor = EventExtractor(
+            ai_service=self.ai_service,
+            enable_llm_fallback=True,
+            confidence_threshold=0.85
+        )
         
         print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
 
@@ -97,6 +103,16 @@ class GmailAgent(BaseAgent):
                         if self.tone_manager:
                             sentiment_result = self.tone_manager.analyze_message_sentiment(msg.get('full_content', ''))
                             msg['ai_sentiment'] = sentiment_result.get('sentiment', 'neutral')
+
+                        # Extract event/task candidates (calendar)
+                        try:
+                            events = await self.event_extractor.extract_from_message(msg)
+                            msg['ai_events'] = [e.model_dump(mode="json") for e in events] if events else []
+                            msg['ai_events_count'] = len(msg['ai_events'])
+                            if events:
+                                print(f"📅 Events extracted for {msg.get('id', '')[:8]}: {len(events)}")
+                        except Exception as e:
+                            print(f"⚠️ Event extraction error for {msg.get('id')}: {e}")
                         
                         # Mark for background summarization
                         if not msg.get('summary'):
