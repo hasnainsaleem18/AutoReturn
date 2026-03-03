@@ -108,7 +108,7 @@ AutoReturn/
 
 ### 1. Prerequisites
 
-* **Python 3.10+**
+* **Python 3.12+**
 * **Ollama** (Download from [ollama.ai](https://ollama.ai))
 
 ### 2. Quick Start
@@ -119,7 +119,10 @@ git clone <repo-url>
 cd AutoReturn
 
 # Install dependencies
-pip install -r requirement.txt
+pip install -r requirements.txt
+
+# Install spaCy model used for semantic analysis
+python -m spacy download en_core_web_md
 
 # Pull the required AI model
 ollama pull kimi-k2.5:cloud

@@ -39,10 +39,22 @@ class EventExtractor:
 
     TASK_KEYWORDS = {
         "deadline", "due", "submit", "complete", "finish", "todo",
-        "task", "action item", "please", "need to"
+        "to-do", "task", "action item", "deliver", "follow up"
+    }
+
+    RELATIVE_DAY_WORDS = {
+        "today", "tomorrow", "tonight", "this evening", "this afternoon",
+        "this morning", "next week", "next month"
     }
 
     TIME_PATTERN = re.compile(r"\b\d{1,2}(:\d{2})?\s*(am|pm)\b", re.IGNORECASE)
+    COMBINED_DAY_TIME_PATTERN = re.compile(
+        r"\b("
+        r"today|tomorrow|tonight|this evening|this afternoon|this morning|"
+        r"next\s+[a-z]+|(?:on\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)"
+        r")\s*(?:at)?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))\b",
+        re.IGNORECASE,
+    )
 
     def __init__(self, ai_service: Optional[OllamaService] = None,
                  enable_llm_fallback: bool = True,
@@ -66,11 +78,23 @@ class EventExtractor:
         if not text:
             return []
 
+        reference_dt = message.get("datetime")
+        if isinstance(reference_dt, str):
+            reference_dt = dateparser.parse(reference_dt)
+        if reference_dt is not None and reference_dt.tzinfo is None:
+            reference_dt = reference_dt.replace(tzinfo=datetime.now().astimezone().tzinfo)
+
         # Quick keyword check to avoid heavy processing
         if not self._contains_relevant_keywords(text):
             return []
 
-        candidates = self._deterministic_extract(text, subject, source, source_id)
+        candidates = self._deterministic_extract(
+            text=text,
+            subject=subject,
+            source=source,
+            source_id=source_id,
+            reference_dt=reference_dt
+        )
         if candidates:
             return candidates
 
@@ -89,43 +113,64 @@ class EventExtractor:
         for kw in self.EVENT_KEYWORDS.union(self.TASK_KEYWORDS):
             if kw in lower:
                 return True
+        for kw in self.RELATIVE_DAY_WORDS:
+            if kw in lower:
+                return True
         # Also look for date-like patterns
         if re.search(r"\b\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?\b", lower):
             return True
         if re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b", lower):
             return True
+        if self.TIME_PATTERN.search(lower) and any(day in lower for day in ("today", "tomorrow", "next", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")):
+            return True
         return False
 
     def _deterministic_extract(self, text: str, subject: str,
-                               source: str, source_id: str) -> List[EventCandidate]:
+                               source: str, source_id: str,
+                               reference_dt: Optional[datetime] = None) -> List[EventCandidate]:
         settings = {
             "RETURN_AS_TIMEZONE_AWARE": True,
             "PREFER_DATES_FROM": "future" if self.settings.prefer_future else "current_period",
             "TIMEZONE": normalize_timezone(self.settings.timezone),
             "TO_TIMEZONE": normalize_timezone(self.settings.timezone),
         }
+        if reference_dt:
+            settings["RELATIVE_BASE"] = reference_dt
 
-        matches = search_dates(text, settings=settings) or []
+        combined_matches = list(self._extract_combined_day_time(text, settings))
+        matches = list(combined_matches)
+        search_results = search_dates(text, settings=settings, languages=["en"]) or []
+        matches.extend(search_results)
         if not matches:
             return []
 
         candidates: List[EventCandidate] = []
         used_keys = set()
+        now_ref = reference_dt or datetime.now()
 
         for match_text, dt in matches:
             if not isinstance(dt, datetime):
                 continue
 
             # Heuristic: ignore dates too far in the past
-            if dt < datetime.now(tz=dt.tzinfo) - timedelta(days=2):
+            now_dt = now_ref
+            if dt.tzinfo and now_dt.tzinfo is None:
+                now_dt = now_dt.replace(tzinfo=dt.tzinfo)
+            if dt < now_dt - timedelta(days=2):
                 continue
 
-            has_time = bool(self.TIME_PATTERN.search(match_text))
+            has_time = bool(self.TIME_PATTERN.search(match_text.lower()))
+            if combined_matches and re.fullmatch(r"\s*\d{1,2}(:\d{2})?\s*(am|pm)\s*", match_text.lower()):
+                # Skip bare-time matches when an explicit day+time phrase already exists.
+                continue
             is_birthday = "birthday" in text.lower()
-            is_task = self._is_task_context(text)
+            is_task = self._is_task_context(text, match_text)
+            is_event_context = self._is_event_context(text, match_text, subject)
+            if is_event_context:
+                is_task = False
 
             title = self._derive_title(subject, match_text, text, is_task)
-            key = f"{title}|{dt.isoformat()}"
+            key = f"{title.lower()}|{dt.isoformat()}"
             if key in used_keys:
                 continue
             used_keys.add(key)
@@ -133,7 +178,7 @@ class EventExtractor:
             all_day = is_birthday or not has_time
             end_dt = self._default_end(dt, all_day)
 
-            confidence = self._score_confidence(match_text, text, has_time)
+            confidence = self._score_confidence(match_text, text, has_time, is_task=is_task)
             item_type = CalendarItemType.TASK if is_task and not is_birthday else CalendarItemType.EVENT
 
             candidates.append(EventCandidate(
@@ -152,23 +197,28 @@ class EventExtractor:
                 recurrence=None,
             ))
 
-        return candidates
+        return self._dedupe_candidates(candidates)
 
-    def _score_confidence(self, match_text: str, full_text: str, has_time: bool) -> float:
+    def _score_confidence(self, match_text: str, full_text: str, has_time: bool, is_task: bool = False) -> float:
         score = 0.5
         lower = full_text.lower()
+        m_lower = match_text.lower()
 
         # Absolute dates boost confidence
         if re.search(r"\b\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?\b", match_text):
             score += 0.2
-        if re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b", match_text.lower()):
+        if re.search(r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b", m_lower):
             score += 0.2
+        if any(word in m_lower for word in self.RELATIVE_DAY_WORDS):
+            score += 0.1
 
         if has_time:
             score += 0.15
 
         if any(kw in lower for kw in self.EVENT_KEYWORDS):
             score += 0.1
+        if is_task:
+            score -= 0.05
 
         return max(0.1, min(0.95, score))
 
@@ -181,8 +231,8 @@ class EventExtractor:
             if not base:
                 base = match_text.strip()
 
-        if is_task and not base.lower().startswith("task"):
-            return f"Task: {base}"
+        if is_task and not base.lower().startswith("to-do"):
+            return f"To-do: {base}"
         return base
 
     def _default_end(self, start: datetime, all_day: bool) -> datetime:
@@ -197,16 +247,99 @@ class EventExtractor:
             return match.group(1).strip()
         return None
 
-    def _is_task_context(self, text: str) -> bool:
+    def _is_task_context(self, text: str, match_text: str = "") -> bool:
         lower = text.lower()
+        if match_text:
+            idx = lower.find(match_text.lower())
+            if idx >= 0:
+                start = max(0, idx - 80)
+                end = min(len(lower), idx + len(match_text) + 80)
+                lower = lower[start:end]
         return any(kw in lower for kw in self.TASK_KEYWORDS)
+
+    def _is_event_context(self, text: str, match_text: str, subject: str) -> bool:
+        combined = f"{subject}\n{text}".lower()
+        if any(kw in combined for kw in self.EVENT_KEYWORDS):
+            return True
+        if match_text and "meeting" in match_text.lower():
+            return True
+        return False
 
     def _build_description(self, subject: str, text: str) -> str:
         snippet = text.strip().replace("\n", " ")
         snippet = re.sub(r"\s+", " ", snippet)
         if len(snippet) > 300:
             snippet = snippet[:300] + "..."
-        return f"Subject: {subject}\n\n{snippet}" if subject else snippet
+        if subject:
+            return f"Subject: {subject}\n\nMessage snippet:\n{snippet}"
+        return f"Message snippet:\n{snippet}"
+
+    def _extract_combined_day_time(self, text: str, settings: Dict[str, Any]) -> List[Tuple[str, datetime]]:
+        """Extract phrases like 'tomorrow at 7pm' to avoid date/time split matches."""
+        results: List[Tuple[str, datetime]] = []
+        for match in self.COMBINED_DAY_TIME_PATTERN.finditer(text):
+            phrase = match.group(0).strip()
+            dt = dateparser.parse(phrase, settings=settings)
+            if isinstance(dt, datetime):
+                results.append((phrase, dt))
+        return results
+
+    def _dedupe_candidates(self, candidates: List[EventCandidate]) -> List[EventCandidate]:
+        if not candidates:
+            return []
+
+        grouped: Dict[Tuple[str, str], EventCandidate] = {}
+        for cand in candidates:
+            day_key = cand.start_dt.date().isoformat()
+            key = (cand.title.lower(), day_key)
+
+            existing = grouped.get(key)
+            if existing is None:
+                grouped[key] = cand
+                continue
+
+            # Prefer timed entries over all-day entries for the same title/day.
+            if existing.all_day and not cand.all_day:
+                grouped[key] = cand
+                continue
+            if (not existing.all_day) and cand.all_day:
+                continue
+
+            # Otherwise keep higher confidence candidate.
+            if cand.confidence > existing.confidence:
+                grouped[key] = cand
+
+        deduped = list(grouped.values())
+        deduped.sort(key=lambda x: x.start_dt)
+
+        final: List[EventCandidate] = []
+        for cand in deduped:
+            match_idx = None
+            for idx, existing in enumerate(final):
+                same_title = existing.title.lower() == cand.title.lower()
+                close_time = abs(existing.start_dt - cand.start_dt) <= timedelta(hours=26)
+                if same_title and close_time:
+                    match_idx = idx
+                    break
+
+            if match_idx is None:
+                final.append(cand)
+                continue
+
+            existing = final[match_idx]
+            replace = False
+            if cand.confidence > existing.confidence:
+                replace = True
+            elif cand.confidence == existing.confidence and cand.start_dt < existing.start_dt:
+                replace = True
+            elif existing.all_day and not cand.all_day:
+                replace = True
+
+            if replace:
+                final[match_idx] = cand
+
+        final.sort(key=lambda x: x.start_dt)
+        return final
 
     async def _llm_extract(self, text: str, subject: str,
                            source: str, source_id: str) -> List[EventCandidate]:

@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
     QHeaderView, QCheckBox, QSizePolicy, QMessageBox, QDialog, QTextEdit,
-    QFileDialog, QApplication, QStyle, QSizePolicy, QSpacerItem
+    QFileDialog, QApplication, QStyle, QSizePolicy, QSpacerItem, QComboBox
 )
 from PySide6.QtCore import Qt, QSize, QTimer, QThread, Signal, Slot, QObject, QEvent, QUrl
 from PySide6.QtGui import (QColor, QIcon, QPixmap, QFont, QFontMetrics, 
@@ -114,7 +114,7 @@ class AutoReturnApp(QMainWindow):
         super().__init__()
         self.user_data = None
         self.setWindowTitle("AutoReturn - Unified Inbox")
-        self.setMinimumSize(1400, 900)
+        self.setMinimumSize(1100, 700)
         
         # -------------------------
         # ORCHESTRATOR INITIALIZATION (NEW ARCHITECTURE)
@@ -155,6 +155,13 @@ class AutoReturnApp(QMainWindow):
         self._is_syncing_gmail = False # Flag to prevent overlapping syncs
         self.messages = []
         self.notifications = []
+        self.selected_message_keys = set()
+        self.current_page = 1
+        self.rows_per_page = 15
+        self.rows_per_page_options = [10, 15, 25, 50]
+        self._current_page_messages = []
+        self._is_compact_ui = False
+        self._is_ultra_compact_ui = False
         
         self.active_filter = 'all'
         self.current_sort_column = None
@@ -353,6 +360,7 @@ class AutoReturnApp(QMainWindow):
                 for msg in new_messages:
                     if not msg.get('priority') or msg.get('priority') == 'normal':
                         msg['priority'] = slack_agent.priority_engine.calculate_priority(msg)
+            self._enrich_slack_messages_with_schedule(new_messages)
 
         # Filter out duplicates
         existing_ids = {msg.get('id') for msg in self.messages}
@@ -394,6 +402,48 @@ class AutoReturnApp(QMainWindow):
         unread_count = sum(1 for n in self.notifications if not n.get('read', False))
         if hasattr(self, 'notif_badge'):
             self.notif_badge.setText(str(unread_count))
+
+    def _enrich_slack_messages_with_schedule(self, messages: list):
+        """Extract schedule suggestions for Slack messages that don't have them yet."""
+        if not messages:
+            return
+        if not hasattr(self, 'orchestrator') or not getattr(self, 'orchestrator', None):
+            return
+
+        slack_agent = self.orchestrator.agents.get('slack') if hasattr(self.orchestrator, 'agents') else None
+        extractor = getattr(slack_agent, 'event_extractor', None)
+        if not extractor:
+            return
+
+        pending = [m for m in messages if 'ai_events' not in m]
+        if not pending:
+            return
+
+        async def _extract_batch():
+            return await asyncio.gather(
+                *(extractor.extract_from_message(m) for m in pending),
+                return_exceptions=True
+            )
+
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                results = loop.run_until_complete(_extract_batch())
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+        except Exception as exc:
+            print(f"⚠️ Slack schedule enrichment failed: {exc}")
+            return
+
+        for msg, result in zip(pending, results):
+            if isinstance(result, Exception):
+                msg['ai_events'] = []
+                msg['ai_events_count'] = 0
+                continue
+            msg['ai_events'] = [e.model_dump(mode="json") for e in result] if result else []
+            msg['ai_events_count'] = len(msg['ai_events'])
     
     def on_slack_message_sent(self, success: bool, message: str):
         """Handle completion of a Slack message send operation.
@@ -700,12 +750,28 @@ class AutoReturnApp(QMainWindow):
         
         existing_by_id = {msg.get('id'): msg for msg in self.messages if msg.get('id')}
         new_items = []
+        needs_summary_items = []
 
         for msg in messages:
             msg_id = msg.get('id')
             if msg_id and msg_id in existing_by_id:
-                # Merge in new AI fields (ai_events, summary, etc.)
-                existing_by_id[msg_id].update(msg)
+                existing = existing_by_id[msg_id]
+                incoming = dict(msg)
+
+                # Preserve already-generated summary if new sync returns blank summary.
+                incoming_summary = (incoming.get('summary') or "").strip()
+                existing_summary = (existing.get('summary') or "").strip()
+                if not incoming_summary and existing_summary:
+                    incoming.pop('summary', None)
+
+                incoming_analysis = (incoming.get('ai_analysis') or "").strip()
+                existing_analysis = (existing.get('ai_analysis') or "").strip()
+                if not incoming_analysis and existing_analysis:
+                    incoming.pop('ai_analysis', None)
+
+                existing.update(incoming)
+                if not self._summary_for_table(existing):
+                    needs_summary_items.append(existing)
             else:
                 new_items.append(msg)
                 self.messages.append(msg)
@@ -735,8 +801,11 @@ class AutoReturnApp(QMainWindow):
         
         # Queue for background AI summarization (progressive loading)
         if hasattr(self, 'queue_summary_generator'):
-            print(f"🧠 Queueing {len(new_items)} messages for background summarization...")
-            self.queue_summary_generator.add_to_queue(new_items)
+            queue_candidates = {m.get('id'): m for m in (new_items + needs_summary_items) if m.get('id')}
+            to_queue = list(queue_candidates.values())
+            print(f"🧠 Queueing {len(to_queue)} Gmail messages for background summarization...")
+            if to_queue:
+                self.queue_summary_generator.add_to_queue(to_queue)
         # Summaries are now handled by the Agent, so no need to call generate_summaries_for_messages again
         # but if we want to be safe, we can check if they have summaries
         # self.generate_summaries_for_messages(new_items)
@@ -1033,6 +1102,7 @@ class AutoReturnApp(QMainWindow):
         main_layout.addWidget(self.create_header())
         main_layout.addWidget(self.create_main_content(), 1)
         main_layout.addWidget(self.create_status_bar())
+        QTimer.singleShot(0, self.apply_responsive_table_layout)
     
     # -------------------------
     # UI COMPONENT CREATION
@@ -1097,13 +1167,14 @@ class AutoReturnApp(QMainWindow):
         content.setObjectName("mainContent")
         
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        layout.setContentsMargins(16, 14, 16, 12)
+        layout.setSpacing(10)
         
         header_layout = QHBoxLayout()
-        
-        title = QLabel("Unified Inbox")
-        title.setObjectName("inboxTitle")
+        header_layout.setSpacing(10)
+
+        filter_layout = QHBoxLayout()
+        filter_layout.setSpacing(8)
         
         sync_btn = QPushButton("Sync")
         sync_btn.setObjectName("btnSecondary")
@@ -1113,15 +1184,7 @@ class AutoReturnApp(QMainWindow):
         generate_summaries_btn.setObjectName("btnSecondary")
         generate_summaries_btn.clicked.connect(self.generate_all_summaries)
         generate_summaries_btn.setToolTip("Generate AI summaries for all messages using Ollama")
-        
-        header_layout.addWidget(title)
-        header_layout.addStretch()
-        header_layout.addWidget(generate_summaries_btn)
-        header_layout.addWidget(sync_btn)
-        
-        filter_layout = QHBoxLayout()
-        filter_layout.setSpacing(8)
-        
+
         filter_buttons = [
             ("All", "all", None),
             ("Gmail", "gmail", os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "Gmail_Logo_32px.png")),
@@ -1145,8 +1208,54 @@ class AutoReturnApp(QMainWindow):
                 btn.setStyle(btn.style())
             
             filter_layout.addWidget(btn)
-        
-        filter_layout.addStretch()
+
+        right_controls = QWidget()
+        right_controls_layout = QVBoxLayout(right_controls)
+        right_controls_layout.setContentsMargins(0, 0, 0, 0)
+        right_controls_layout.setSpacing(6)
+
+        buttons_row = QHBoxLayout()
+        buttons_row.setSpacing(8)
+        buttons_row.addStretch()
+        buttons_row.addWidget(generate_summaries_btn)
+        buttons_row.addWidget(sync_btn)
+
+        rows_row = QHBoxLayout()
+        rows_row.setSpacing(8)
+        rows_row.addStretch()
+        rows_label = QLabel("Rows per page:")
+        rows_label.setObjectName("rowsPerPageLabel")
+        self.rows_per_page_combo = QComboBox()
+        self.rows_per_page_combo.setObjectName("rowsPerPageCombo")
+        for option in self.rows_per_page_options:
+            self.rows_per_page_combo.addItem(str(option))
+        self.rows_per_page_combo.setCurrentText(str(self.rows_per_page))
+        self.rows_per_page_combo.currentTextChanged.connect(self.on_rows_per_page_changed)
+        rows_row.addWidget(rows_label)
+        rows_row.addWidget(self.rows_per_page_combo)
+
+        right_controls_layout.addLayout(buttons_row)
+        right_controls_layout.addLayout(rows_row)
+
+        header_layout.addLayout(filter_layout)
+        header_layout.addStretch()
+        header_layout.addWidget(right_controls)
+
+        toolbar_layout = QHBoxLayout()
+        toolbar_layout.setSpacing(10)
+
+        self.selection_label = QLabel("")
+        self.selection_label.setObjectName("selectionInfo")
+        self.selection_label.hide()
+
+        self.delete_selected_btn = QPushButton("Delete Selected")
+        self.delete_selected_btn.setObjectName("dangerBtn")
+        self.delete_selected_btn.clicked.connect(self.delete_selected_messages)
+        self.delete_selected_btn.hide()
+
+        toolbar_layout.addWidget(self.selection_label)
+        toolbar_layout.addWidget(self.delete_selected_btn)
+        toolbar_layout.addStretch()
         
         self.table = QTableWidget()
         self.table.setObjectName("messageTable")
@@ -1166,8 +1275,9 @@ class AutoReturnApp(QMainWindow):
         header.setSectionResizeMode(7, QHeaderView.ResizeToContents)
         
         self.table.setColumnWidth(0, 40)
-        self.table.setMinimumWidth(800)
+        self.table.setMinimumWidth(0)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.table.setMinimumHeight(620)
 
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
@@ -1179,12 +1289,75 @@ class AutoReturnApp(QMainWindow):
         self.table.horizontalHeader().sectionClicked.connect(self.sort_by_column)
         self.table.cellClicked.connect(self.on_table_cell_clicked)
         self.table.cellDoubleClicked.connect(self.on_table_cell_double_clicked)
+
+        pagination_layout = QHBoxLayout()
+        pagination_layout.setSpacing(8)
+
+        self.prev_page_btn = QPushButton("Previous")
+        self.prev_page_btn.setObjectName("paginationBtn")
+        self.prev_page_btn.clicked.connect(lambda: self.change_page(self.current_page - 1))
+
+        self.next_page_btn = QPushButton("Next")
+        self.next_page_btn.setObjectName("paginationBtn")
+        self.next_page_btn.clicked.connect(lambda: self.change_page(self.current_page + 1))
+
+        self.page_buttons_layout = QHBoxLayout()
+        self.page_buttons_layout.setSpacing(6)
+        self.page_status_label = QLabel("Page 1 of 1")
+        self.page_status_label.setObjectName("paginationStatus")
+
+        pagination_layout.addWidget(self.page_status_label)
+        pagination_layout.addStretch()
+        pagination_layout.addWidget(self.prev_page_btn)
+        pagination_layout.addLayout(self.page_buttons_layout)
+        pagination_layout.addWidget(self.next_page_btn)
         
         layout.addLayout(header_layout)
-        layout.addLayout(filter_layout)
+        layout.addLayout(toolbar_layout)
         layout.addWidget(self.table)
+        layout.addLayout(pagination_layout)
         
         return content
+
+    def resizeEvent(self, event):
+        """Adapt layout for different window sizes."""
+        super().resizeEvent(event)
+        self.apply_responsive_table_layout()
+
+    def apply_responsive_table_layout(self):
+        """Make the inbox table adapt for desktop/laptop widths."""
+        if not hasattr(self, "table"):
+            return
+
+        window_width = self.width()
+        compact = window_width < 1320
+        ultra_compact = window_width < 1080
+        self._is_compact_ui = compact
+        self._is_ultra_compact_ui = ultra_compact
+
+        # Keep key information visible; progressively hide lower-priority columns.
+        self.table.setColumnHidden(1, ultra_compact)   # Source icon
+        self.table.setColumnHidden(4, ultra_compact)   # Keep AI summary visible on normal compact sizes
+
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.Fixed)
+        if not ultra_compact:
+            header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        if not compact:
+            header.setSectionResizeMode(4, QHeaderView.Stretch)
+
+        self.table.setColumnWidth(0, 40)
+        if ultra_compact:
+            self.table.setColumnWidth(7, 190)
+        elif compact:
+            self.table.setColumnWidth(7, 235)
+        else:
+            self.table.setColumnWidth(7, 280)
     
     def create_status_bar(self):
         """Create and configure the status bar."""
@@ -1227,28 +1400,41 @@ class AutoReturnApp(QMainWindow):
         self.table.blockSignals(True)
         try:
             self.table.setRowCount(0)
-            
+            self.apply_responsive_table_layout()
+
+            all_keys = {self._message_key(m) for m in self.messages}
+            self.selected_message_keys.intersection_update(all_keys)
+
             filtered = [m for m in self.messages if self.filter_message(m)]
-            print(f"📋 Populating table with {len(filtered)} items (Total: {len(self.messages)})")
+            paged, total_pages = self._get_paginated_messages(filtered)
+            self._current_page_messages = paged
+            print(
+                f"📋 Populating table with {len(paged)} items "
+                f"(Filtered: {len(filtered)}, Total: {len(self.messages)})"
+            )
             
             # Log breakdown
             sources = {}
-            for m in filtered:
+            for m in paged:
                 s = m.get('source', 'unknown')
                 sources[s] = sources.get(s, 0) + 1
-            if filtered:
+            if paged:
                 print(f"   Sources: {sources}")
             
             self.update_status_bar()
 
-            
-            for row, msg in enumerate(filtered):
+            for row, msg in enumerate(paged):
                 row_idx = self.table.rowCount()
                 self.table.insertRow(row_idx)
                 
                 is_read = msg.get('read', False)
+                msg_key = self._message_key(msg)
                 
                 checkbox = QCheckBox()
+                checkbox.setChecked(msg_key in self.selected_message_keys)
+                checkbox.stateChanged.connect(
+                    lambda state, key=msg_key: self.on_message_checkbox_toggled(key, state)
+                )
                 checkbox_widget = QWidget()
                 checkbox_layout = QHBoxLayout(checkbox_widget)
                 checkbox_layout.addWidget(checkbox)
@@ -1312,16 +1498,9 @@ class AutoReturnApp(QMainWindow):
                 
                 subject_layout.addWidget(subject_text)
                 subject_layout.addWidget(preview_text)
-
-                # Debug: show extracted event count for Gmail messages
-                if msg.get('source') == 'gmail' and 'ai_events' in msg:
-                    events_count = len(msg.get('ai_events') or [])
-                    events_badge = QLabel(f"Events: {events_count}")
-                    events_badge.setStyleSheet("font-size: 11px; color: #024950;")
-                    subject_layout.addWidget(events_badge)
                 self.table.setCellWidget(row_idx, 3, subject_widget)
                 
-                full_summary = msg.get('summary', '')
+                full_summary = self._summary_for_table(msg)
                 max_summary_len = 80
                 display_summary = full_summary if len(full_summary) <= max_summary_len else full_summary[:max_summary_len - 3] + "..."
                 summary_label = QLabel(display_summary)
@@ -1332,17 +1511,17 @@ class AutoReturnApp(QMainWindow):
                     summary_label.setCursor(Qt.PointingHandCursor)
                 self.table.setCellWidget(row_idx, 4, summary_label)
                 
-                priority_val = msg.get('priority', 'Low')
-                # Standardize to High/Medium/Low if it comes as something else
-                if priority_val.lower() == 'urgent': priority_val = 'High'
-                elif priority_val.lower() == 'high': priority_val = 'Medium'
-                elif priority_val.lower() == 'normal': priority_val = 'Low'
-                
-                priority_icons = {'High': '🔴', 'Medium': '⭐', 'Low': '⚪'}
+                priority_raw = str(msg.get('priority', 'Low')).lower()
+                if priority_raw in ('urgent', 'high'):
+                    priority_val = 'High'
+                elif priority_raw in ('medium',):
+                    priority_val = 'Medium'
+                else:
+                    priority_val = 'Low'
                 priority_order = {'High': 3, 'Medium': 2, 'Low': 1}
                 
                 display_label = priority_val.upper()
-                priority_item = QTableWidgetItem(f"{priority_icons.get(priority_val, '')} {display_label}")
+                priority_item = QTableWidgetItem(display_label)
                 priority_item.setTextAlignment(Qt.AlignCenter)
                 priority_item.setData(Qt.UserRole, priority_order.get(priority_val, 1))
                 
@@ -1374,52 +1553,166 @@ class AutoReturnApp(QMainWindow):
 
                 reply_btn = QPushButton("Reply")
                 reply_btn.setObjectName("actionBtn")
-                reply_btn.setFixedSize(64, 28)
+                reply_btn.setFixedHeight(30)
+                reply_btn.setMinimumWidth(58)
                 reply_btn.clicked.connect(lambda checked, m=msg: self.show_send_message_dialog(m))
 
-                auto_reply_btn = QPushButton("Auto")
+                auto_reply_btn = QPushButton("Auto" if self._is_compact_ui else "Auto Reply")
                 auto_reply_btn.setObjectName("actionBtn")
-                auto_reply_btn.setFixedSize(56, 28)
+                auto_reply_btn.setFixedHeight(30)
+                auto_reply_btn.setMinimumWidth(58 if self._is_compact_ui else 86)
                 auto_reply_btn.setToolTip("Auto Reply")
                 auto_reply_btn.clicked.connect(lambda checked, m=msg: self.auto_reply_message(m))
 
                 smart_draft_btn = QPushButton("Draft")
                 smart_draft_btn.setObjectName("actionBtn")
-                smart_draft_btn.setFixedSize(56, 28)
+                smart_draft_btn.setFixedHeight(30)
+                smart_draft_btn.setMinimumWidth(58)
                 smart_draft_btn.setToolTip("Smart Draft")
                 smart_draft_btn.clicked.connect(lambda checked, m=msg: self.smart_draft_message(m))
 
-                attach_btn = QPushButton("📎")
-                attach_btn.setObjectName("actionBtn")
-                attach_btn.setFixedSize(32, 28)
-                attach_btn.setToolTip("Attach File")
-                attach_btn.clicked.connect(lambda checked, m=msg: self.attach_file_message(m))
-
-                details_btn = QPushButton("Details")
-                details_btn.setObjectName("actionBtn")
-                details_btn.setFixedSize(70, 28)
-                details_btn.setToolTip("Show message details")
-                details_btn.clicked.connect(lambda checked, m=msg: self.toggle_message_expand(m))
-
                 actions_layout.addWidget(reply_btn)
                 actions_layout.addWidget(auto_reply_btn)
-                actions_layout.addWidget(smart_draft_btn)
-                actions_layout.addWidget(attach_btn)
-                actions_layout.addWidget(details_btn)
+                if not self._is_ultra_compact_ui:
+                    actions_layout.addWidget(smart_draft_btn)
                 actions_layout.addStretch()
 
                 self.table.setCellWidget(row_idx, 7, actions_widget)
                 
-                self.table.setRowHeight(row_idx, 64)
+                self.table.setRowHeight(row_idx, 58 if self._is_compact_ui else 64)
                 
                 if not is_read:
                     for col in range(8):
                         item = self.table.item(row_idx, col)
                         if item:
                             item.setBackground(QColor("#E6F7F9"))
+            self._update_selection_controls()
+            self._refresh_pagination_controls(total_pages, len(filtered))
         finally:
             self.table.blockSignals(False)
             self.table.setUpdatesEnabled(True)
+
+    def _message_key(self, msg: dict) -> str:
+        """Build a stable key for row selection/deletion."""
+        message_id = msg.get('id')
+        if message_id:
+            return str(message_id)
+        return "|".join(
+            [
+                str(msg.get('source', '')),
+                str(msg.get('timestamp', '')),
+                str(msg.get('sender', '')),
+                str(msg.get('subject', '')),
+                str(msg.get('preview', ''))[:40],
+            ]
+        )
+
+    def _summary_for_table(self, msg: dict) -> str:
+        """Get the best available short summary text for table display."""
+        summary = (msg.get('summary') or "").strip()
+        if summary:
+            return summary
+
+        ai_analysis = (msg.get('ai_analysis') or "").strip()
+        if not ai_analysis:
+            return ""
+
+        if "Task:" in ai_analysis:
+            ai_analysis = ai_analysis.split("Task:", 1)[0]
+        return ai_analysis.replace("Summary:", "").strip()
+
+    def _get_paginated_messages(self, filtered: List[dict]) -> Tuple[List[dict], int]:
+        total_items = len(filtered)
+        total_pages = max(1, (total_items + self.rows_per_page - 1) // self.rows_per_page)
+        self.current_page = min(max(1, self.current_page), total_pages)
+
+        start = (self.current_page - 1) * self.rows_per_page
+        end = start + self.rows_per_page
+        return filtered[start:end], total_pages
+
+    def _clear_page_buttons(self):
+        while self.page_buttons_layout.count():
+            item = self.page_buttons_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+    def _refresh_pagination_controls(self, total_pages: int, filtered_count: int):
+        self.page_status_label.setText(f"Page {self.current_page} of {total_pages} ({filtered_count} items)")
+        self.prev_page_btn.setEnabled(self.current_page > 1)
+        self.next_page_btn.setEnabled(self.current_page < total_pages)
+
+        self._clear_page_buttons()
+        if total_pages <= 1:
+            return
+
+        window = 2
+        start = max(1, self.current_page - window)
+        end = min(total_pages, self.current_page + window)
+        for page in range(start, end + 1):
+            btn = QPushButton(str(page))
+            btn.setObjectName("pageBtn")
+            if page == self.current_page:
+                btn.setProperty("active", "true")
+                btn.setStyle(btn.style())
+            btn.clicked.connect(lambda _, p=page: self.change_page(p))
+            self.page_buttons_layout.addWidget(btn)
+
+    def on_rows_per_page_changed(self, text: str):
+        try:
+            self.rows_per_page = max(1, int(text))
+        except ValueError:
+            self.rows_per_page = 15
+        self.current_page = 1
+        self.populate_table()
+
+    def change_page(self, page: int):
+        if page < 1:
+            return
+        self.current_page = page
+        self.populate_table()
+
+    def on_message_checkbox_toggled(self, message_key: str, state: int):
+        if state == Qt.Checked:
+            self.selected_message_keys.add(message_key)
+        else:
+            self.selected_message_keys.discard(message_key)
+        self._update_selection_controls()
+
+    def _update_selection_controls(self):
+        selected_count = len(self.selected_message_keys)
+        if selected_count > 0:
+            self.selection_label.setText(f"{selected_count} selected")
+            self.selection_label.show()
+            self.delete_selected_btn.show()
+        else:
+            self.selection_label.hide()
+            self.delete_selected_btn.hide()
+
+    def delete_selected_messages(self):
+        """Delete all selected messages after confirmation."""
+        selected_count = len(self.selected_message_keys)
+        if selected_count == 0:
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Delete Messages",
+            f"Delete {selected_count} selected message(s)? This cannot be undone.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if confirm != QMessageBox.Yes:
+            return
+
+        before = len(self.messages)
+        self.messages = [m for m in self.messages if self._message_key(m) not in self.selected_message_keys]
+        deleted = before - len(self.messages)
+        self.selected_message_keys.clear()
+
+        self.current_page = 1
+        self.populate_table()
+        self.show_status_message(f"Deleted {deleted} message(s).")
     
     # -------------------------
     # SEARCH FUNCTIONALITY
@@ -1433,6 +1726,7 @@ class AutoReturnApp(QMainWindow):
         raw_text = text.strip()
         self.search_query = raw_text
         self.search_filters = self._parse_search_query(raw_text.lower())
+        self.current_page = 1
         self.populate_table()
 
     def _parse_search_query(self, query: str):
@@ -1571,6 +1865,7 @@ class AutoReturnApp(QMainWindow):
             filter_id (str): ID of the filter to apply
         """
         self.active_filter = filter_id
+        self.current_page = 1
         
         for btn in self.findChildren(QPushButton):
             if btn.property("filter_id"):
@@ -1593,25 +1888,30 @@ class AutoReturnApp(QMainWindow):
             column (int): Column index that was clicked
         """
         """Handle clicks on table cells"""
-        filtered = [m for m in self.messages if self.filter_message(m)]
-        if row >= len(filtered):
+        if row >= len(self._current_page_messages):
             return
 
-        msg = filtered[row]
+        msg = self._current_page_messages[row]
 
-        # Column 4 is "AI Summary" → show full AI analysis
-        if column == 4:
-            full_text = msg.get('ai_analysis') or msg.get('summary', '')
-            if full_text:
-                self.show_full_summary_dialog(full_text)
+        # Checkbox and action columns are interactive controls.
+        if column in (0, 7):
             return
 
-        # Sender (2) or Content Preview (3) → show full message content
-        if column in (2, 3):
+        if column == 2:
+            self.show_sender_details_dialog(msg)
+            return
+
+        if column == 3:
             self.show_full_message_dialog(msg)
             return
 
-        # Other columns: no-op (actions handled by button widgets)
+        if column == 4:
+            self.show_full_summary_dialog(msg.get('summary') or "No AI summary available yet.")
+            return
+
+        if column == 5:
+            self.show_priority_details_dialog(msg)
+            return
         return
 
     def on_table_cell_double_clicked(self, row, column):
@@ -1621,37 +1921,27 @@ class AutoReturnApp(QMainWindow):
             row (int): Row index that was clicked
             column (int): Column index that was clicked
         """
-        filtered = [m for m in self.messages if self.filter_message(m)]
-        if row >= len(filtered):
+        if row >= len(self._current_page_messages):
             return
 
-        msg = filtered[row]
-        if column in (2, 3):
-            self.show_full_message_dialog(msg)
+        msg = self._current_page_messages[row]
+        self.on_table_cell_clicked(row, column)
 
     def show_full_summary_dialog(self, summary_text):
-        """Show a dialog with the full summary text.
-        
-        Args:
-            summary_text (str): The full summary text to display
-        """
-        """Show a dialog with the full summary text, beautifully styled"""
+        """Show AI summary details in a focused dialog."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("AI Analysis")
-        dialog.setMinimumWidth(500)
-        dialog.setMinimumHeight(400)
-        
-        # Apply app theme to dialog
+        dialog.setWindowTitle("AI Summary")
+        dialog.resize(680, 460)
+        dialog.setMinimumSize(560, 360)
+
         dialog.setStyleSheet("""
             QDialog {
                 background-color: #ffffff;
-                border: 2px solid #0FA4AF;
-                border-radius: 12px;
             }
-            QLabel {
+            QLabel#title {
                 color: #003135;
-                font-weight: bold;
-                font-size: 18px;
+                font-weight: 700;
+                font-size: 17px;
             }
             QTextEdit {
                 background-color: #f8fcfc;
@@ -1662,113 +1952,320 @@ class AutoReturnApp(QMainWindow):
                 font-size: 14px;
                 line-height: 1.6;
             }
-            QPushButton {
-                background-color: #0FA4AF;
-                color: white;
-                border-radius: 6px;
-                padding: 8px 20px;
-                font-weight: 600;
-                font-size: 14px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #024950;
-            }
         """)
-        
+
         layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
-        
-        # Header
-        header_layout = QHBoxLayout()
-        icon_label = QLabel("✨")
-        icon_label.setStyleSheet("font-size: 24px; background: transparent;")
-        title_label = QLabel("AI Insight & Analysis")
-        header_layout.addWidget(icon_label)
-        header_layout.addWidget(title_label)
-        header_layout.addStretch()
-        
-        # Format text with HTML for beauty
-        formatted_text = summary_text.replace("\n", "<br>")
-        formatted_text = formatted_text.replace("Summary:", "<b style='color: #024950; font-size: 16px;'>📝 Summary</b><br>")
-        formatted_text = formatted_text.replace("Task:", "<br><br><b style='color: #024950; font-size: 16px;'>⚡ Task Classification</b><br>")
-        
-        # Content Area
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(10)
+
+        title_label = QLabel("Summary generated for this message")
+        title_label.setObjectName("title")
+        subtitle = QLabel("Use this as a quick overview before replying.")
+        subtitle.setObjectName("detailMeta")
+
         text_edit = QTextEdit()
-        text_edit.setHtml(f"""
-            <div style='font-family: sans-serif;'>
-                {formatted_text}
-            </div>
-        """)
         text_edit.setReadOnly(True)
-        
-        # Close Button
+        text_edit.setPlainText(summary_text or "No AI summary available yet.")
+
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        
         close_btn = QPushButton("Close")
-        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setObjectName("btnSecondary")
         close_btn.clicked.connect(dialog.accept)
-        
         btn_layout.addWidget(close_btn)
-        
-        layout.addLayout(header_layout)
+
+        layout.addWidget(title_label)
+        layout.addWidget(subtitle)
         layout.addWidget(text_edit)
         layout.addLayout(btn_layout)
-        
+        dialog.exec()
+
+    def show_sender_details_dialog(self, msg: dict):
+        """Show sender-focused information only."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Sender Details")
+        dialog.resize(680, 420)
+        dialog.setMinimumSize(560, 360)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+            }
+            QLabel#detailTitle {
+                color: #003135;
+                font-size: 18px;
+                font-weight: 700;
+            }
+            QLabel#detailMeta {
+                color: #024950;
+                font-size: 13px;
+            }
+            QTextEdit {
+                border: 1px solid #AFDDE5;
+                border-radius: 8px;
+                background-color: #F8FCFC;
+                color: #003135;
+                padding: 8px;
+                font-size: 13px;
+            }
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(10)
+
+        sender = msg.get('sender', 'Unknown')
+        sender_email = msg.get('email', '') or msg.get('channel_name', '')
+        source = str(msg.get('source', '')).upper() or "UNKNOWN"
+
+        title = QLabel(sender)
+        title.setObjectName("detailTitle")
+        meta = QLabel(f"Source: {source}")
+        meta.setObjectName("detailMeta")
+
+        if sender_email:
+            contact_line = QLabel(f"Contact: {sender_email}")
+            contact_line.setObjectName("detailMeta")
+        else:
+            contact_line = QLabel("Contact: not available")
+            contact_line.setObjectName("detailMeta")
+
+        stats = self.compute_sender_stats(sender, msg.get('email', ''))
+        stats_label = QLabel(
+            f"Activity with this sender  |  Last week: {stats['last_week']}  Last month: {stats['last_month']}  Last 7 weeks: {stats['last_7_weeks']}"
+        )
+        stats_label.setObjectName("detailMeta")
+        stats_label.setWordWrap(True)
+
+        recent_title = QLabel("Recent messages from this sender")
+        recent_title.setObjectName("detailMeta")
+        recent_title.setStyleSheet("font-weight: 700;")
+
+        recent_box = QTextEdit()
+        recent_box.setReadOnly(True)
+        recent_box.setMinimumHeight(180)
+        recent_box.setPlainText(self._build_sender_recent_messages(msg))
+
+        btn_layout = QHBoxLayout()
+        close_btn = QPushButton("Close")
+        close_btn.setObjectName("btnSecondary")
+        close_btn.clicked.connect(dialog.accept)
+        btn_layout.addStretch()
+        btn_layout.addWidget(close_btn)
+
+        layout.addWidget(title)
+        layout.addWidget(meta)
+        layout.addWidget(contact_line)
+        layout.addWidget(stats_label)
+        layout.addWidget(recent_title)
+        layout.addWidget(recent_box)
+        layout.addLayout(btn_layout)
+
         dialog.exec()
 
     def show_full_message_dialog(self, msg: dict):
-        """Show a dialog with the full message content.
-        
-        Args:
-            msg (dict): Message data to display
-        """
+        """Show message content with scheduling suggestions."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Full Message")
-        dialog.setMinimumWidth(600)
-        dialog.setMinimumHeight(400)
+        dialog.setWindowTitle("Message Content")
+        dialog.resize(860, 620)
+        dialog.setMinimumSize(700, 500)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+            }
+            QLabel#detailTitle {
+                color: #003135;
+                font-size: 18px;
+                font-weight: 700;
+            }
+            QLabel#detailMeta {
+                color: #024950;
+                font-size: 13px;
+            }
+            QTextEdit {
+                border: 1px solid #AFDDE5;
+                border-radius: 8px;
+                background-color: #F8FCFC;
+                color: #003135;
+                padding: 8px;
+                font-size: 13px;
+            }
+        """)
 
         layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(12)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(10)
 
-        header = QLabel(f"From: {msg.get('sender', 'Unknown')}")
-        header.setObjectName("messageHeader")
+        source = str(msg.get('source', '')).upper() or "UNKNOWN"
+        sender = msg.get('sender', 'Unknown')
+        subject = msg.get('subject', msg.get('content_preview', 'No Subject'))
+        timestamp = msg.get('time', '')
+        priority_raw = str(msg.get('priority', 'low')).lower()
+        if priority_raw in ('urgent', 'high'):
+            priority = "HIGH"
+        elif priority_raw == 'medium':
+            priority = "MEDIUM"
+        else:
+            priority = "LOW"
 
-        subject_label = QLabel(f"Subject: {msg.get('subject', 'No Subject')}")
-        subject_label.setWordWrap(True)
+        title = QLabel(subject or "No Subject")
+        title.setObjectName("detailTitle")
+        meta_top = QLabel(f"From: {sender}  |  Source: {source}  |  Priority: {priority}  |  Time: {timestamp}")
+        meta_top.setObjectName("detailMeta")
+        meta_top.setWordWrap(True)
 
-        sender_name = msg.get('sender', '') or ''
-        sender_email = msg.get('email', '') or ''
-        stats = self.compute_sender_stats(sender_name, sender_email)
-        stats_text = (
-            f"Last week: {stats['last_week']}  |  "
-            f"Last month: {stats['last_month']}  |  "
-            f"Last 7 weeks: {stats['last_7_weeks']}"
-        )
-        stats_label = QLabel(stats_text)
-        stats_label.setWordWrap(True)
+        schedule_items = msg.get('ai_events') or []
+        schedule_title = QLabel("Schedule Suggestions")
+        schedule_title.setObjectName("detailMeta")
+        schedule_title.setStyleSheet("font-weight: 700;")
 
+        schedule_box = QTextEdit()
+        schedule_box.setReadOnly(True)
+        schedule_box.setMinimumHeight(120)
+        schedule_box.setPlainText(self._format_schedule_items(schedule_items))
+
+        schedule_row = QWidget()
+        schedule_row_layout = QHBoxLayout(schedule_row)
+        schedule_row_layout.setContentsMargins(0, 0, 0, 0)
+        schedule_row_layout.setSpacing(8)
+        schedule_count = QLabel(f"Suggestions found: {len(schedule_items)}")
+        schedule_count.setObjectName("detailMeta")
+        review_schedule_btn = QPushButton("Review Suggestions")
+        review_schedule_btn.setObjectName("btnSecondary")
+        review_schedule_btn.setEnabled(len(schedule_items) > 0)
+        review_schedule_btn.clicked.connect(lambda: (dialog.accept(), self.show_event_review_dialog(msg)))
+        schedule_row_layout.addWidget(schedule_count)
+        schedule_row_layout.addWidget(review_schedule_btn)
+        schedule_row_layout.addStretch()
+
+        body_title = QLabel("Message Content")
+        body_title.setObjectName("detailMeta")
+        body_title.setStyleSheet("font-weight: 700;")
         body_widget = QTextEdit()
         body_widget.setReadOnly(True)
         body_widget.setPlainText(msg.get('full_content', msg.get('preview', '')))
+        body_widget.setMinimumHeight(220)
 
         btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
         close_btn = QPushButton("Close")
-        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setObjectName("btnSecondary")
         close_btn.clicked.connect(dialog.accept)
+        btn_layout.addStretch()
         btn_layout.addWidget(close_btn)
 
-        layout.addWidget(header)
-        layout.addWidget(subject_label)
-        layout.addWidget(stats_label)
+        layout.addWidget(title)
+        layout.addWidget(meta_top)
+        layout.addWidget(schedule_title)
+        layout.addWidget(schedule_box)
+        layout.addWidget(schedule_row)
+        layout.addWidget(body_title)
         layout.addWidget(body_widget)
         layout.addLayout(btn_layout)
 
         dialog.exec()
+
+    def show_priority_details_dialog(self, msg: dict):
+        """Show a simple explanation of message priority."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Priority Details")
+        dialog.resize(520, 300)
+        dialog.setMinimumSize(460, 260)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        priority_raw = str(msg.get('priority', 'low')).lower()
+        if priority_raw in ('urgent', 'high'):
+            level = "HIGH"
+            advice = "Handle this message first. It likely has a time-sensitive or important request."
+        elif priority_raw == 'medium':
+            level = "MEDIUM"
+            advice = "Review this message soon. It contains useful information or an action to take."
+        else:
+            level = "LOW"
+            advice = "This message is not urgent. You can review it later."
+
+        title = QLabel(f"Priority: {level}")
+        title.setObjectName("detailTitle")
+        context = QLabel(
+            f"From: {msg.get('sender', 'Unknown')}  |  Subject: {msg.get('subject', msg.get('content_preview', 'No Subject'))}"
+        )
+        context.setObjectName("detailMeta")
+        context.setWordWrap(True)
+
+        explanation = QTextEdit()
+        explanation.setReadOnly(True)
+        explanation.setPlainText(advice)
+        explanation.setMinimumHeight(120)
+
+        close_btn = QPushButton("Close")
+        close_btn.setObjectName("btnSecondary")
+        close_btn.clicked.connect(dialog.accept)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(close_btn)
+
+        layout.addWidget(title)
+        layout.addWidget(context)
+        layout.addWidget(explanation)
+        layout.addLayout(btn_layout)
+        dialog.exec()
+
+    def _format_schedule_items(self, items: List[dict]) -> str:
+        if not items:
+            return (
+                "No schedule suggestions were found from this message.\n"
+                "Tip: clearer date/time phrases (for example: 'tomorrow at 7 PM') improve extraction."
+            )
+
+        lines = []
+        for idx, item in enumerate(items, start=1):
+            label = "To-do" if str(item.get("item_type", "")).lower() == "task" else "Meeting"
+            start = self._fmt_schedule_dt(item.get("start_dt"))
+            end = self._fmt_schedule_dt(item.get("end_dt"))
+            confidence = float(item.get("confidence", 0.0))
+            title = item.get("title", "Untitled")
+            lines.append(
+                f"{idx}. {title}\n"
+                f"   Type: {label} | Starts: {start} | Ends: {end} | Confidence: {confidence:.2f}"
+            )
+        return "\n\n".join(lines)
+
+    def _fmt_schedule_dt(self, value: Any) -> str:
+        if not value:
+            return "-"
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%d %I:%M %p")
+        try:
+            return datetime.fromisoformat(str(value)).strftime("%Y-%m-%d %I:%M %p")
+        except Exception:
+            return str(value)
+
+    def _build_sender_recent_messages(self, msg: dict) -> str:
+        sender = msg.get('sender', '')
+        email = msg.get('email', '')
+        related = []
+        for item in self.messages:
+            if sender and item.get('sender') == sender:
+                related.append(item)
+            elif email and item.get('email') == email:
+                related.append(item)
+
+        def _safe_ts(entry: dict) -> float:
+            try:
+                return float(entry.get('timestamp', 0))
+            except Exception:
+                return 0.0
+
+        related.sort(key=_safe_ts, reverse=True)
+        lines = []
+        for idx, item in enumerate(related[:8], start=1):
+            subject = item.get('subject', item.get('content_preview', 'No Subject'))
+            time_text = item.get('time', '')
+            lines.append(f"{idx}. {subject} ({time_text})")
+
+        return "\n".join(lines) if lines else "No previous messages from this sender."
 
     # -------------------------
     # ANALYTICS & INSIGHTS
@@ -1853,6 +2350,7 @@ class AutoReturnApp(QMainWindow):
         if column in sort_keys:
             reverse = (self.sort_order == Qt.DescendingOrder)
             self.messages.sort(key=lambda x: x.get(sort_keys[column], ''), reverse=reverse)
+            self.current_page = 1
             self.populate_table()
     
     # -------------------------
@@ -1941,16 +2439,8 @@ class AutoReturnApp(QMainWindow):
         # Do not repopulate table here; it clears the expanded view.
 
     def toggle_message_expand(self, msg: dict):
-        """Toggle expand/collapse for a specific message based on ID."""
-        filtered = [m for m in self.messages if self.filter_message(m)]
-        target_id = msg.get('id')
-        if not target_id:
-            return
-
-        for idx, item in enumerate(filtered):
-            if item.get('id') == target_id:
-                self.on_row_clicked(idx, 3)
-                return
+        """Legacy handler kept for compatibility; opens details dialog."""
+        self.show_full_message_dialog(msg)
     
     def expand_row(self, row, msg):
         """Expand a row to show message details.
@@ -2086,17 +2576,21 @@ class AutoReturnApp(QMainWindow):
             return "Standard message. Review when convenient."
 
     def show_event_review_dialog(self, msg: dict):
-        """Show extracted events/tasks for review and calendar insertion."""
+        """Show extracted schedule suggestions for review and calendar insertion."""
         events = msg.get('ai_events', []) or []
         if not events:
-            QMessageBox.information(self, "Events", "No extracted events for this message.")
+            QMessageBox.information(
+                self,
+                "Schedule Suggestions",
+                "No schedule suggestions were found for this message yet."
+            )
             return
 
         dialog = EventReviewDialog(
             events=events,
             calendar_service=self.calendar_service,
             auto_select_threshold=0.85,
-            auto_add_high_confidence=True,
+            auto_add_high_confidence=False,
             ics_output_dir=self.ics_output_dir,
             parent=self
         )

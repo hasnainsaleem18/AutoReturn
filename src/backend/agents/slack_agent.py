@@ -9,6 +9,7 @@ from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
 from src.backend.services.slack_backend import SlackService
 from src.backend.services.ai_service import OllamaService
 from src.backend.core.priority_engine import PriorityEngine
+from src.backend.core.event_extractor import EventExtractor
 
 
 class SlackAgent(BaseAgent):
@@ -26,6 +27,11 @@ class SlackAgent(BaseAgent):
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
         self.tone_manager = None
+        self.event_extractor = EventExtractor(
+            ai_service=self.ai_service,
+            enable_llm_fallback=True,
+            confidence_threshold=0.85
+        )
         
         print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
 
@@ -76,6 +82,14 @@ class SlackAgent(BaseAgent):
                     
                     # Sentiment analysis
                     msg['ai_sentiment'] = await self._analyze_sentiment(msg)
+
+                    # Extract schedule suggestions (calendar)
+                    try:
+                        events = await self.event_extractor.extract_from_message(msg)
+                        msg['ai_events'] = [e.model_dump(mode="json") for e in events] if events else []
+                        msg['ai_events_count'] = len(msg['ai_events'])
+                    except Exception as e:
+                        print(f"⚠️ Slack schedule extraction error: {e}")
                     
                     # Mark for background summarization if content is sufficient
                     if not msg.get('summary'):

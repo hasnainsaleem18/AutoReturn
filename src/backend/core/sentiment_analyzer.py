@@ -15,6 +15,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 import spacy
+from spacy.language import Language
 
 from src.backend.models.tone_models import ToneType
 
@@ -68,8 +69,7 @@ class SentimentAnalyzer:
         - Coverage: 20,000+ word vectors
         """
 
-        # MUST use model with vectors for embedding similarity fallback
-        self.nlp = spacy.load("en_core_web_md")
+        self.nlp = self._load_spacy_pipeline()
 
         # Core sentiment lexicon with weights in [-4.0, +4.0] range
         self.lexicon = self._load_sentiment_lexicon()
@@ -92,6 +92,20 @@ class SentimentAnalyzer:
 
         # Deterministic tone weight mapping for feature-to-tone scoring
         self.tone_weights = self._initialize_tone_weights()
+
+    def _load_spacy_pipeline(self) -> Language:
+        """Load best available spaCy pipeline with graceful fallback."""
+        for model_name in ("en_core_web_md", "en_core_web_sm"):
+            try:
+                nlp = spacy.load(model_name)
+                print(f"✅ SentimentAnalyzer: loaded spaCy model '{model_name}'")
+                return nlp
+            except Exception:
+                continue
+
+        # Last resort: tokenizer-only pipeline so app can still boot.
+        print("⚠️ SentimentAnalyzer: spaCy model missing, using blank 'en' pipeline")
+        return spacy.blank("en")
 
     # ---------------------------------------------------
     # PUBLIC ENTRY POINT
@@ -558,10 +572,14 @@ class SentimentAnalyzer:
         neg_words = ["terrible", "awful", "bad", "worst", "angry"]
 
         # Get vectors for words that exist in spaCy vocabulary
-        pos_vecs = [self.nlp.vocab.get_vector(w)
-                    for w in pos_words if self.nlp.vocab.has_vector(w)]
-        neg_vecs = [self.nlp.vocab.get_vector(w)
-                    for w in neg_words if self.nlp.vocab.has_vector(w)]
+        pos_vecs = [self.nlp.vocab.get_vector(w) for w in pos_words if self.nlp.vocab.has_vector(w)]
+        neg_vecs = [self.nlp.vocab.get_vector(w) for w in neg_words if self.nlp.vocab.has_vector(w)]
+
+        # If vectors are unavailable (e.g., en_core_web_sm/blank), disable embedding fallback safely.
+        if not pos_vecs or not neg_vecs:
+            vec_len = getattr(self.nlp.vocab, "vectors_length", 0) or 1
+            zero = np.zeros(vec_len, dtype=float)
+            return zero, zero
 
         # Compute mean vectors (centroids)
         return np.mean(pos_vecs, axis=0), np.mean(neg_vecs, axis=0)

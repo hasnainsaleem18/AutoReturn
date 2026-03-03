@@ -40,7 +40,6 @@ pandas>=2.0.0
 
 # Event extraction and calendar export
 dateparser>=1.2.0
-ics>=0.7.2
 tzlocal>=5.2
 
 

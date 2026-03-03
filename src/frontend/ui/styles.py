@@ -30,16 +30,6 @@ def get_stylesheet():
             background-color: white;
         }
         
-        #quietHoursIndicator {
-            background-color: #AFDDE5;
-            color: #003135;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            border: 1px solid #0FA4AF;
-            font-weight: 500;
-        }
-        
         #btnVoice {
             background-color: #0FA4AF;
             color: white;
@@ -188,11 +178,69 @@ def get_stylesheet():
             background-color: #0FA4AF;
             color: white;
             border-radius: 6px;
-            font-size: 16px;
+            font-size: 13px;
+            font-weight: 600;
         }
         
         #actionBtn:hover {
             background-color: #024950;
+        }
+
+        #selectionInfo {
+            color: #024950;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        #dangerBtn {
+            padding: 6px 12px;
+            border: 1px solid #B9503A;
+            background-color: #C65A42;
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        #dangerBtn:hover {
+            background-color: #964734;
+        }
+
+        #rowsPerPageLabel, #paginationStatus {
+            color: #024950;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        #rowsPerPageCombo {
+            min-width: 70px;
+            padding: 4px 8px;
+            border: 1px solid #AFDDE5;
+            border-radius: 6px;
+            background-color: white;
+            color: #003135;
+        }
+
+        #paginationBtn, #pageBtn {
+            padding: 5px 10px;
+            border: 1px solid #AFDDE5;
+            background-color: white;
+            color: #024950;
+            border-radius: 6px;
+            font-size: 12px;
+            min-width: 36px;
+        }
+
+        #paginationBtn:hover, #pageBtn:hover {
+            border-color: #0FA4AF;
+            background-color: #D4F4F7;
+        }
+
+        #pageBtn[active="true"] {
+            background-color: #0FA4AF;
+            color: white;
+            border-color: #0FA4AF;
+            font-weight: 700;
         }
         
         #expandedContent {
@@ -266,5 +314,3 @@ def get_stylesheet():
             color: #AFDDE5;
         }
     """
-
-
