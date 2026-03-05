@@ -23,7 +23,7 @@ from PySide6.QtCore import Qt
 
 # Local imports for tone features
 from src.frontend.widgets.tone_selector import ToneSelector
-from src.frontend.widgets.sentiment_display import SentimentDisplay
+from src.frontend.widgets.tone_detection_display import ToneDetectionDisplay
 
 
 # -------------------------
@@ -115,26 +115,26 @@ class SendGmailReplyDialog(QDialog):
         )
         subject_value.setWordWrap(True)
 
-        # NEW: Add sentiment display for incoming message
-        self.sentiment_display = None
+        # NEW: Add tone display for incoming message
+        self.tone_display = None
         if self.orchestrator and self.original_message:
-            # Add tone selector and sentiment display
+            # Add tone selector and tone display
             info_label = QLabel("📊 Analyze incoming message mood, then select tone for your reply:")
             info_label.setStyleSheet("font-size: 12px; color: #024950; margin-bottom: 8px;")
             layout.addWidget(info_label)
             
-            # Sentiment display for incoming message
-            self.sentiment_display = SentimentDisplay(self.original_message)
-            layout.addWidget(self.sentiment_display)
+            # Tone detection display for incoming message
+            self.tone_display = ToneDetectionDisplay(self.original_message)
+            layout.addWidget(self.tone_display)
             
             # Tone selector for outgoing message
             self.tone_selector = ToneSelector(self.orchestrator, self.original_message)
             self.tone_selector.tone_changed.connect(self._on_tone_changed)
             layout.addWidget(self.tone_selector)
         
-        # Perform sentiment analysis
-        if self.sentiment_display:
-            self._perform_sentiment_analysis()
+        # Perform tone detection
+        if self.tone_display:
+            self._perform_tone_detection()
 
         body_label = QLabel("Message:")
         body_label.setStyleSheet(
@@ -239,10 +239,10 @@ class SendGmailReplyDialog(QDialog):
         layout.addWidget(subject_label)
         layout.addWidget(subject_value)
         
-        # NEW: Add sentiment display if available
-        if self.sentiment_display:
+        # NEW: Add tone display if available
+        if self.tone_display:
             layout.addSpacing(8)
-            layout.addWidget(self.sentiment_display)
+            layout.addWidget(self.tone_display)
         
         # NEW: Add tone selector if available
         if self.tone_selector:
@@ -335,25 +335,19 @@ class SendGmailReplyDialog(QDialog):
     # -------------------------
     # TONE AND SENTIMENT METHODS
     # -------------------------
-    def _perform_sentiment_analysis(self):
-        """Perform sentiment analysis on the original message"""
-        if not self.orchestrator or not self.original_message:
+    def _perform_tone_detection(self) -> None:
+        """Analyze incoming message tone using ToneManager."""
+        if not self.orchestrator or not self.original_message or not self.tone_display:
             return
-        
+            
         try:
-            content = self.original_message.get('full_content', '') or self.original_message.get('content', '')
+            content = self.original_message.get('full_content', '') or self.original_message.get('preview', '')
             if content:
-                sentiment_result = self.orchestrator.tone_manager.analyze_message_sentiment(content)
-                
-                # Add sentiment data to message
-                self.original_message['sentiment_analysis'] = sentiment_result
-                
-                # Update sentiment display
-                if self.sentiment_display:
-                    self.sentiment_display.set_sentiment_data(sentiment_result)
-                
+                # Use tone_manager to get detection result
+                result = self.orchestrator.tone_manager.analyze_incoming_tone(content)
+                self.tone_display.set_tone_data(result.get('tone_detection', {}))
         except Exception as e:
-            print(f"Sentiment analysis error: {e}")
+            print(f"Tone detection error in dialog: {e}")
     
     def _on_tone_changed(self, tone):
         """Handle tone selection change"""

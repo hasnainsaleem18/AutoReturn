@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt
 
 # Local imports for tone features
 from src.frontend.widgets.tone_selector import ToneSelector
-from src.frontend.widgets.sentiment_display import SentimentDisplay
+from src.frontend.widgets.tone_detection_display import ToneDetectionDisplay
 from src.backend.core.tone_manager import ToneManager
 
 
@@ -204,12 +204,12 @@ class SendSlackMessageDialog(QDialog):
         layout.addWidget(self.user_combo)
         layout.addSpacing(4)
         
-        # NEW: Add sentiment display for original message
-        self.sentiment_display = None
+        # NEW: Add tone display for original message
+        self.tone_display = None
         if self.orchestrator and self.original_message:
-            self.sentiment_display = SentimentDisplay(self.original_message)
-            # Perform sentiment analysis
-            self._perform_sentiment_analysis()
+            self.tone_display = ToneDetectionDisplay(self.original_message)
+            # Perform tone detection
+            self._perform_tone_detection()
         
         # NEW: Add tone selector
         self.tone_selector = None
@@ -217,10 +217,10 @@ class SendSlackMessageDialog(QDialog):
             self.tone_selector = ToneSelector(self.orchestrator, self.original_message)
             self.tone_selector.tone_changed.connect(self._on_tone_changed)
         
-        # Add sentiment display if available
-        if self.sentiment_display:
+        # Add tone display if available
+        if self.tone_display:
             layout.addSpacing(8)
-            layout.addWidget(self.sentiment_display)
+            layout.addWidget(self.tone_display)
         
         # Add helpful explanation
         info_label = QLabel("📊 Analyze message mood, then select tone for your reply:")
@@ -283,30 +283,19 @@ class SendSlackMessageDialog(QDialog):
     # -------------------------
     # TONE AND SENTIMENT METHODS
     # -------------------------
-    def _perform_sentiment_analysis(self):
-        """Perform sentiment analysis on the original message"""
-        if not self.orchestrator or not self.original_message:
+    def _perform_tone_detection(self):
+        """Analyze message mood/tone using orchestrator's tone manager."""
+        if not self.orchestrator or not self.original_message or not self.tone_display:
             return
-        
+            
         try:
-            content = self.original_message.get('full_content', '') or self.original_message.get('content', '')
+            content = self.original_message.get('full_content', '') or self.original_message.get('preview', '') or self.original_message.get('text', '')
             if content:
-                # Use ToneManager directly instead of orchestrator
-                from src.backend.services.ai_service import OllamaService
-                from src.backend.core.tone_manager import ToneManager
-                
-                ai_service = OllamaService()
-                tone_manager = ToneManager(ai_service)
-                sentiment_result = tone_manager.analyze_message_sentiment(content)
-                
-                # Add sentiment data to message
-                self.original_message['sentiment_analysis'] = sentiment_result
-                
-                # Update sentiment display
-                if self.sentiment_display:
-                    self.sentiment_display.set_sentiment_data(sentiment_result)
-                
+                # Use tone_manager to get detection result
+                result = self.orchestrator.tone_manager.analyze_incoming_tone(content)
+                self.tone_display.set_tone_data(result.get('tone_detection', {}))
         except Exception as e:
+            print(f"Tone detection error in dialog: {e}")
             print(f"Sentiment analysis error: {e}")
     
     def _on_tone_changed(self, tone):

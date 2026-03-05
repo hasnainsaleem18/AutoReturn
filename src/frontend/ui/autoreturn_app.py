@@ -1392,7 +1392,7 @@ class AutoReturnApp(QMainWindow):
             ("Slack: 0", "statusItem"),
             ("Urgent: 0", "statusItem"),
             # NEW: Add tone status indicator
-            ("Tone: Professional", "toneStatusItem")
+            ("Tone: Formal", "toneStatusItem")
         ]
         
         self.status_labels = {}
