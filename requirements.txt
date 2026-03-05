@@ -1,0 +1,49 @@
+# ==============================================
+# AutoReturn - Unified Communication Management
+# Python Dependencies
+# ==============================================
+
+# GUI Framework
+PySide6>=6.5.0
+
+# Slack Integration
+slack-sdk>=3.21.0
+
+# Gmail API Integration
+google-api-python-client>=2.100.0
+google-auth-oauthlib>=1.1.0
+google-auth>=2.23.0
+
+# AI and ML (Used for sentiment analysis and learning system)
+pydantic-ai>=0.0.13
+pydantic>=2.0.0      # Used for tone models and learning data structures
+ollama>=0.1.0
+
+# Desktop Notifications
+plyer>=2.1.0
+
+# Secure Credential Storage
+keyring>=24.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+aiosqlite>=0.19.0      # Used for local data storage, also supports JSON-based learning system
+
+# Core NLP Processing (MUST use medium model for vectors)
+spacy>=3.7.0
+
+# Scientific Computing (Used in sentiment analysis for vector operations)
+numpy>=1.24.0
+
+# Data Processing (Used for sentiment analysis data structures)
+pandas>=2.0.0
+
+# Event extraction and calendar export
+dateparser>=1.2.0
+tzlocal>=5.2
+
+
+# Optional: For enhanced performance
+# spacy-transformers>=1.2.0  # For transformer-based models
+# en-core-web-lg>=3.7.0      # Larger English model (more accurate, slower)
+# en-core-web-trf>=3.7.0    # Transformer-based model (most accurate, slowest)
