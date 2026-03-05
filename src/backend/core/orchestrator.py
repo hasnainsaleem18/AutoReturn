@@ -60,6 +60,7 @@ class Orchestrator:
         
         # NEW: Tone Management System
         self.tone_manager = ToneManager(ai_service=self.ai_service)
+        self.tone_engine = self.tone_manager  # Alias for friend's widget compatibility
         
         # Update draft manager and agents with tone manager
         self.draft_manager.tone_manager = self.tone_manager

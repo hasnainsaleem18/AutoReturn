@@ -30,7 +30,9 @@ class GmailAgent(BaseAgent):
         
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
-        self.tone_manager = None
+        # NEW: Tone Management System
+        self.tone_manager = ToneManager(ai_service=self.ai_service)
+        self.tone_engine = self.tone_manager  # Alias for compatibility with tone widgets
         self.event_extractor = EventExtractor(
             ai_service=self.ai_service,
             enable_llm_fallback=True,
@@ -99,10 +101,7 @@ class GmailAgent(BaseAgent):
                         msg['priority'] = priority_label  # UI reads this field
                         msg['ai_tasks'] = await self._extract_tasks(msg)
                         
-                        # Add Sentiment Analysis
-                        if self.tone_manager:
-                            sentiment_result = self.tone_manager.analyze_message_sentiment(msg.get('full_content', ''))
-                            msg['ai_sentiment'] = sentiment_result.get('sentiment', 'neutral')
+                        # Tone detection is done on-demand in reply dialogs (not blocking here)
 
                         # Extract event/task candidates (calendar)
                         try:
