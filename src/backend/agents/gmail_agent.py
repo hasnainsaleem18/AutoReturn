@@ -30,9 +30,7 @@ class GmailAgent(BaseAgent):
         
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
-        # NEW: Tone Management System
-        self.tone_manager = ToneManager(ai_service=self.ai_service)
-        self.tone_engine = self.tone_manager  # Alias for compatibility with tone widgets
+        self.tone_manager = None  # Set by orchestrator via set_tone_manager()
         self.event_extractor = EventExtractor(
             ai_service=self.ai_service,
             enable_llm_fallback=True,
