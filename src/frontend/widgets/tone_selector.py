@@ -4,7 +4,7 @@
 """
 Reusable tone selector widget for AutoReturn application.
 
-Provides dropdown with 13 tone types, auto-suggest functionality, and manual override.
+Provides dropdown with 2 tone types (Formal/Informal), auto-suggest functionality, and manual override.
 """
 
 # -------------------------
@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QComboBox, QPushButton, QFrame, QSizePolicy
 )
 from PySide6.QtCore import Signal, Qt, QTimer
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtGui import QPalette
 
 from src.backend.models.tone_models import ToneType, get_tone_display_name
 
@@ -29,7 +29,7 @@ class ToneSelector(QWidget):
     Tone selector widget with dropdown and auto-suggest functionality.
     
     Provides user interface for tone selection with:
-    - Dropdown menu with 13 tone types
+    - Dropdown menu with 2 tone types
     - Auto-suggest button for AI-powered recommendations
     - Real-time tone change notifications
     - Professional styling with AutoReturn theme colors
@@ -47,7 +47,7 @@ class ToneSelector(QWidget):
         super().__init__(parent)
         self.orchestrator = orchestrator
         self.message_data = message_data or {}
-        self.current_tone = ToneType.PROFESSIONAL
+        self.current_tone = ToneType.FORMAL
         self.auto_suggest_in_progress = False
         
         self.setup_ui()
@@ -63,7 +63,6 @@ class ToneSelector(QWidget):
         
         # Tone selection widget for outgoing message styling
         self.tone_label = QLabel("Reply Tone:")
-        self.tone_label.setFont(QFont("Arial", 9, QFont.Bold))
         layout.addWidget(self.tone_label)
         
         # Tone dropdown
@@ -74,75 +73,32 @@ class ToneSelector(QWidget):
         
         # Auto-suggest button
         self.auto_btn = QPushButton("💡 Suggest Tone")
-        self.auto_btn.setFont(QFont("Arial", 8))
         self.auto_btn.setMinimumWidth(60)
         self.auto_btn.setToolTip("Get AI-powered tone suggestion")
         layout.addWidget(self.auto_btn)
         
         # Confidence label (initially hidden)
         self.confidence_label = QLabel("")
-        self.confidence_label.setFont(QFont("Arial", 8))
-        self.confidence_label.setStyleSheet("color: #666; font-style: italic;")
+        self.confidence_label.setStyleSheet("font-style: italic;")
         self.confidence_label.setVisible(False)
         layout.addWidget(self.confidence_label)
         
         # Add stretch to push everything to the left
         layout.addStretch()
         
-        # Set widget style
-        self.setStyleSheet("""
-            QWidget {
-                background-color: transparent;
-            }
-            QLabel {
-                color: #003135;
-                font-weight: 500;
-            }
-            QComboBox {
-                padding: 4px 8px;
-                border: 1px solid #AFDDE5;
-                border-radius: 4px;
-                background-color: white;
-                min-height: 20px;
-                color: #003135;
-                font-size: 13px;
-            }
-            QComboBox:hover {
-                border-color: #0FA4AF;
-            }
-            QComboBox:focus {
-                border-color: #0FA4AF;
-            }
-            QPushButton {
-                padding: 4px 8px;
-                border: 1px solid #0FA4AF;
-                border-radius: 4px;
-                background-color: #0FA4AF;
-                color: white;
-                font-weight: 500;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #024950;
-                border-color: #024950;
-            }
-            QPushButton:pressed {
-                background-color: #003135;
-                border-color: #003135;
-            }
-        """)
+        self._apply_theme_styles()
     
     def populate_tones(self):
         """Populate tone dropdown with all available tones"""
         self.tone_combo.clear()
         
-        # Add all 13 tone types
+        # Add all supported tone types
         for tone in ToneType:
             display_name = get_tone_display_name(tone)
             self.tone_combo.addItem(display_name, tone)
         
         # Set default selection
-        self.set_tone(ToneType.PROFESSIONAL)
+        self.set_tone(ToneType.FORMAL)
     
     def connect_signals(self):
         """Connect widget signals"""
@@ -159,7 +115,7 @@ class ToneSelector(QWidget):
                 
                 # Learn from user selection
                 if self.orchestrator and self.message_data:
-                    self.orchestrator.tone_manager.update_user_preferences(tone, self.message_data)
+                    self.orchestrator.tone_engine.update_user_preferences(tone, self.message_data)
     
     def on_auto_suggest(self):
         """Handle auto-suggest button click"""
@@ -174,14 +130,12 @@ class ToneSelector(QWidget):
     def perform_auto_suggest(self):
         """Perform auto-suggest using orchestrator"""
         try:
-            import asyncio
-            
-            # Get deterministic sentiment analysis
+            # Get deterministic tone analysis
             content = self.message_data.get('full_content', '') or self.message_data.get('content', '')
             if content:
-                sentiment_result = self.orchestrator.tone_manager.analyze_message_sentiment(content)
-                suggested_tone = ToneType(sentiment_result.get('suggested_tone', 'professional'))
-                confidence = sentiment_result.get('confidence', 0.5)
+                tone_result = self.orchestrator.tone_engine.analyze_incoming_tone(content)
+                suggested_tone = ToneType(tone_result.get('detected_tone', ToneType.FORMAL.value))
+                confidence = tone_result.get('confidence', 0.5)
                 
                 # Set suggested tone if confident enough
                 if confidence > 0.4:
@@ -225,8 +179,47 @@ class ToneSelector(QWidget):
     
     def reset(self):
         """Reset widget to default state"""
-        self.set_tone(ToneType.PROFESSIONAL)
+        self.set_tone(ToneType.FORMAL)
         self.confidence_label.setVisible(False)
         self.auto_suggest_in_progress = False
         self.auto_btn.setText("🤖 Auto")
         self.auto_btn.setEnabled(True)
+
+    def _apply_theme_styles(self):
+        """Use high-contrast styling with white text surfaces for dark-mode visibility."""
+        palette = self.palette()
+        button = palette.color(QPalette.Button).name()
+        button_text = palette.color(QPalette.ButtonText).name()
+
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: transparent;
+            }}
+            QLabel {{
+                color: #1f2937;
+                font-weight: 500;
+            }}
+            QComboBox {{
+                padding: 4px 8px;
+                border: 1px solid #9ca3af;
+                border-radius: 4px;
+                background-color: #ffffff;
+                min-height: 20px;
+                color: #1f2937;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: #ffffff;
+                color: #1f2937;
+                selection-background-color: #dbeafe;
+                selection-color: #1f2937;
+                border: 1px solid #9ca3af;
+            }}
+            QPushButton {{
+                padding: 4px 8px;
+                border: 1px solid #6b7280;
+                border-radius: 4px;
+                background-color: {button};
+                color: {button_text};
+                font-weight: 500;
+            }}
+        """)

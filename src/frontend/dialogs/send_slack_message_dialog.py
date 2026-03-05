@@ -3,11 +3,11 @@ from PySide6.QtWidgets import (
     QPushButton, QComboBox, QTextEdit
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPalette
 
 # Local imports for tone features
 from src.frontend.widgets.tone_selector import ToneSelector
-from src.frontend.widgets.sentiment_display import SentimentDisplay
-from src.backend.core.tone_manager import ToneManager
+from src.frontend.widgets.tone_detection_display import ToneDetectionDisplay
 
 
 class SendSlackMessageDialog(QDialog):
@@ -24,20 +24,7 @@ class SendSlackMessageDialog(QDialog):
         self.setWindowTitle("Send Slack Direct Message")
         self.setMinimumSize(520, 430)
 
-        # Force white background - same dark theme inheritance issue as gmail dialog
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #ffffff;
-            }
-            QLabel {
-                color: #003135;
-                background-color: transparent;
-            }
-            QTextEdit {
-                background-color: #ffffff;
-                color: #003135;
-            }
-        """)
+        self._apply_theme_styles()
 
         self._build_ui()
     
@@ -180,12 +167,12 @@ class SendSlackMessageDialog(QDialog):
         layout.addWidget(self.user_combo)
         layout.addSpacing(4)
         
-        # NEW: Add sentiment display for original message
-        self.sentiment_display = None
+        # NEW: Add tone display for original message
+        self.tone_detection_display = None
         if self.orchestrator and self.original_message:
-            self.sentiment_display = SentimentDisplay(self.original_message)
-            # Perform sentiment analysis
-            self._perform_sentiment_analysis()
+            self.tone_detection_display = ToneDetectionDisplay(self.original_message)
+            # Perform tone analysis
+            self._perform_tone_detection()
         
         # NEW: Add tone selector
         self.tone_selector = None
@@ -193,10 +180,10 @@ class SendSlackMessageDialog(QDialog):
             self.tone_selector = ToneSelector(self.orchestrator, self.original_message)
             self.tone_selector.tone_changed.connect(self._on_tone_changed)
         
-        # Add sentiment display if available
-        if self.sentiment_display:
+        # Add tone display if available
+        if self.tone_detection_display:
             layout.addSpacing(8)
-            layout.addWidget(self.sentiment_display)
+            layout.addWidget(self.tone_detection_display)
         
         # Add helpful explanation
         info_label = QLabel("📊 Analyze message mood, then select tone for your reply:")
@@ -248,33 +235,27 @@ class SendSlackMessageDialog(QDialog):
         return self.selected_tone if self.tone_selector else None
     
     # -------------------------
-    # TONE AND SENTIMENT METHODS
+    # TONE METHODS
     # -------------------------
-    def _perform_sentiment_analysis(self):
-        """Perform sentiment analysis on the original message"""
+    def _perform_tone_detection(self):
+        """Perform tone analysis on the original message"""
         if not self.orchestrator or not self.original_message:
             return
         
         try:
             content = self.original_message.get('full_content', '') or self.original_message.get('content', '')
             if content:
-                # Use ToneManager directly instead of orchestrator
-                from src.backend.services.ai_service import OllamaService
-                from src.backend.core.tone_manager import ToneManager
+                tone_result = self.orchestrator.tone_engine.analyze_incoming_tone(content)
                 
-                ai_service = OllamaService()
-                tone_manager = ToneManager(ai_service)
-                sentiment_result = tone_manager.analyze_message_sentiment(content)
+                # Add tone data to message
+                self.original_message['tone_detection'] = tone_result
                 
-                # Add sentiment data to message
-                self.original_message['sentiment_analysis'] = sentiment_result
-                
-                # Update sentiment display
-                if self.sentiment_display:
-                    self.sentiment_display.set_sentiment_data(sentiment_result)
+                # Update tone display
+                if self.tone_detection_display:
+                    self.tone_detection_display.set_tone_data(tone_result)
                 
         except Exception as e:
-            print(f"Sentiment analysis error: {e}")
+            print(f"Tone analysis error: {e}")
     
     def _on_tone_changed(self, tone):
         """Handle tone selection change"""
@@ -283,57 +264,32 @@ class SendSlackMessageDialog(QDialog):
         # Learn from user's manual tone selection
         if self.orchestrator and self.original_message:
             try:
-                self.orchestrator.tone_manager.update_user_preferences(tone, self.original_message)
+                self.orchestrator.tone_engine.update_user_preferences(tone, self.original_message)
                 print(f"� Learned tone preference: {tone.value} for message")
             except Exception as e:
                 print(f"Error learning tone preference: {e}")
-        
-        # Optionally adjust message text based on tone
-        if self.orchestrator and self.message_text.toPlainText().strip():
-            self._adjust_message_tone(tone)
     
     def _adjust_message_tone(self, tone):
-        """Adjust message text based on selected tone"""
-        if not self.orchestrator:
-            return
-        
-        try:
-            import asyncio
-            
-            current_text = self.message_text.toPlainText()
-            if current_text.strip():
-                # Create message context for tone adjustment
-                selected_user = self.get_selected_user()
-                message_context = {
-                    'sender': selected_user.get('name', 'Unknown') if selected_user else 'Unknown',
-                    'subject': 'Slack Direct Message',
-                    'source': 'slack',
-                    'original_message': self.original_message
-                }
-                
-                # Perform tone adjustment asynchronously
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
-                result = loop.run_until_complete(
-                    self.orchestrator.tone_manager.adjust_message_tone(
-                        current_text, tone, message_context
-                    )
-                )
-                
-                if result.success and result.adjusted_text != current_text:
-                    # Store cursor position
-                    cursor = self.message_text.textCursor()
-                    position = cursor.position()
-                    
-                    # Update text
-                    self.message_text.setPlainText(result.adjusted_text)
-                    
-                    # Restore cursor position (within bounds)
-                    cursor.setPosition(min(position, len(result.adjusted_text)))
-                    self.message_text.setTextCursor(cursor)
-                
-                loop.close()
-                
-        except Exception as e:
-            print(f"Tone adjustment error: {e}")
+        """Tone adjustment is applied at send time to avoid UI thread blocking."""
+        return
+
+    def _apply_theme_styles(self):
+        """Use white text backgrounds for readability in dark mode."""
+
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: #ffffff;
+            }}
+            QLabel {{
+                color: #1f2937;
+                background-color: transparent;
+            }}
+            QTextEdit {{
+                background-color: #ffffff;
+                color: #1f2937;
+            }}
+            QComboBox {{
+                background-color: #ffffff;
+                color: #1f2937;
+            }}
+        """)

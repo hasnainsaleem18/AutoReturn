@@ -1,6 +1,6 @@
 """
 Slack Agent - Intelligent wrapper around Slack backend service.
-Adds AI capabilities: summarization, priority scoring, sentiment analysis.
+Adds AI capabilities: summarization, priority scoring, tone analysis.
 """
 import asyncio
 from typing import List, Dict, Optional
@@ -25,13 +25,17 @@ class SlackAgent(BaseAgent):
         
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
-        self.tone_manager = None
+        self.tone_engine = None
         
         print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
 
+    def set_tone_engine(self, tone_engine):
+        """Set the tone engine for tone analysis."""
+        self.tone_engine = tone_engine
+
     def set_tone_manager(self, tone_manager):
-        """Set the tone manager for sentiment analysis."""
-        self.tone_manager = tone_manager
+        """Backward-compatible alias for set_tone_engine."""
+        self.set_tone_engine(tone_manager)
 
     async def process_request(self, request: AgentRequest) -> AgentResponse:
         """Process Slack related requests with AI intelligence."""
@@ -62,10 +66,10 @@ class SlackAgent(BaseAgent):
         # Use backend service to fetch messages - use sync_all_messages to clear filters
         messages = self.backend.sync_all_messages(limit=limit)
         
-        # Add lightweight AI intelligence (Priority & Sentiment)
+        # Add lightweight AI intelligence (Priority & Tone)
         # We skip heavy summarization here to return to UI instantly.
         if add_ai and messages:
-            print(f"🤖 Slack Agent: Analyzing priority/sentiment for {len(messages)} messages...")
+            print(f"🤖 Slack Agent: Analyzing priority/tone for {len(messages)} messages...")
             
             async def process_slack_msg_light(msg):
                 try:
@@ -74,8 +78,8 @@ class SlackAgent(BaseAgent):
                     msg['ai_priority_score'] = priority_label
                     msg['priority'] = priority_label  # UI reads this field
                     
-                    # Sentiment analysis
-                    msg['ai_sentiment'] = await self._analyze_sentiment(msg)
+                    # Tone analysis
+                    msg['ai_tone_signal'] = await self._detect_incoming_tone(msg)
                     
                     # Mark for background summarization if content is sufficient
                     if not msg.get('summary'):
@@ -143,16 +147,16 @@ class SlackAgent(BaseAgent):
             print(f"Priority analysis failed: {e}")
             return "Medium"
 
-    async def _analyze_sentiment(self, message: Dict) -> str:
-        """Use deterministic analysis to analyze sentiment of message."""
+    async def _detect_incoming_tone(self, message: Dict) -> str:
+        """Use deterministic analysis to analyze tone of message."""
         try:
-            if self.tone_manager:
+            if self.tone_engine:
                 text = message.get('full_content', '') or message.get('content_preview', '')
-                sentiment_result = self.tone_manager.analyze_message_sentiment(text)
-                return sentiment_result.get('sentiment', 'neutral')
+                tone_result = self.tone_engine.analyze_incoming_tone(text)
+                return tone_result.get('tone_signal', 'neutral')
             return "neutral"
         except Exception as e:
-            print(f"Sentiment analysis failed: {e}")
+            print(f"Tone analysis failed: {e}")
             return "unknown"
             
     def connect(self, token: str) -> bool:

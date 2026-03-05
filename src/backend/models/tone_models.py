@@ -3,7 +3,6 @@
 # -------------------------
 """
 Data models for tone adjustment and recommendation system.
-Integrates with existing agent models without modification.
 """
 
 # -------------------------
@@ -21,18 +20,7 @@ from datetime import datetime
 class ToneType(str, Enum):
     """Available tone types for message adjustment"""
     FORMAL = "formal"
-    PROFESSIONAL = "professional"
-    CASUAL = "casual"
-    FRIENDLY = "friendly"
-    ASSERTIVE = "assertive"
-    PERSUASIVE = "persuasive"
-    APOLOGETIC = "apologetic"
-    EMPATHETIC = "empathetic"
-    DIPLOMATIC = "diplomatic"
-    CONCISE = "concise"
-    HUMOROUS = "humorous"
-    APPRECIATIVE = "appreciative"
-    URGENT = "urgent"
+    INFORMAL = "informal"
 
 
 # -------------------------
@@ -42,11 +30,11 @@ class ToneRecommendation(BaseModel):
     """AI-generated tone recommendation"""
     recommended_tone: ToneType
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score 0.0 to 1.0")
-    reasoning: str = Field(description="Explanation for the recommendation")
-    sentiment_score: float = Field(ge=-1.0, le=1.0, description="Sentiment analysis -1.0 to 1.0")
-    urgency_level: str = Field(description="Message urgency: low, medium, high, critical")
-    detected_sentiment: Optional[str] = Field(description="Detected sentiment polarity")
-    detected_tone: Optional[ToneType] = Field(description="Detected tone from analysis")
+    reasoning: str = Field(default="", description="Explanation for the recommendation")
+    tone_signal_score: float = Field(default=0.0, ge=-1.0, le=1.0, description="Tone signal score -1.0 to 1.0")
+    urgency_level: str = Field(default="medium", description="Message urgency: low, medium, high, critical")
+    detected_tone_signal: Optional[str] = Field(default=None, description="Detected tone signal")
+    detected_tone: Optional[ToneType] = Field(default=None, description="Detected tone from analysis")
     fallback_used: bool = Field(default=False, description="Whether LLM fallback was used")
     context_factors: Dict[str, Any] = Field(default_factory=dict, description="Factors influencing recommendation")
 
@@ -56,7 +44,7 @@ class ToneRecommendation(BaseModel):
 # -------------------------
 class ToneProfile(BaseModel):
     """User's tone preferences and learning patterns"""
-    default_tone: ToneType = ToneType.PROFESSIONAL
+    default_tone: ToneType = ToneType.FORMAL
     sender_preferences: Dict[str, ToneType] = Field(default_factory=dict, description="Custom tones per sender")
     domain_preferences: Dict[str, ToneType] = Field(default_factory=dict, description="Custom tones per email domain")
     auto_tone_enabled: bool = True
@@ -70,7 +58,7 @@ class ToneProfile(BaseModel):
 class ToneAnalysis(BaseModel):
     """Complete tone analysis for a message"""
     message_id: str
-    sentiment_score: float = Field(ge=-1.0, le=1.0, description="Sentiment analysis -1.0 to 1.0")
+    tone_signal_score: float = Field(ge=-1.0, le=1.0, description="Tone signal score -1.0 to 1.0")
     urgency_level: str = Field(description="Message urgency: low, medium, high, critical")
     sender_type: str = Field(description="Sender classification: internal, external, unknown")
     message_type: str = Field(description="Message category: inquiry, complaint, request, info, etc.")
@@ -102,6 +90,8 @@ class ToneAdjustmentResponse(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     changes_made: List[str] = Field(default_factory=list, description="What was changed")
     processing_time_ms: int = Field(description="Time taken to process in milliseconds")
+    success: bool = True
+    reasoning: str = ""
 
 
 # -------------------------
@@ -143,18 +133,7 @@ def get_tone_display_name(tone: ToneType) -> str:
     """Get display name for tone"""
     display_names = {
         ToneType.FORMAL: "Formal",
-        ToneType.PROFESSIONAL: "Professional",
-        ToneType.CASUAL: "Casual",
-        ToneType.FRIENDLY: "Friendly",
-        ToneType.ASSERTIVE: "Assertive",
-        ToneType.PERSUASIVE: "Persuasive",
-        ToneType.APOLOGETIC: "Apologetic",
-        ToneType.EMPATHETIC: "Empathetic",
-        ToneType.DIPLOMATIC: "Diplomatic",
-        ToneType.CONCISE: "Concise",
-        ToneType.HUMOROUS: "Humorous",
-        ToneType.APPRECIATIVE: "Appreciative",
-        ToneType.URGENT: "Urgent"
+        ToneType.INFORMAL: "Informal",
     }
     return display_names.get(tone, tone.value.title())
 
@@ -163,17 +142,6 @@ def get_tone_description(tone: ToneType) -> str:
     """Get description for tone"""
     descriptions = {
         ToneType.FORMAL: "Formal and respectful with proper titles",
-        ToneType.PROFESSIONAL: "Business-appropriate and balanced",
-        ToneType.CASUAL: "Relaxed and conversational",
-        ToneType.FRIENDLY: "Warm and approachable",
-        ToneType.ASSERTIVE: "Confident and direct",
-        ToneType.PERSUASIVE: "Convincing and influential",
-        ToneType.APOLOGETIC: "Sincere and apologetic",
-        ToneType.EMPATHETIC: "Understanding and compassionate",
-        ToneType.DIPLOMATIC: "Tactful and careful",
-        ToneType.CONCISE: "Brief and to-the-point",
-        ToneType.HUMOROUS: "Light-hearted and amusing",
-        ToneType.APPRECIATIVE: "Grateful and thankful",
-        ToneType.URGENT: "Time-sensitive and action-oriented"
+        ToneType.INFORMAL: "Casual and conversational communication",
     }
-    return descriptions.get(tone, "Professional communication tone")
+    return descriptions.get(tone, "Communication tone")

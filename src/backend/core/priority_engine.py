@@ -6,7 +6,7 @@ Implements the 4-part Priority Algorithm:
     Algorithm 03: Deadline_Score (Absolute + Relative + Time Remaining Bonus)
     Algorithm 04: Sender_Score (User Priority List + CC List)
 
-Final score is clustered into: High (6.7-10), Medium (3.4-6.6), Low (0-3.3)
+Final score is clustered into: high (6.7-10), medium (3.4-6.6), low (0-3.3)
 """
 
 import re
@@ -128,15 +128,15 @@ class PriorityEngine:
             urgency = w1 × keyword + w2 × deadline + w3 × sender
         
         Then clusters the result:
-            0.0 - 3.3  → "Low"
-            3.4 - 6.6  → "Medium"
-            6.7 - 10.0 → "High"
+            0.0 - 3.3  → "low"
+            3.4 - 6.6  → "medium"
+            6.7 - 10.0 → "high"
         
         Args:
             message: Message dictionary with 'subject', 'full_content', 'sender', etc.
         
         Returns:
-            "High", "Medium", or "Low"
+            "high", "medium", or "low"
         """
         k_score = self.keyword_score(message)
         d_score = self.deadline_score(message)
@@ -149,11 +149,11 @@ class PriorityEngine:
 
         # Cluster into High / Medium / Low
         if urgency >= self.theta_high:
-            label = "High"
+            label = "high"
         elif urgency >= self.theta_medium:
-            label = "Medium"
+            label = "medium"
         else:
-            label = "Low"
+            label = "low"
 
         # Debug log
         print(f"   📊 Priority: K={k_score:.1f} D={d_score:.1f} S={s_score:.1f} "

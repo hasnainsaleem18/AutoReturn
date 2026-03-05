@@ -48,10 +48,10 @@ AutoReturn has moved away from traditional monolithic design to a **Decoupled Or
 * **4-Part Priority Algorithm**: A high-speed hybrid algorithm integrating:
   * **Algorithm 02 (Keyword Engine)**: scans for Direct Urgency, Time Pressure, and Action Calls with spaCy-powered negation detection.
   * **Algorithm 03 (Deadline Engine)**: Regex-based extraction of absolute (dates) and relative (today, tomorrow) deadlines with urgency bonuses.
-  * **Algorithm 04 (Sender Engine)**: Sentiment-aware importance scoring using a configurable User Priority List.
+  * **Algorithm 04 (Sender Engine)**: Tone-aware importance scoring using a configurable User Priority List.
 * **Dynamic Rules Editor**: A fully functional Priority Rules editor in Settings allowing live updates to the AI's priority weights without restarts.
 
-### � Advanced Sentiment Analysis
+### � Advanced Tone Detection
 
 * **90% Accuracy**: Hybrid deterministic algorithm with lexicon + embedding fallback.
 * **Real-time Analysis**: Sub-5ms processing for instant mood detection.
@@ -67,20 +67,19 @@ AutoReturn/
 ├── run.sh                   # Startup script
 ├── src/
 │   ├── backend/
-│   │   ├── core/            # The Brain (Orchestrator, SentimentAnalyzer, ToneManager)
+│   │   ├── core/            # The Brain (Orchestrator, ToneEngine)
 │   │   ├── agents/          # Intelligent Workers (Gmail, Slack)
 │   │   ├── services/        # API & AI integrations (Ollama, Gmail, Slack)
 │   │   └── models/          # Shared Pydantic models (Tone, Message types)
 │   └── frontend/
 │       ├── ui/              # Main logic & High-performance UI
 │       ├── dialogs/         # Interaction components (Gmail/Slack dialogs)
-│       └── widgets/         # UI components (SentimentDisplay, ToneSelector)
+│       └── widgets/         # UI components (ToneDetectionDisplay, ToneSelector)
 ├── config/                  # Settings & JSON storage (tone profiles, preferences)
 ├── data/                    # Secure Token storage
 ├── docs/                    # Technical documentation
 │   ├── backend_architecture.md
-│   ├── Sentiment_Analysis_Algorithm.md
-│   └── Tone_Adjustment_Sentiment_Features.md
+│   └── Tone_Detection_Algorithm.md
 └── logs/                    # Application logs
 ```
 
@@ -88,7 +87,7 @@ AutoReturn/
 
 ## � Technical Highlights
 
-### 🎯 Sentiment Analysis Engine
+### 🎯 Tone Detection Engine
 
 * **Hybrid Algorithm**: Combines 60+ word lexicon with spaCy embedding similarity
 * **9-Stage Pipeline**: Preprocessing → Tokenization → Scoring → Normalization → Classification
@@ -100,11 +99,11 @@ AutoReturn/
 * **User Preference Storage**: JSON-based tone profiles with sender/domain preferences
 * **Real-time Learning**: Learns from manual tone selections in Gmail/Slack dialogs
 * **Effectiveness Tracking**: Monitors tone quality and adapts recommendations
-* **Auto-tone Suggestions**: Intelligent tone recommendations based on sentiment analysis
+* **Auto-tone Suggestions**: Intelligent tone recommendations based on tone detection
 
 ### 🎨 UI/UX Integration
 
-* **SentimentDisplay Widget**: Shows detected mood with confidence indicators
+* **ToneDetectionDisplay Widget**: Shows detected tone signal with confidence indicators
 * **ToneSelector Component**: Manual override with "Detected: [Tone]" display
 * **Real-time Updates**: Immediate analysis as users compose messages
 * **Platform Awareness**: Different defaults for Gmail vs Slack
@@ -157,7 +156,7 @@ The configuration is handled via the UI settings menu.
 * [x] Orchestrator-Agent Architecture
 * [x] Progressive Loading (Fast Fetch)
 * [x] Background AI Summarization (Parallel Processing)
-* [x] Hybrid Sentiment Analysis (90% accuracy)
+* [x] Hybrid Tone Detection (90% accuracy)
 * [x] **4-Part Priority Ranking Algorithm (Implemented)**
 * [x] **Dynamic Priority Rules Editor (Functional)**
 * [x] User Preference Learning & Tone History

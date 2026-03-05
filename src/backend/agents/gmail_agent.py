@@ -29,13 +29,17 @@ class GmailAgent(BaseAgent):
         
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
-        self.tone_manager = None
+        self.tone_engine = None
         
         print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
 
+    def set_tone_engine(self, tone_engine):
+        """Set the tone engine for tone analysis."""
+        self.tone_engine = tone_engine
+
     def set_tone_manager(self, tone_manager):
-        """Set the tone manager for sentiment analysis."""
-        self.tone_manager = tone_manager
+        """Backward-compatible alias for set_tone_engine."""
+        self.set_tone_engine(tone_manager)
 
     async def process_request(self, request: AgentRequest) -> AgentResponse:
         """Process Gmail related requests with AI intelligence."""
@@ -93,10 +97,10 @@ class GmailAgent(BaseAgent):
                         msg['priority'] = priority_label  # UI reads this field
                         msg['ai_tasks'] = await self._extract_tasks(msg)
                         
-                        # Add Sentiment Analysis
-                        if self.tone_manager:
-                            sentiment_result = self.tone_manager.analyze_message_sentiment(msg.get('full_content', ''))
-                            msg['ai_sentiment'] = sentiment_result.get('sentiment', 'neutral')
+                        # Add Tone Analysis
+                        if self.tone_engine:
+                            tone_result = self.tone_engine.analyze_incoming_tone(msg.get('full_content', ''))
+                            msg['ai_tone_signal'] = tone_result.get('tone_signal', 'neutral')
                         
                         # Mark for background summarization
                         if not msg.get('summary'):

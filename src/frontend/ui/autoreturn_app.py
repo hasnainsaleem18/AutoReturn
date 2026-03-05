@@ -141,7 +141,7 @@ class AutoReturnApp(QMainWindow):
         self._connect_gmail_signals()
         
         # Summary generation queue
-        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=5)
+        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=2)
         self.queue_summary_generator.summary_generated.connect(self.on_summary_generated)
         self.queue_summary_generator.progress_update.connect(self.on_summary_progress)
         self.queue_summary_generator.batch_complete.connect(self.on_batch_summary_complete)
@@ -306,7 +306,7 @@ class AutoReturnApp(QMainWindow):
             self.start_slack_listener()
             
             print("Fetching initial messages...")
-            initial_messages = self.slack_service.sync_all_messages(limit=200)
+            initial_messages = self.slack_service.fetch_all_messages(limit=50)
             if initial_messages:
                 self.on_slack_new_messages(initial_messages)
             
@@ -332,25 +332,8 @@ class AutoReturnApp(QMainWindow):
 
         print(f"Processing {len(new_messages)} new messages")
 
-        # Run priority classification on messages that don't have it yet
-        if hasattr(self, 'orchestrator') and hasattr(self.orchestrator, 'agents'):
-            slack_agent = self.orchestrator.agents.get('slack')
-            if slack_agent and hasattr(slack_agent, 'priority_engine'):
-                for msg in new_messages:
-                    if not msg.get('priority') or msg.get('priority') == 'normal':
-                        msg['priority'] = slack_agent.priority_engine.calculate_priority(msg)
-
-        # Filter out duplicates
-        existing_ids = {msg.get('id') for msg in self.messages}
-        unique_new_messages = [m for m in new_messages if m.get('id') not in existing_ids]
-        
-        if not unique_new_messages:
-            return
-
-        self.messages.extend(unique_new_messages)
-        # Sort by Priority (Rank) then Timestamp
-        p_map = {'High': 3, 'Medium': 2, 'Low': 1}
-        self.messages.sort(key=lambda x: (p_map.get(x.get('priority', 'Low'), 1), float(x.get('timestamp', 0))), reverse=True)
+        self.messages.extend(new_messages)
+        self.messages.sort(key=lambda x: float(x.get('timestamp', 0)), reverse=True)
         
         self.populate_table()
         
@@ -464,18 +447,12 @@ class AutoReturnApp(QMainWindow):
     
     def sync_all_messages(self):
         """Synchronize all messages from connected services using the Orchestrator."""
-        if self._is_syncing_gmail:
-            self.show_status_message("A sync is already in progress...")
-            print("⏳ All-Sync skipped: Previous sync still running")
-            return
-
         # Reset filters so new messages are visible
         self.active_filter = 'all'
         self.search_filters = None
-        self.search_field.clear()
+        self.search_bar.clear()
         
         self.show_status_message("Syncing all messages via Orchestrator...")
-        self._is_syncing_gmail = True
         
         # We can use a natural language command or direct routing
         # For simplicity in code, let's use the natural language entry point
@@ -496,7 +473,6 @@ class AutoReturnApp(QMainWindow):
 
     def on_all_sync_complete(self, response: AgentResponse):
         """Handle completion of unified sync from Orchestrator."""
-        self._is_syncing_gmail = False
         if response.success:
             messages = response.data.get("messages", [])
             errors = response.data.get("errors", [])
@@ -699,9 +675,7 @@ class AutoReturnApp(QMainWindow):
             return
             
         self.messages.extend(new_items)
-        # Sort by Priority (Rank) then Timestamp
-        p_map = {'High': 3, 'Medium': 2, 'Low': 1}
-        self.messages.sort(key=lambda x: (p_map.get(x.get('priority', 'Low'), 1), float(x.get('timestamp', 0))), reverse=True)
+        self.messages.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
         self.populate_table()
         
         # Queue for background AI summarization (progressive loading)
@@ -1300,29 +1274,37 @@ class AutoReturnApp(QMainWindow):
                     summary_label.setCursor(Qt.PointingHandCursor)
                 self.table.setCellWidget(row_idx, 4, summary_label)
                 
-                priority_val = msg.get('priority', 'Low')
-                # Standardize to High/Medium/Low if it comes as something else
-                if priority_val.lower() == 'urgent': priority_val = 'High'
-                elif priority_val.lower() == 'high': priority_val = 'Medium'
-                elif priority_val.lower() == 'normal': priority_val = 'Low'
+                priority = msg.get('priority', 'normal')
+                priority_icons = {
+                    'high': '',
+                    'medium': '', 
+                    'low': '', 
+                    'normal': ''
+                }
+                priority_order = {
+                    'high': 4,
+                    'medium': 3,
+                    'low': 2,
+                    'normal': 1
+                }
                 
-                priority_icons = {'High': '🔴', 'Medium': '⭐', 'Low': '⚪'}
-                priority_order = {'High': 3, 'Medium': 2, 'Low': 1}
-                
-                display_label = priority_val.upper()
-                priority_item = QTableWidgetItem(f"{priority_icons.get(priority_val, '')} {display_label}")
+                priority_item = QTableWidgetItem(f"{priority_icons[priority]} {priority.upper()}")
                 priority_item.setTextAlignment(Qt.AlignCenter)
-                priority_item.setData(Qt.UserRole, priority_order.get(priority_val, 1))
+                priority_item.setData(Qt.UserRole, priority_order[priority])
                 
-                if priority_val == 'High':
+                if priority == 'urgent':
                     priority_item.setBackground(QColor(255, 229, 224))
                     priority_item.setForeground(QColor(150, 71, 52))
-                elif priority_val == 'Medium':
+                elif priority == 'high':
                     priority_item.setBackground(QColor(212, 244, 247))
                     priority_item.setForeground(QColor(2, 73, 80))
                 else:
                     priority_item.setBackground(QColor(175, 221, 229))
                     priority_item.setForeground(QColor(0, 49, 53))
+                
+                font = priority_item.font()
+                font.setBold(True)
+                priority_item.setFont(font)
                 
                 self.table.setItem(row_idx, 5, priority_item)
                 
@@ -1476,7 +1458,7 @@ class AutoReturnApp(QMainWindow):
         elif self.active_filter == 'slack':
             filter_match = msg.get('source') == 'slack'
         elif self.active_filter == 'urgent':
-            filter_match = msg.get('priority') in ['High', 'urgent']
+            filter_match = msg.get('priority') == 'urgent'
         else:
             filter_match = True
         
@@ -1813,7 +1795,7 @@ class AutoReturnApp(QMainWindow):
         # NEW: Update tone status indicator
         if hasattr(self, 'orchestrator') and self.orchestrator:
             try:
-                default_tone = self.orchestrator.tone_manager.user_profile.default_tone
+                default_tone = self.orchestrator.tone_engine.user_profile.default_tone
                 tone_display = default_tone.value.title() if default_tone else "None"
                 self.status_labels.get("Tone").setText(f"Tone: {tone_display}")
             except Exception as e:

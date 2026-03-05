@@ -1,0 +1,49 @@
+{
+  "word_sets": {
+    "formal_salutations": ["dear", "respected", "sir", "madam", "mr", "mrs", "ms", "dr", "team"],
+    "casual_greetings": ["hey", "hi", "yo", "bro", "sup", "hiya", "whatsup", "wassup", "wazzup"],
+    "slang_words": ["bro", "bruh", "dude", "yo", "sup", "whatsup", "wassup", "wazzup", "lol", "lmao", "omg", "btw", "idk", "imo", "tbh"],
+    "politeness_words": ["please", "kindly", "respectfully", "would", "could", "appreciate"],
+    "gratitude_words": ["thank", "thanks", "appreciate"],
+    "urgency_words": ["urgent", "asap", "immediately", "priority", "eod", "deadline"],
+    "hedging_words": ["maybe", "perhaps", "might", "could", "possibly"]
+  },
+  "regex_signals": {
+    "formal": [
+      {"pattern": "^(dear|respected)\\s+(sir|madam|team|all|mr\\.?|mrs\\.?|ms\\.?|dr\\.?)\\b", "weight": 1.0},
+      {"pattern": "\\b(i\\s+hope\\s+you\\s+are\\s+well|i\\s+hope\\s+this\\s+email\\s+finds\\s+you\\s+well)\\b", "weight": 0.9},
+      {"pattern": "\\b(kindly|please\\s+find|for\\s+your\\s+review|at\\s+your\\s+earliest\\s+convenience)\\b", "weight": 0.8},
+      {"pattern": "\\b(best\\s+regards|kind\\s+regards|sincerely|yours\\s+faithfully|yours\\s+sincerely)\\b", "weight": 1.0}
+    ],
+    "informal": [
+      {"pattern": "^(hey|yo|hi)\\b", "weight": 1.0},
+      {"pattern": "\\b(what'?s\\s*up|wassup|whatsup|sup|bro|bruh|dude)\\b", "weight": 1.2},
+      {"pattern": "\\b(lol|lmao|omg|btw|idk|imo|tbh)\\b", "weight": 0.9},
+      {"pattern": "[!?]{2,}", "weight": 0.5}
+    ]
+  },
+  "feature_weights": {
+    "formal": {
+      "formal_salutation_ratio": 1.0,
+      "politeness_ratio": 0.8,
+      "hedging_ratio": 0.3,
+      "avg_sentence_length": 0.5,
+      "negative_ratio": -0.2,
+      "slang_ratio": -0.9,
+      "formal_regex_score": 1.4,
+      "informal_regex_score": -1.2
+    },
+    "informal": {
+      "casual_greeting_ratio": 1.0,
+      "slang_ratio": 1.3,
+      "positive_ratio": 0.5,
+      "gratitude_ratio": 0.2,
+      "avg_sentence_length": -0.15,
+      "urgency_ratio": 0.1,
+      "contraction_ratio": 0.5,
+      "exclamation_ratio": 0.4,
+      "informal_regex_score": 1.5,
+      "formal_regex_score": -1.0
+    }
+  }
+}

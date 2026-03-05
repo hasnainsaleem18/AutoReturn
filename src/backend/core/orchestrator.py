@@ -13,7 +13,7 @@ from src.backend.agents.slack_agent import SlackAgent
 from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
 from src.backend.services.ai_service import OllamaService
 from src.backend.core.draft_manager import DraftManager
-from src.backend.core.tone_manager import ToneManager
+from src.backend.core.tone_engine import ToneEngine
 
 
 # -------------------------
@@ -56,23 +56,27 @@ class Orchestrator:
         }
         
         # Intelligent Components
-        self.draft_manager = DraftManager(self.ai_service, tone_manager=None)  # Will be updated after tone_manager init
+        self.draft_manager = DraftManager(self.ai_service, tone_engine=None)  # Will be updated after tone_engine init
         
         # NEW: Tone Management System
-        self.tone_manager = ToneManager(ai_service=self.ai_service)
+        self.tone_engine = ToneEngine(ai_service=self.ai_service)
+        # Backward compatibility for existing references.
+        self.tone_manager = self.tone_engine
         
-        # Update draft manager and agents with tone manager
-        self.draft_manager.tone_manager = self.tone_manager
+        # Update draft manager and agents with tone engine
+        self.draft_manager.tone_engine = self.tone_engine
         for agent in self.agents.values():
-            if hasattr(agent, 'set_tone_manager'):
-                agent.set_tone_manager(self.tone_manager)
+            if hasattr(agent, 'set_tone_engine'):
+                agent.set_tone_engine(self.tone_engine)
+            elif hasattr(agent, 'set_tone_manager'):
+                agent.set_tone_manager(self.tone_engine)
         
         # Pydantic AI Agent for intent classification
         self._setup_pydantic_agent(ollama_model)
         
         print(f"🧠 Orchestrator initialized with model {ollama_model}")
         print(f"   Available agents: {list(self.agents.keys())}")
-        print(f"🎨 Tone Manager initialized")
+        print(f"🎨 Tone Engine initialized")
 
     def _setup_pydantic_agent(self, model_name: str):
         """Set up Pydantic AI agent for intent classification."""
@@ -221,9 +225,13 @@ class Orchestrator:
         """Get a specific agent by name."""
         return self.agents.get(name)
     
-    def get_tone_manager(self) -> ToneManager:
-        """Get the tone manager instance."""
-        return self.tone_manager
+    def get_tone_engine(self) -> ToneEngine:
+        """Get the tone engine instance."""
+        return self.tone_engine
+
+    def get_tone_manager(self) -> ToneEngine:
+        """Backward-compatible getter for tone engine."""
+        return self.tone_engine
     
     def check_ollama_status(self) -> bool:
         """Check if Ollama is accessible."""
