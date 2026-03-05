@@ -334,7 +334,6 @@ class SettingsDialog(QDialog):
         
         # Add tabs in order
         tabs.addTab(self._create_profile_tab(), "Profile")
-        tabs.addTab(self._create_quiet_hours_tab(), "Quiet Hours")
         tabs.addTab(self._create_priority_rules_tab(), "Priority Rules")
         tabs.addTab(self._create_integrations_tab(), "Integrations")
         
@@ -448,41 +447,6 @@ class SettingsDialog(QDialog):
         auth_method = self.user_data.get('auth_method', 'email')
         return "Email/Password" if auth_method == 'email' else "Google OAuth"
     
-    # -------------------------
-    # QUIET HOURS TAB
-    # -------------------------
-    def _create_quiet_hours_tab(self):
-        """Create the Quiet Hours tab content."""
-        scroll = self._create_scroll_area()
-        content = QWidget()
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(
-            StyleConstants.SPACING_XLARGE,
-            StyleConstants.SPACING_XLARGE,
-            StyleConstants.SPACING_XLARGE,
-            StyleConstants.SPACING_XLARGE
-        )
-        layout.setSpacing(StyleConstants.SPACING_LARGE)
-        
-        # Section header
-        layout.addWidget(self._create_section_header("🌙 Quiet Hours"))
-        
-        # Description
-        description = self._create_description(
-            "Configure when you don't want to be disturbed by notifications. "
-            "During quiet hours, messages will still arrive but notifications "
-            "will be silenced."
-        )
-        layout.addWidget(description)
-        
-        # Coming soon placeholder
-        layout.addWidget(self._create_coming_soon_card(
-            "Quiet Hours feature is under development.\nStay tuned for updates!"
-        ))
-        
-        layout.addStretch()
-        scroll.setWidget(content)
-        return scroll
 
     # -------------------------
     # PRIORITY RULES TAB
