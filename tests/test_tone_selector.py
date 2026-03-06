@@ -14,8 +14,14 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, Q
 from PySide6.QtCore import Qt
 
 from src.backend.core.orchestrator import Orchestrator
+<<<<<<< HEAD
 from src.frontend.widgets.tone_selector import ToneSelector
 from src.frontend.widgets.sentiment_display import SentimentDisplay
+=======
+from src.backend.models.tone_models import ToneType
+from src.frontend.widgets.tone_selector import ToneSelector
+from src.frontend.widgets.tone_detection_display import ToneDetectionDisplay
+>>>>>>> kashan
 
 
 class TestWindow(QMainWindow):
@@ -61,9 +67,15 @@ class TestWindow(QMainWindow):
         self.tone_selector = ToneSelector(self.orchestrator, test_message)
         layout.addWidget(self.tone_selector)
         
+<<<<<<< HEAD
         # Sentiment display
         self.sentiment_display = SentimentDisplay(test_message)
         layout.addWidget(self.sentiment_display)
+=======
+        # Tone detection display
+        self.tone_detection_display = ToneDetectionDisplay(test_message)
+        layout.addWidget(self.tone_detection_display)
+>>>>>>> kashan
         
         # Test buttons
         test_button = QPushButton("Test Auto-Suggest")
@@ -81,8 +93,13 @@ class TestWindow(QMainWindow):
         # Connect signals
         self.tone_selector.tone_changed.connect(self.on_tone_changed)
         
+<<<<<<< HEAD
         # Initial sentiment analysis
         self.perform_sentiment_analysis(test_message)
+=======
+        # Initial tone analysis
+        self.perform_tone_detection(test_message)
+>>>>>>> kashan
     
     def test_auto_suggest(self):
         """Test auto-suggest functionality"""
@@ -105,18 +122,28 @@ class TestWindow(QMainWindow):
         }
         
         self.tone_selector.set_message_data(new_message)
+<<<<<<< HEAD
         self.sentiment_display.set_message_data(new_message)
         self.perform_sentiment_analysis(new_message)
         self.status_label.setText("Message data updated")
     
     def perform_sentiment_analysis(self, message_data):
         """Perform sentiment analysis on message"""
+=======
+        self.tone_detection_display.set_message_data(new_message)
+        self.perform_tone_detection(new_message)
+        self.status_label.setText("Message data updated")
+    
+    def perform_tone_detection(self, message_data):
+        """Perform tone analysis on message"""
+>>>>>>> kashan
         if not self.orchestrator:
             return
         
         try:
             content = message_data.get('full_content', '')
             if content:
+<<<<<<< HEAD
                 sentiment_result = self.orchestrator.tone_manager.analyze_message_sentiment(content)
                 
                 # Add sentiment data to message
@@ -128,6 +155,19 @@ class TestWindow(QMainWindow):
                 print(f"✅ Sentiment analysis: {sentiment_result.get('sentiment')} ({sentiment_result.get('confidence'):.2f})")
         except Exception as e:
             print(f"❌ Sentiment analysis error: {e}")
+=======
+                tone_result = self.orchestrator.tone_engine.analyze_incoming_tone(content)
+                
+                # Add tone data to message
+                message_data['tone_detection'] = tone_result
+                
+                # Update displays
+                self.tone_detection_display.set_message_data(message_data)
+                
+                print(f"✅ Tone analysis: {tone_result.get('tone_signal')} ({tone_result.get('confidence'):.2f})")
+        except Exception as e:
+            print(f"❌ Tone analysis error: {e}")
+>>>>>>> kashan
     
     def on_tone_changed(self, tone):
         """Handle tone change"""

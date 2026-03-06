@@ -14,7 +14,11 @@ google-api-python-client>=2.100.0
 google-auth-oauthlib>=1.1.0
 google-auth>=2.23.0
 
+<<<<<<< HEAD
 # AI and ML (Used for sentiment analysis and learning system)
+=======
+# AI and ML (Used for tone detection and learning system)
+>>>>>>> kashan
 pydantic-ai>=0.0.13
 pydantic>=2.0.0      # Used for tone models and learning data structures
 ollama>=0.1.0
@@ -32,10 +36,17 @@ aiosqlite>=0.19.0      # Used for local data storage, also supports JSON-based l
 # Core NLP Processing (MUST use medium model for vectors)
 spacy>=3.7.0
 
+<<<<<<< HEAD
 # Scientific Computing (Used in sentiment analysis for vector operations)
 numpy>=1.24.0
 
 # Data Processing (Used for sentiment analysis data structures)
+=======
+# Scientific Computing (Used in tone detection for vector operations)
+numpy>=1.24.0
+
+# Data Processing (Used for tone detection data structures)
+>>>>>>> kashan
 pandas>=2.0.0
 
 # Event extraction and calendar export

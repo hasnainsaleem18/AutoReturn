@@ -3,7 +3,7 @@
 # -------------------------
 """
 UI widget components for AutoReturn application.
-Contains reusable UI elements for tone selection, sentiment display, and other features.
+Contains reusable UI elements for tone selection, tone detection display, and other features.
 """
 
 # -------------------------

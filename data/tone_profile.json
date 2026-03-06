@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "default_tone": "casual",
   "sender_preferences": {
     "boss@company.com": "professional",
@@ -167,5 +168,15 @@
     "professional": 0.8,
     "casual": 0.7,
     "formal": 0.9
+=======
+  "default_tone": "formal",
+  "sender_preferences": {},
+  "domain_preferences": {},
+  "auto_tone_enabled": true,
+  "manual_override_history": [],
+  "tone_effectiveness_scores": {
+    "formal": 0.5,
+    "informal": 0.5
+>>>>>>> kashan
   }
 }
