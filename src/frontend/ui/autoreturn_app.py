@@ -2582,7 +2582,7 @@ class AutoReturnApp(QMainWindow):
         # NEW: Update tone status indicator
         if hasattr(self, 'orchestrator') and self.orchestrator:
             try:
-                default_tone = self.orchestrator.tone_manager.user_profile.default_tone
+                default_tone = self.orchestrator.tone_engine.user_profile.default_tone
                 tone_display = default_tone.value.title() if default_tone else "None"
                 self.status_labels.get("Tone").setText(f"Tone: {tone_display}")
             except Exception as e:

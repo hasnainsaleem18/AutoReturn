@@ -17,9 +17,10 @@ from src.backend.models.tone_models import ToneType
 class DraftManager:
     """Enhanced AI component for managing and generating message drafts with tone awareness."""
     
-    def __init__(self, ai_service: OllamaService, tone_manager=None):
+    def __init__(self, ai_service: OllamaService, tone_engine=None, tone_manager=None):
         self.ai_service = ai_service
-        self.tone_manager = tone_manager  # NEW: Optional tone manager integration
+        # Prefer tone_engine naming; keep tone_manager for backward compatibility.
+        self.tone_engine = tone_engine if tone_engine is not None else tone_manager
     
     async def generate_draft(self, message_context: str, tone: Optional[ToneType] = None) -> str:
         """
@@ -32,7 +33,7 @@ class DraftManager:
         Returns:
             Generated draft text
         """
-        if tone and self.tone_manager:
+        if tone and self.tone_engine:
             # Use tone-aware generation
             return await self._generate_tone_aware_draft(message_context, tone)
         else:
@@ -51,7 +52,7 @@ class DraftManager:
             }
             
             # Use tone preference engine for generation
-            result = await self.tone_manager.process_outgoing_message(
+            result = await self.tone_engine.process_outgoing_message(
                 original_message=message_data,
                 draft_text="",  # Generate from scratch
                 manual_tone=tone
@@ -103,17 +104,17 @@ class DraftManager:
         Returns:
             Dictionary with processed draft and metadata
         """
-        if not self.tone_manager:
+        if not self.tone_engine:
             # Fallback to basic processing
             return {
                 'draft': user_draft or await self._generate_basic_draft(str(original_message)),
-                'tone': manual_tone or ToneType.PROFESSIONAL,
+                'tone': manual_tone or ToneType.FORMAL,
                 'confidence': 0.5,
-                'reasoning': 'Basic draft generation (no tone manager)'
+                'reasoning': 'Basic draft generation (no tone engine)'
             }
         
         # Use tone preference engine for processing
-        result = await self.tone_manager.process_outgoing_message(
+        result = await self.tone_engine.process_outgoing_message(
             original_message=original_message,
             draft_text=user_draft,
             manual_tone=manual_tone
@@ -121,9 +122,9 @@ class DraftManager:
         
         return {
             'draft': result.get('adjusted_draft', user_draft),
-            'tone': result.get('final_tone', manual_tone or ToneType.PROFESSIONAL),
-            'recommended_tone': result.get('recommended_tone', ToneType.PROFESSIONAL),
+            'tone': result.get('final_tone', manual_tone or ToneType.FORMAL),
+            'recommended_tone': result.get('recommended_tone', ToneType.FORMAL),
             'confidence': result.get('confidence', 0.0),
             'reasoning': result.get('reasoning', ''),
-            'sentiment_analysis': result.get('sentiment_analysis')
+            'tone_detection': result.get('tone_detection')
         }

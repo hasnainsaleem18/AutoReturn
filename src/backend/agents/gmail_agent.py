@@ -30,7 +30,7 @@ class GmailAgent(BaseAgent):
         
         # Priority Engine (New Algorithm Implementation)
         self.priority_engine = PriorityEngine()
-        self.tone_manager = None  # Set by orchestrator via set_tone_manager()
+        self.tone_engine = None  # Set by orchestrator
         self.event_extractor = EventExtractor(
             ai_service=self.ai_service,
             enable_llm_fallback=True,
@@ -39,9 +39,13 @@ class GmailAgent(BaseAgent):
         
         print(f"✅ {self.name} initialized with AI capabilities and Priority Engine")
 
+    def set_tone_engine(self, tone_engine):
+        """Set the tone engine instance."""
+        self.tone_engine = tone_engine
+
     def set_tone_manager(self, tone_manager):
-        """Set the tone manager for sentiment analysis."""
-        self.tone_manager = tone_manager
+        """Backward-compatible alias."""
+        self.set_tone_engine(tone_manager)
 
     async def process_request(self, request: AgentRequest) -> AgentResponse:
         """Process Gmail related requests with AI intelligence."""
