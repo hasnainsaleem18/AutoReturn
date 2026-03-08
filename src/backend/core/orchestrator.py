@@ -239,11 +239,16 @@ class Orchestrator:
         Returns:
             dict: {'draft': str, 'tone': Any, 'confidence': float, ...}
         """
-        return await self.draft_manager.process_reply_draft(
-            original_message=message,
-            user_draft="",
-            manual_tone=None,
+        # Pass the full message dict for context-aware generation
+        draft_text = await self.draft_manager._generate_basic_draft(
+            message_context=message.get('full_content', message.get('preview', '')),
+            message_data=message,
         )
+        return {
+            'draft': draft_text,
+            'tone': None,
+            'confidence': 0.8,
+        }
 
     def get_agent(self, name: str) -> Optional[BaseAgent]:
         """Get a specific agent by name."""

@@ -27,6 +27,9 @@ class EventReviewDialog(QDialog):
                  auto_select_threshold: float = 0.85,
                  auto_add_high_confidence: bool = True,
                  ics_output_dir: str = "",
+                 source_message: dict = None,
+                 draft_manager=None,
+                 show_send_dialog_callback=None,
                  parent=None):
         super().__init__(parent)
         self.events = events or []
@@ -34,6 +37,10 @@ class EventReviewDialog(QDialog):
         self.auto_select_threshold = auto_select_threshold
         self.auto_add_high_confidence = auto_add_high_confidence
         self.ics_output_dir = ics_output_dir
+        # For the "conflict reply" feature
+        self.source_message = source_message or {}
+        self.draft_manager = draft_manager
+        self.show_send_dialog_callback = show_send_dialog_callback
 
         self.setWindowTitle("Review Schedule Suggestions")
         self.setMinimumSize(840, 480)
@@ -305,15 +312,15 @@ class EventReviewDialog(QDialog):
     def _ask_conflict_decision(self, ev: EventCandidate, conflicts: List[dict]) -> str:
         """Ask user how to handle a conflicting suggestion."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Time Conflict Found")
-        dialog.resize(760, 420)
+        dialog.setWindowTitle("⚠️ Calendar Conflict Detected")
+        dialog.resize(760, 440)
         dialog.setMinimumSize(680, 360)
 
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        title = QLabel("This suggestion overlaps with existing calendar item(s).")
+        title = QLabel("This suggestion overlaps with an existing calendar item.")
         title.setObjectName("title")
         subtitle = QLabel(
             f"Suggestion: {ev.title}\n"
@@ -345,15 +352,27 @@ class EventReviewDialog(QDialog):
             table.selectRow(0)
         layout.addWidget(table)
 
+        conflict_reply_btn = QPushButton("✉️ Compose 'I'm Busy' Reply")
+        conflict_reply_btn.setObjectName("btnPrimary")
+        conflict_reply_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0FA4AF; color: white;
+                border: none; padding: 6px 14px;
+                border-radius: 6px; font-size: 12px; font-weight: 600;
+            }
+            QPushButton:hover { background-color: #024950; }
+        """)
+
         btn_row = QHBoxLayout()
-        open_btn = QPushButton("Open Selected Existing")
+        open_btn = QPushButton("Open Existing Event")
         open_btn.setObjectName("btnSecondary")
         skip_btn = QPushButton("Skip This Suggestion")
         skip_btn.setObjectName("btnSecondary")
         add_btn = QPushButton("Add Anyway")
-        add_btn.setObjectName("btnPrimary")
+        add_btn.setObjectName("btnSecondary")
 
         btn_row.addWidget(open_btn)
+        btn_row.addWidget(conflict_reply_btn)
         btn_row.addStretch()
         btn_row.addWidget(skip_btn)
         btn_row.addWidget(add_btn)
@@ -368,6 +387,8 @@ class EventReviewDialog(QDialog):
             return conflicts[row]
 
         def _open_selected():
+            from PySide6.QtCore import QUrl
+            from PySide6.QtGui import QDesktopServices
             selected = _selected_conflict()
             html_link = selected.get("htmlLink")
             if html_link:
@@ -381,9 +402,65 @@ class EventReviewDialog(QDialog):
             choice["value"] = "add"
             dialog.accept()
 
+        def _compose_conflict_reply():
+            choice["value"] = "skip"
+            selected_conflict = _selected_conflict()
+            conflict_title = selected_conflict.get("summary", "an existing appointment")
+            conflict_start = self._fmt_dt(selected_conflict.get("start", ""))
+            conflict_end = self._fmt_dt(selected_conflict.get("end", ""))
+            dialog.accept()
+
+            # Try AI-generated reply if draft_manager is available
+            if self.draft_manager and self.source_message and self.show_send_dialog_callback:
+                import asyncio
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+                        future = asyncio.ensure_future(
+                            self.draft_manager.generate_conflict_reply(
+                                self.source_message, conflict_title, conflict_start, conflict_end
+                            )
+                        )
+                        def _on_done(f):
+                            try:
+                                reply_text = f.result()
+                            except Exception:
+                                reply_text = _fallback_reply(conflict_title, conflict_start)
+                            _open_send_dialog(reply_text)
+                        future.add_done_callback(_on_done)
+                    else:
+                        reply_text = loop.run_until_complete(
+                            self.draft_manager.generate_conflict_reply(
+                                self.source_message, conflict_title, conflict_start, conflict_end
+                            )
+                        )
+                        _open_send_dialog(reply_text)
+                except Exception:
+                    _open_send_dialog(_fallback_reply(conflict_title, conflict_start))
+            else:
+                _open_send_dialog(_fallback_reply(conflict_title, conflict_start))
+
+        def _fallback_reply(conflict_title, conflict_start):
+            sender_name = self.source_message.get('sender', '').split()[0] if self.source_message.get('sender') else 'there'
+            return (
+                f"Hi {sender_name},\n\n"
+                f"Thank you for the invitation. Unfortunately, I already have another commitment "
+                f"(\"{conflict_title}\") scheduled around that time ({conflict_start}).\n\n"
+                f"Could we arrange an alternative time that works for both of us?\n\n"
+                f"Looking forward to connecting.\n\nBest regards,"
+            )
+
+        def _open_send_dialog(reply_text):
+            if self.show_send_dialog_callback and self.source_message:
+                msg_data = dict(self.source_message)
+                msg_data['_prefill_draft_text'] = reply_text
+                self.show_send_dialog_callback(msg_data)
+
         open_btn.clicked.connect(_open_selected)
         skip_btn.clicked.connect(_skip)
         add_btn.clicked.connect(_add)
+        conflict_reply_btn.clicked.connect(_compose_conflict_reply)
 
         dialog.exec()
         return choice["value"]

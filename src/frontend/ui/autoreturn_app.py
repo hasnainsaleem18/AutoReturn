@@ -117,14 +117,13 @@ class AutoReturnApp(QMainWindow):
         self.user_data = None
         self.setWindowTitle("AutoReturn - Unified Inbox")
         self.setMinimumSize(1100, 700)
-        
         # -------------------------
         # ORCHESTRATOR INITIALIZATION (NEW ARCHITECTURE)
         # -------------------------
         from src.backend.core.orchestrator import Orchestrator
         
         # Initialize orchestrator (the brain that coordinates everything)
-        self.orchestrator = Orchestrator(ollama_model="kimi-k2.5:cloud")
+        self.orchestrator = Orchestrator(ollama_model="qwen3:0.6b")
         
         # Get agents from orchestrator (not direct services)
         self.gmail_agent = self.orchestrator.get_agent("gmail")
@@ -3748,6 +3747,9 @@ class AutoReturnApp(QMainWindow):
             auto_select_threshold=0.85,
             auto_add_high_confidence=False,
             ics_output_dir=self.ics_output_dir,
+            source_message=msg,
+            draft_manager=self.orchestrator.draft_manager if self.orchestrator else None,
+            show_send_dialog_callback=self.show_send_message_dialog,
             parent=self
         )
         dialog.exec()
