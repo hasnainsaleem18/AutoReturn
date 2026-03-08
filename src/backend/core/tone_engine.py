@@ -15,6 +15,7 @@ import json
 import os
 import math
 import re
+import threading
 from dataclasses import dataclass
 from typing import Dict, Any, Optional, List
 from datetime import datetime
@@ -337,12 +338,18 @@ class ToneEngine:
         self.ai_service = ai_service
         self.tone_detector = ToneDetector()
         self.tone_service = ToneService(ai_service, tone_detector=self.tone_detector)
+        self._detector_lock = threading.RLock()
         
         self.user_profile = self._load_user_profile()
         self.tone_cache = {}  # Cache for tone recommendations
         
         print(f"🎨 Tone Engine initialized with embedded tone detection")
         print(f"   Default tone: {self.user_profile.default_tone}")
+
+    def _analyze_message_threadsafe(self, text: str) -> ToneDetectionResult:
+        """Serialize tone detector access to avoid cross-thread spaCy crashes."""
+        with self._detector_lock:
+            return self.tone_detector.analyze_message(text)
     
     def _load_user_profile(self) -> ToneProfile:
         """Load user tone profile from configuration"""
@@ -383,7 +390,7 @@ class ToneEngine:
         """
         try:
             # Use deterministic tone detector
-            result = self.tone_detector.analyze_message(message_text)
+            result = self._analyze_message_threadsafe(message_text)
             
             return {
                 'tone_signal': result.tone_signal,
@@ -413,7 +420,7 @@ class ToneEngine:
             return None
         
         # Perform deterministic analysis
-        analysis_result = self.tone_detector.analyze_message(content)
+        analysis_result = self._analyze_message_threadsafe(content)
         
         # Create recommendation based on deterministic analysis
         recommendation = ToneRecommendation(
@@ -448,7 +455,7 @@ class ToneEngine:
                 # Use deterministic tone detection for recommendation
                 content = message_data.get('full_content', '') or message_data.get('content', '')
                 if content:
-                    analysis_result = self.tone_detector.analyze_message(content)
+                    analysis_result = self._analyze_message_threadsafe(content)
                     
                     # Apply orchestration logic based on deterministic analysis
                     suggested_tone = self._orchestrate_tone_decision(
@@ -528,7 +535,7 @@ class ToneEngine:
             # Get deterministic analysis for reasoning
             content = original_message.get('full_content', '') or original_message.get('content', '')
             if content:
-                analysis_result = self.tone_detector.analyze_message(content)
+                analysis_result = self._analyze_message_threadsafe(content)
                 recommendation = ToneRecommendation(
                     recommended_tone=analysis_result.detected_tone,
                     confidence=analysis_result.confidence_score,
@@ -573,7 +580,15 @@ class ToneEngine:
             # Use existing AI service with tone-specific prompt
             sender = original_message.get('sender', 'Unknown')
             subject = original_message.get('subject', 'No subject')
-            content = original_message.get('full_content', '')[:300]  # Limit content
+            content = (
+                original_message.get('full_content', '')
+                or original_message.get('content', '')
+                or original_message.get('preview', '')
+                or original_message.get('content_preview', '')
+                or original_message.get('text', '')
+            )
+            content = str(content or "").strip()
+            content = content[:1200] if content else ""
             
             tone_instructions = {
                 ToneType.FORMAL: "Generate a formal response with proper titles and complete sentences.",
@@ -584,27 +599,76 @@ class ToneEngine:
             
             prompt = f"""
             {instruction}
-            
-            Original message details:
+
+            Write a concise human-written reply. Avoid robotic phrases, avoid over-explaining,
+            and do not mention that this is AI generated.
+
+            Message details:
             From: {sender}
             Subject: {subject}
-            Content: {content}...
-            
+            Content: {content}
+
             Requirements:
-            - Address sender appropriately
-            - Respond to main points
-            - Use {target_tone.value} tone throughout
-            - Include appropriate greeting and closing
-            
-            Response:
+            - Reply directly to the sender's likely intent
+            - Keep it practical and natural
+            - Use {target_tone.value} tone
+            - Keep it between 3 and 8 sentences
+            - Output only the final reply text
             """
-            
-            draft = await self.ai_service.generate_summary_async(prompt)
-            return draft.strip() if draft else "Thank you for your message."
+
+            draft = await self.ai_service.generate_text_async(prompt, temperature=0.55, max_tokens=280)
+            if draft and draft.strip():
+                return draft.strip()
+            return self._build_specific_fallback_draft(sender, subject, content, target_tone)
             
         except Exception as e:
             print(f"Error in draft generation: {e}")
-            return "Thank you for your message."
+            sender = original_message.get('sender', 'there')
+            subject = original_message.get('subject', 'your message')
+            content = (
+                original_message.get('full_content', '')
+                or original_message.get('content', '')
+                or original_message.get('preview', '')
+                or original_message.get('content_preview', '')
+                or original_message.get('text', '')
+            )
+            return self._build_specific_fallback_draft(sender, subject, str(content or ""), target_tone)
+
+    def _build_specific_fallback_draft(self, sender: str, subject: str, content: str, target_tone: ToneType) -> str:
+        """Build a message-specific fallback draft when model generation is unavailable."""
+        subject_clean = (subject or "your message").strip()
+        sender_name = (sender or "there").strip()
+        text = (content or "").lower()
+
+        if "attach" in text or "file" in text or "document" in text:
+            body = (
+                f"Hi {sender_name},\n\n"
+                f"Thanks for your message regarding \"{subject_clean}\". I am preparing the requested file and will share it shortly.\n\n"
+                "Best regards,"
+            )
+        elif "meeting" in text or "schedule" in text or "availability" in text:
+            body = (
+                f"Hi {sender_name},\n\n"
+                f"Thank you for your message about \"{subject_clean}\". I have noted the scheduling request and will confirm a suitable time shortly.\n\n"
+                "Best regards,"
+            )
+        elif "confirm" in text or "confirmation" in text:
+            body = (
+                f"Hi {sender_name},\n\n"
+                f"Thank you for your message about \"{subject_clean}\". This is confirmed on my side.\n\n"
+                "Best regards,"
+            )
+        else:
+            body = (
+                f"Hi {sender_name},\n\n"
+                f"Thanks for your message regarding \"{subject_clean}\". I have reviewed it and will follow up with the requested details shortly.\n\n"
+                "Best regards,"
+            )
+
+        if target_tone == ToneType.INFORMAL:
+            body = body.replace("Best regards,", "Thanks,")
+
+        return body
     
     def update_user_preferences(self, tone_selection: ToneType, 
                                 message_context: Dict[str, Any]):

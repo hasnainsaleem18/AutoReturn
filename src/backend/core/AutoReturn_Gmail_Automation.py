@@ -226,6 +226,8 @@ class GmailService:
                 "id": msg_id,
                 "from": MessageParser.extract_header(headers, "From") or "(Unknown)",
                 "subject": MessageParser.extract_header(headers, "Subject") or "(No Subject)",
+                "message_id_header": MessageParser.extract_header(headers, "Message-ID") or "",
+                "references_header": MessageParser.extract_header(headers, "References") or "",
                 "body": body or "(No Content)",
                 "snippet": snippet,
                 "threadId": msg.get("threadId"),
@@ -341,12 +343,27 @@ class GmailService:
         except Exception as e:
             return self._handle_error("[Error] Failed to send email", e, None)
 
-    def reply(self, thread_id, to, message, subject: str = "", attachments: list = None):
+    def reply(
+        self,
+        thread_id,
+        to,
+        message,
+        subject: str = "",
+        attachments: list = None,
+        in_reply_to: str = "",
+        references: str = "",
+    ):
         if attachments:
             raw = self._build_mime_message(to, subject or "Re:", message, attachments)
         else:
             msg = MIMEText(message)
             msg["to"] = to
+            if subject:
+                msg["subject"] = subject
+            if in_reply_to:
+                msg["In-Reply-To"] = in_reply_to
+            if references:
+                msg["References"] = references
             raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         try:
             return (
@@ -379,8 +396,11 @@ class GmailService:
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         body = {"message": {"raw": raw}}
         draft = self.service.users().drafts().create(userId="me", body=body).execute()
-        print(f"[Info] Draft created with ID: {draft['id']}")
-        return draft['id']
+        draft_id = draft.get("id")
+        if not draft_id:
+            raise GmailServiceError(f"Draft creation response missing id: {draft}")
+        print(f"[Info] Draft created with ID: {draft_id}")
+        return draft_id
 
     def list_drafts(self):
         try:

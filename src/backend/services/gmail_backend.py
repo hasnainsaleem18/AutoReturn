@@ -15,6 +15,7 @@ Module for Gmail integration functionality including:
 import os
 import re
 import shutil
+import threading
 from datetime import datetime
 from email.utils import parseaddr
 from typing import List, Optional
@@ -59,6 +60,7 @@ class GmailIntegrationService(QObject):
         self.oauth_manager: Optional[OAuthManager] = None
         self.gmail_api: Optional[GmailAPIService] = None
         self.is_connected: bool = False
+        self._api_lock = threading.Lock()
 
     # -------------------------
     # AUTHENTICATION METHODS
@@ -182,44 +184,45 @@ class GmailIntegrationService(QObject):
             self.error_occurred.emit(message)
             return []
 
-        try:
-            message_refs = self.gmail_api.list_messages(query=query, max_results=max_results)
-        except GmailServiceError as exc:  # pragma: no cover - network
-            message = str(exc)
-            if "timed out" in message.lower():
-                message = (
-                    "Gmail request timed out. This is usually a network issue.\n\n"
-                    "Please check your internet connection, VPN, or firewall. "
-                    "If you're on a restricted network, Gmail API calls may be blocked."
-                )
-            self.error_occurred.emit(message)
-            return []
-        except Exception as exc:  # pragma: no cover - network
-            self.error_occurred.emit(str(exc))
-            return []
-
-        if not message_refs:
-            return []
-
-        parsed_messages = []
-        for ref in message_refs:
-            msg_id = ref.get("id")
-            if not msg_id:
-                continue
+        with self._api_lock:
             try:
-                details = self.gmail_api.read_message(msg_id)
+                message_refs = self.gmail_api.list_messages(query=query, max_results=max_results)
             except GmailServiceError as exc:  # pragma: no cover - network
-                self.error_occurred.emit(str(exc))
-                continue
+                message = str(exc)
+                if "timed out" in message.lower():
+                    message = (
+                        "Gmail request timed out. This is usually a network issue.\n\n"
+                        "Please check your internet connection, VPN, or firewall. "
+                        "If you're on a restricted network, Gmail API calls may be blocked."
+                    )
+                self.error_occurred.emit(message)
+                return []
             except Exception as exc:  # pragma: no cover - network
                 self.error_occurred.emit(str(exc))
-                continue
+                return []
 
-            if not details:
-                continue
-            parsed_messages.append(self._to_inbox_message(details))
+            if not message_refs:
+                return []
 
-        return parsed_messages
+            parsed_messages = []
+            for ref in message_refs:
+                msg_id = ref.get("id")
+                if not msg_id:
+                    continue
+                try:
+                    details = self.gmail_api.read_message(msg_id)
+                except GmailServiceError as exc:  # pragma: no cover - network
+                    self.error_occurred.emit(str(exc))
+                    continue
+                except Exception as exc:  # pragma: no cover - network
+                    self.error_occurred.emit(str(exc))
+                    continue
+
+                if not details:
+                    continue
+                parsed_messages.append(self._to_inbox_message(details))
+
+            return parsed_messages
 
     # -------------------------
     # MESSAGE OPERATIONS (CONTINUED)
@@ -248,9 +251,47 @@ class GmailIntegrationService(QObject):
             return False, message
 
         try:
-            subject = ui_message.get("subject", "")
-            self.gmail_api.reply(thread_id, to_email, reply_body, subject=subject, attachments=attachments or [])
+            raw_subject = (ui_message.get("subject", "") or "").strip()
+            subject = raw_subject if raw_subject.lower().startswith("re:") else (f"Re: {raw_subject}" if raw_subject else "Re:")
+            in_reply_to = (ui_message.get("message_id_header", "") or "").strip()
+            references = (ui_message.get("references_header", "") or "").strip()
+            if in_reply_to:
+                references = f"{references} {in_reply_to}".strip() if references else in_reply_to
+            with self._api_lock:
+                self.gmail_api.reply(
+                    thread_id,
+                    to_email,
+                    reply_body,
+                    subject=subject,
+                    attachments=attachments or [],
+                    in_reply_to=in_reply_to,
+                    references=references,
+                )
             return True, "Reply sent successfully."
+        except Exception as exc:
+            message = str(exc)
+            self.error_occurred.emit(message)
+            return False, message
+
+    def create_draft_for_message(self, ui_message: dict, draft_body: str) -> tuple[bool, str]:
+        """Create a Gmail draft reply for the specified message."""
+        if not self.gmail_api:
+            message = "Connect to Gmail before creating drafts."
+            self.error_occurred.emit(message)
+            return False, message
+
+        to_email = ui_message.get("email", "")
+        subject = ui_message.get("subject", "")
+
+        if not to_email:
+            message = "Missing recipient information for draft creation."
+            self.error_occurred.emit(message)
+            return False, message
+
+        try:
+            with self._api_lock:
+                draft_id = self.gmail_api.create_draft(to_email, f"Re: {subject}" if subject else "Re:", draft_body)
+            return True, draft_id
         except Exception as exc:
             message = str(exc)
             self.error_occurred.emit(message)
@@ -302,6 +343,8 @@ class GmailIntegrationService(QObject):
             "datetime": dt,
             "read": not is_unread,
             "thread_id": raw_message.get("threadId"),
+            "message_id_header": raw_message.get("message_id_header", ""),
+            "references_header": raw_message.get("references_header", ""),
             "label_ids": labels,
             "history_id": raw_message.get("historyId"),
             "has_attachments": bool(raw_message.get("has_attachments")),

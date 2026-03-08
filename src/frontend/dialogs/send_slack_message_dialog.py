@@ -212,6 +212,7 @@ class SendSlackMessageDialog(QDialog):
             self.attachments.extend(files)
             names = [f.split("/")[-1] for f in self.attachments]
             self.attachments_label.setText("Attachments: " + ", ".join(names))
+            self.attachments_label.setStyleSheet("font-size: 12px; color: #024950;")
             self._update_send_button_state()
     
     def get_selected_user(self) -> dict:
@@ -220,8 +221,38 @@ class SendSlackMessageDialog(QDialog):
     def get_message_text(self) -> str:
         return self.message_text.toPlainText().strip()
 
+    def set_message_text(self, text: str):
+        self.message_text.setPlainText(text or "")
+        self._update_char_count()
+
     def get_attachments(self):
         return list(self.attachments)
+
+    def set_attachments(self, files: list):
+        """Preload attachments in the dialog (used by automation draft flow)."""
+        normalized = []
+        for file_path in files or []:
+            if file_path and file_path not in normalized:
+                normalized.append(file_path)
+        self.attachments = normalized
+        if self.attachments:
+            names = [f.split("/")[-1] for f in self.attachments]
+            self.attachments_label.setText("Attachments: " + ", ".join(names))
+            self.attachments_label.setStyleSheet(
+                """
+                font-size: 12px;
+                color: #0B5E36;
+                font-weight: 700;
+                background-color: #E8F7EF;
+                border: 1px solid #77C39D;
+                border-radius: 6px;
+                padding: 4px 8px;
+                """
+            )
+        else:
+            self.attachments_label.setText("No attachments")
+            self.attachments_label.setStyleSheet("font-size: 12px; color: #024950;")
+        self._update_send_button_state()
     
     def get_selected_tone(self):
         return self.selected_tone if self.tone_selector else None
