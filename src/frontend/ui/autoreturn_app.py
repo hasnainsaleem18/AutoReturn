@@ -2992,9 +2992,22 @@ class AutoReturnApp(QMainWindow):
             }
         """)
 
-        layout = QVBoxLayout(dialog)
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        from PySide6.QtWidgets import QScrollArea, QWidget
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        
+        content_widget = QWidget()
+        content_widget.setStyleSheet("QWidget { background: transparent; }")
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(10)
+        
+        scroll.setWidget(content_widget)
+        main_layout.addWidget(scroll)
 
         source = str(msg.get('source', '')).upper() or "UNKNOWN"
         sender = msg.get('sender', 'Unknown')
@@ -3069,6 +3082,29 @@ class AutoReturnApp(QMainWindow):
 
         badge_row.addStretch()
         layout.addLayout(badge_row)
+
+        # --- AI Summary ---
+        summary_text = msg.get('summary', '').strip()
+        if summary_text and summary_text != "Generating summary..." and not summary_text.startswith("Failed"):
+            summary_title = QLabel("🧠 AI Summary")
+            summary_title.setObjectName("sectionHeader")
+            layout.addWidget(summary_title)
+            
+            summary_box = QTextEdit()
+            summary_box.setReadOnly(True)
+            summary_box.setPlainText(summary_text)
+            summary_box.setMinimumHeight(60)
+            summary_box.setMaximumHeight(120)
+            summary_box.setStyleSheet("""
+                background-color: #F8F9FA;
+                border: 1px solid #E9DDFF;
+                border-left: 4px solid #8e24aa;
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-size: 13px;
+                color: #003135;
+            """)
+            layout.addWidget(summary_box)
 
         # --- Recommended Actions Section ---
         actions_header = QLabel("📋 Recommended Actions")
@@ -3202,12 +3238,13 @@ class AutoReturnApp(QMainWindow):
 
         # --- Close ---
         btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(18, 8, 18, 18)
         close_btn = QPushButton("Close")
         close_btn.setObjectName("btnSecondary")
         close_btn.clicked.connect(dialog.accept)
         btn_layout.addStretch()
         btn_layout.addWidget(close_btn)
-        layout.addLayout(btn_layout)
+        main_layout.addLayout(btn_layout)
 
         dialog.exec()
 
