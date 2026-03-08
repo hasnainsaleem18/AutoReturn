@@ -14,6 +14,9 @@ from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
 from src.backend.services.ai_service import OllamaService
 from src.backend.core.draft_manager import DraftManager
 from src.backend.core.tone_engine import ToneEngine
+from src.backend.core.automation_coordinator import AutomationCoordinator
+from src.backend.core.reply_policy_engine import ReplyPolicyEngine
+from src.backend.services.automation_settings_service import AutomationSettingsService
 
 
 # -------------------------
@@ -61,6 +64,14 @@ class Orchestrator:
         # NEW: Tone Management System
         self.tone_engine = ToneEngine(ai_service=self.ai_service)
         self.tone_manager = self.tone_engine  # Backward compatibility alias
+
+        # NEW: Automation policy components (DND / auto-reply settings + decisioning)
+        self.automation_settings_service = AutomationSettingsService()
+        self.reply_policy_engine = ReplyPolicyEngine()
+        self.automation_coordinator = AutomationCoordinator(
+            settings_service=self.automation_settings_service,
+            policy_engine=self.reply_policy_engine,
+        )
         
         # Update draft manager and agents with tone engine
         self.draft_manager.tone_engine = self.tone_engine
@@ -76,6 +87,7 @@ class Orchestrator:
         print(f"🧠 Orchestrator initialized with model {ollama_model}")
         print(f"   Available agents: {list(self.agents.keys())}")
         print(f"🎨 Tone Engine initialized")
+        print(f"🤖 Automation Coordinator initialized")
 
     def _setup_pydantic_agent(self, model_name: str):
         """Set up Pydantic AI agent for intent classification."""
@@ -220,6 +232,19 @@ class Orchestrator:
         
         return await self.agents[target].process_request(request)
 
+    async def generate_draft_for_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate a suggested draft for a message using the existing draft manager.
+
+        Returns:
+            dict: {'draft': str, 'tone': Any, 'confidence': float, ...}
+        """
+        return await self.draft_manager.process_reply_draft(
+            original_message=message,
+            user_draft="",
+            manual_tone=None,
+        )
+
     def get_agent(self, name: str) -> Optional[BaseAgent]:
         """Get a specific agent by name."""
         return self.agents.get(name)
@@ -231,6 +256,10 @@ class Orchestrator:
     def get_tone_manager(self) -> ToneEngine:
         """Backward-compatible getter for tone engine."""
         return self.tone_engine
+
+    def get_automation_coordinator(self) -> AutomationCoordinator:
+        """Get the automation coordinator instance."""
+        return self.automation_coordinator
     
     def check_ollama_status(self) -> bool:
         """Check if Ollama is accessible."""

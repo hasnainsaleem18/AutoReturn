@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
     QHeaderView, QCheckBox, QSizePolicy, QMessageBox, QDialog, QTextEdit,
-    QFileDialog, QApplication, QStyle, QSizePolicy, QSpacerItem, QComboBox
+    QFileDialog, QApplication, QStyle, QSizePolicy, QSpacerItem, QComboBox, QInputDialog
 )
 from PySide6.QtCore import Qt, QSize, QTimer, QThread, Signal, Slot, QObject, QEvent, QUrl
 from PySide6.QtGui import (QColor, QIcon, QPixmap, QFont, QFontMetrics, 
@@ -34,6 +34,7 @@ from src.frontend.dialogs.notification_dialog import NotificationDialog
 from src.frontend.dialogs.settings_dialog import SettingsDialog
 from src.frontend.dialogs.send_slack_message_dialog import SendSlackMessageDialog
 from src.frontend.dialogs.event_review_dialog import EventReviewDialog
+from src.frontend.dialogs.plain_reply_review_dialog import PlainReplyReviewDialog
 
 # Backend services
 from src.backend.services.slack_backend import SlackService, SlackMessage
@@ -60,6 +61,7 @@ from src.backend.services.ai_service import (
 import asyncio
 from src.backend.services.gmail_backend import GmailIntegrationService
 from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
+from src.backend.core.attachment_resolver import AttachmentResolver
 
 
 # -------------------------
@@ -155,6 +157,11 @@ class AutoReturnApp(QMainWindow):
         self._is_syncing_gmail = False # Flag to prevent overlapping syncs
         self.messages = []
         self.notifications = []
+        self.automation_drafted_message_ids = set()
+        self.automation_draft_pending_ids = set()
+        self.automation_auto_replied_ids = set()
+        self.automation_auto_reply_pending_ids = set()
+        self.attachment_resolver = AttachmentResolver()
         self.selected_message_keys = set()
         self.current_page = 1
         self.rows_per_page = 15
@@ -356,6 +363,424 @@ class AutoReturnApp(QMainWindow):
             return 'Medium'
         return 'Low'
 
+    def _get_draft_preview_text(self, msg: dict, limit: int = 200) -> str:
+        """Return a compact preview of generated automation draft text."""
+        draft = (msg.get("automation_draft_text") or "").strip()
+        if not draft:
+            return ""
+        if len(draft) <= limit:
+            return draft
+        return draft[: limit - 3] + "..."
+
+    def _get_draft_attachment_preview(self, msg: dict, limit: int = 3) -> str:
+        """Return compact attachment suggestion text for a generated draft."""
+        paths = msg.get("automation_draft_attachments", []) or []
+        if not paths:
+            return ""
+        names = [os.path.basename(p) for p in paths[:limit]]
+        preview = ", ".join(names)
+        if len(paths) > limit:
+            preview += f" +{len(paths) - limit} more"
+        return preview
+
+    def _get_draft_ready_icon(self) -> QIcon:
+        """Create (and cache) a small green dot icon to indicate draft readiness."""
+        if hasattr(self, "_draft_ready_icon_cache") and self._draft_ready_icon_cache:
+            return self._draft_ready_icon_cache
+
+        size = 12
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        # Outer ring to keep visibility on both dark and light button states.
+        painter.setBrush(QColor("#FFFFFF"))
+        painter.setPen(Qt.NoPen)
+        painter.drawEllipse(0, 0, size - 1, size - 1)
+
+        # Inner high-contrast dot.
+        painter.setBrush(QColor("#F59E0B"))
+        painter.drawEllipse(2, 2, size - 5, size - 5)
+        painter.end()
+
+        self._draft_ready_icon_cache = QIcon(pixmap)
+        return self._draft_ready_icon_cache
+
+    def _get_attachment_suggested_icon(self) -> QIcon:
+        """Get a cross-platform attachment marker icon (paperclip-style)."""
+        if hasattr(self, "_attachment_suggested_icon_cache") and self._attachment_suggested_icon_cache:
+            return self._attachment_suggested_icon_cache
+
+        size = 16
+        pixmap = QPixmap(size, size)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        # High-contrast backing so icon is visible on action buttons.
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor("#FFFFFF"))
+        painter.drawEllipse(0, 0, size - 1, size - 1)
+
+        pen = QPen(QColor("#003135"))
+        pen.setWidthF(2.0)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawArc(3, 3, 10, 10, -42 * 16, 270 * 16)
+        painter.drawArc(5, 5, 6, 6, -35 * 16, 220 * 16)
+        painter.end()
+
+        icon = QIcon(pixmap)
+        self._attachment_suggested_icon_cache = icon
+        return icon
+
+    def _apply_automation_policy(self, messages: list) -> dict:
+        """Apply automation policy decision to incoming messages and partition candidates."""
+        if not messages or not self.orchestrator or not hasattr(self.orchestrator, "get_automation_coordinator"):
+            return {"draft_candidates": [], "auto_reply_candidates": []}
+
+        coordinator = self.orchestrator.get_automation_coordinator()
+        draft_candidates = []
+        auto_reply_candidates = []
+
+        for msg in messages:
+            try:
+                decision = coordinator.evaluate_message(msg)
+                msg["automation_action"] = decision.action.value
+                msg["automation_reason"] = decision.reason
+                msg["automation_sender_allowed"] = decision.sender_allowed
+                msg["automation_sender_identity"] = decision.sender_identity
+
+                msg_id = msg.get("id")
+                should_generate_draft = decision.action.value in ("draft_only", "plain_reply")
+                is_new_or_unread = (msg.get("read") is False or msg.get("source") == "slack")
+                if (
+                    should_generate_draft
+                    and is_new_or_unread
+                    and msg_id
+                    and msg_id not in self.automation_drafted_message_ids
+                    and msg_id not in self.automation_draft_pending_ids
+                ):
+                    draft_candidates.append(msg)
+
+                if (
+                    decision.action.value == "auto_reply"
+                    and is_new_or_unread
+                    and msg_id
+                    and msg_id not in self.automation_auto_replied_ids
+                    and msg_id not in self.automation_auto_reply_pending_ids
+                ):
+                    auto_reply_candidates.append(msg)
+            except Exception as e:
+                print(f"Automation policy evaluation failed for message {msg.get('id')}: {e}")
+
+        return {
+            "draft_candidates": draft_candidates,
+            "auto_reply_candidates": auto_reply_candidates,
+        }
+
+    def _start_draft_generation_for_messages(self, draft_candidates: list):
+        """Generate draft-only outputs in a background worker."""
+        if not draft_candidates:
+            return
+
+        limited_candidates = draft_candidates[:5]
+        pending_ids = [m.get("id") for m in limited_candidates if m.get("id")]
+        for mid in pending_ids:
+            self.automation_draft_pending_ids.add(mid)
+
+        worker = AgentWorker(self._generate_drafts_for_messages(limited_candidates))
+        worker.result_ready.connect(self._on_automation_drafts_ready)
+        worker.error_occurred.connect(self.on_agent_error)
+        worker.finished.connect(lambda: self._clear_automation_draft_pending(pending_ids))
+        worker.finished.connect(lambda: self._cleanup_worker(worker))
+        self.active_workers.append(worker)
+        worker.start()
+
+    def _clear_automation_draft_pending(self, pending_ids: list):
+        """Clear pending draft ids after worker completion."""
+        for mid in pending_ids:
+            if mid in self.automation_draft_pending_ids:
+                self.automation_draft_pending_ids.remove(mid)
+
+    def _start_auto_reply_for_messages(self, auto_reply_candidates: list):
+        """Execute auto-replies in background for policy-approved messages."""
+        if not auto_reply_candidates:
+            return
+
+        limited_candidates = auto_reply_candidates[:3]
+        pending_ids = [m.get("id") for m in limited_candidates if m.get("id")]
+        for mid in pending_ids:
+            self.automation_auto_reply_pending_ids.add(mid)
+
+        worker = AgentWorker(self._auto_reply_messages(limited_candidates))
+        worker.result_ready.connect(self._on_auto_reply_ready)
+        worker.error_occurred.connect(self.on_agent_error)
+        worker.finished.connect(lambda: self._clear_automation_auto_reply_pending(pending_ids))
+        worker.finished.connect(lambda: self._cleanup_worker(worker))
+        self.active_workers.append(worker)
+        worker.start()
+
+    def _clear_automation_auto_reply_pending(self, pending_ids: list):
+        """Clear pending auto-reply ids after worker completion."""
+        for mid in pending_ids:
+            if mid in self.automation_auto_reply_pending_ids:
+                self.automation_auto_reply_pending_ids.remove(mid)
+
+    def _should_skip_auto_reply(self, msg: dict) -> bool:
+        """Safety checks to avoid replying to our own/automated messages."""
+        source = str(msg.get("source", "")).lower()
+        text = (
+            msg.get("full_content", "")
+            or msg.get("content_preview", "")
+            or msg.get("preview", "")
+            or ""
+        ).lower()
+
+        if "auto-reply" in text or "automated message" in text or "do not reply" in text:
+            return True
+
+        if source == "slack":
+            my_id = getattr(self.slack_service, "my_user_id", None)
+            if my_id and str(msg.get("user_id", "")) == str(my_id):
+                return True
+
+        if source == "gmail":
+            my_email = str((self.user_data or {}).get("email", "")).strip().lower()
+            sender_email = str(msg.get("email", "")).strip().lower()
+            if my_email and sender_email and my_email == sender_email:
+                return True
+
+        return False
+
+    async def _auto_reply_messages(self, messages: list) -> list:
+        """Generate and send auto-replies for policy-approved messages."""
+        results = []
+        for msg in messages:
+            msg_id = msg.get("id")
+            if not msg_id:
+                continue
+            if self._should_skip_auto_reply(msg):
+                results.append({"id": msg_id, "success": False, "reason": "Skipped by safety rule."})
+                continue
+
+            try:
+                processed = await self.orchestrator.generate_draft_for_message(msg)
+                reply_text = (processed.get("draft") or "").strip()
+                if not reply_text:
+                    results.append({"id": msg_id, "success": False, "reason": "Draft generation failed."})
+                    continue
+
+                attachment_plan = self._resolve_automation_attachments(msg)
+                attachments = attachment_plan.get("attachments", [])
+                if attachment_plan.get("requested") and not attachments:
+                    results.append(
+                        {
+                            "id": msg_id,
+                            "success": False,
+                            "reason": attachment_plan.get("reason", "Attachment required but not resolved."),
+                            "source": str(msg.get("source", "")).lower(),
+                            "reply_text": reply_text,
+                            "attachments": [],
+                        }
+                    )
+                    continue
+
+                source = str(msg.get("source", "")).lower()
+                success = False
+                response_msg = ""
+
+                if source == "gmail":
+                    success, response_msg = self.gmail_service.reply_to_message(
+                        msg,
+                        reply_text,
+                        attachments=attachments,
+                    )
+                elif source == "slack":
+                    target_user = msg.get("user_id") or msg.get("dm_user_id")
+                    if target_user:
+                        success = bool(
+                            self.slack_service.send_dm_by_id(
+                                target_user,
+                                reply_text,
+                                attachments=attachments,
+                            )
+                        )
+                        response_msg = "Slack DM sent." if success else "Slack DM failed."
+                    else:
+                        response_msg = "Missing Slack target user id."
+                else:
+                    response_msg = f"Unsupported source for auto-reply: {source}"
+
+                if success and attachments:
+                    response_msg = f"{response_msg} Attached {len(attachments)} file(s)."
+
+                results.append(
+                    {
+                        "id": msg_id,
+                        "success": success,
+                        "reason": response_msg,
+                        "source": source,
+                        "reply_text": reply_text,
+                        "attachments": attachments,
+                    }
+                )
+            except Exception as e:
+                results.append({"id": msg_id, "success": False, "reason": str(e)})
+
+        return results
+
+    def _log_automation_audit_event(self, payload: dict):
+        """Append automation action record to audit log."""
+        try:
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            log_path = os.path.join(project_root, "data", "automation_audit.jsonl")
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        except Exception as e:
+            print(f"Automation audit log failed: {e}")
+
+    def _on_auto_reply_ready(self, results: list):
+        """Handle completion of policy-driven auto-replies."""
+        if not results:
+            return
+
+        by_id = {msg.get("id"): msg for msg in self.messages if msg.get("id")}
+        success_count = 0
+
+        for item in results:
+            msg_id = item.get("id")
+            if not msg_id:
+                continue
+
+            if item.get("success"):
+                success_count += 1
+                self.automation_auto_replied_ids.add(msg_id)
+
+            target = by_id.get(msg_id)
+            if target:
+                target["automation_auto_reply_status"] = "sent" if item.get("success") else "failed"
+                target["automation_auto_reply_reason"] = item.get("reason", "")
+                target["automation_auto_reply_text"] = item.get("reply_text", "") or ""
+                target["automation_auto_reply_attachments"] = item.get("attachments", []) or []
+
+            self._log_automation_audit_event(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "message_id": msg_id,
+                    "source": item.get("source", ""),
+                    "action": "auto_reply",
+                    "success": bool(item.get("success")),
+                    "reason": item.get("reason", ""),
+                }
+            )
+
+        if success_count:
+            self.show_status_message(f"Auto Reply sent for {success_count} message(s)")
+        self._schedule_table_refresh()
+
+    def _apply_auto_reply_row_tint(self, row_idx: int, widgets: list, status: str):
+        """Apply subtle row tint for completed auto-reply states."""
+        status = (status or "").strip().lower()
+        if status not in {"sent", "failed"}:
+            return
+
+        if status == "sent":
+            bg = "#F8FCF9"
+            item_bg = QColor(248, 252, 249)
+        else:
+            bg = "#FFFAF9"
+            item_bg = QColor(255, 250, 249)
+
+        for widget in widgets:
+            if widget is not None:
+                widget.setStyleSheet(f"background-color: {bg}; border-radius: 6px;")
+
+        for col in (5, 6):
+            item = self.table.item(row_idx, col)
+            if item:
+                item.setBackground(item_bg)
+
+    async def _generate_drafts_for_messages(self, messages: list) -> list:
+        """Generate drafts for policy-selected messages and create Gmail drafts only for draft-only mode."""
+        results = []
+        for msg in messages:
+            msg_id = msg.get("id")
+            if not msg_id:
+                continue
+
+            try:
+                processed = await self.orchestrator.generate_draft_for_message(msg)
+                draft_text = (processed.get("draft") or "").strip()
+                if not draft_text:
+                    continue
+
+                draft_id = ""
+                action = str(msg.get("automation_action", "")).strip().lower()
+                should_create_gmail_draft = action == "draft_only"
+                draft_attachments = []
+                draft_attachment_reason = ""
+
+                attachment_plan = self._resolve_automation_attachments(msg)
+                draft_attachments = attachment_plan.get("attachments", []) or []
+                if attachment_plan.get("requested") and not draft_attachments:
+                    draft_attachment_reason = attachment_plan.get(
+                        "reason",
+                        "Attachment requested but not resolved automatically.",
+                    )
+
+                if (
+                    should_create_gmail_draft
+                    and msg.get("source") == "gmail"
+                    and self.gmail_service
+                    and self.gmail_service.is_connected
+                ):
+                    ok, draft_result = self.gmail_service.create_draft_for_message(msg, draft_text)
+                    if ok:
+                        draft_id = draft_result
+                    else:
+                        print(f"Gmail draft creation failed for {msg_id}: {draft_result}")
+
+                results.append(
+                    {
+                        "id": msg_id,
+                        "draft_text": draft_text,
+                        "draft_id": draft_id,
+                        "source": msg.get("source", ""),
+                        "action": action,
+                        "attachments": draft_attachments,
+                        "attachment_reason": draft_attachment_reason,
+                    }
+                )
+            except Exception as e:
+                print(f"Automation draft generation failed for message {msg_id}: {e}")
+
+        return results
+
+    def _on_automation_drafts_ready(self, results: list):
+        """Handle completed draft-only generation results."""
+        if not results:
+            return
+
+        by_id = {msg.get("id"): msg for msg in self.messages if msg.get("id")}
+        for item in results:
+            msg_id = item.get("id")
+            if not msg_id:
+                continue
+            self.automation_drafted_message_ids.add(msg_id)
+            target = by_id.get(msg_id)
+            if target:
+                target["automation_draft_text"] = item.get("draft_text", "")
+                target["automation_draft_id"] = item.get("draft_id", "")
+                target["automation_draft_attachments"] = item.get("attachments", []) or []
+                target["automation_draft_attachment_reason"] = item.get("attachment_reason", "") or ""
+
+        self.show_status_message(f"Automation draft generated for {len(results)} message(s)")
+        self._schedule_table_refresh()
+
     def on_slack_new_messages(self, new_messages: list):
         """Handle new messages received from Slack.
         
@@ -388,6 +813,9 @@ class AutoReturnApp(QMainWindow):
         if not unique_new_messages:
             return
 
+        policy_groups = self._apply_automation_policy(unique_new_messages)
+        draft_candidates = policy_groups.get("draft_candidates", [])
+        auto_reply_candidates = policy_groups.get("auto_reply_candidates", [])
         self.messages.extend(unique_new_messages)
         # Sort by Priority (Rank) then Timestamp
         p_map = {'High': 3, 'Medium': 2, 'Low': 1}
@@ -420,6 +848,9 @@ class AutoReturnApp(QMainWindow):
         unread_count = sum(1 for n in self.notifications if not n.get('read', False))
         if hasattr(self, 'notif_badge'):
             self.notif_badge.setText(str(unread_count))
+
+        self._start_draft_generation_for_messages(draft_candidates)
+        self._start_auto_reply_for_messages(auto_reply_candidates)
 
     def _enrich_slack_messages_with_schedule(self, messages: list):
         """Extract schedule suggestions for Slack messages that don't have them yet."""
@@ -653,6 +1084,95 @@ class AutoReturnApp(QMainWindow):
     # -------------------------
     # MESSAGE COMPOSITION
     # -------------------------
+    def _is_plain_reply_flow(self, message_data: dict) -> bool:
+        """True when this message should use the plain-reply review step."""
+        return str(message_data.get("automation_action", "")).strip().lower() == "plain_reply"
+
+    def _resolve_plain_reply_attachments(self, message_data: dict, current_attachments: list) -> tuple[list, str, bool]:
+        """
+        Resolve attachment requirements for plain-reply send.
+
+        Returns:
+            tuple: (attachments, note, blocked)
+        """
+        attachments = list(current_attachments or [])
+        plan = self._resolve_automation_attachments(message_data)
+        note = ""
+
+        if not plan.get("requested"):
+            return attachments, note, False
+
+        if attachments:
+            return attachments, plan.get("reason", ""), False
+
+        resolved = plan.get("attachments", []) or []
+        if resolved:
+            attachments.extend(resolved)
+            note = f"Auto-selected {len(resolved)} attachment(s) from allowed paths."
+            return attachments, note, False
+
+        candidates = plan.get("candidates", []) or []
+        if candidates:
+            labels = [os.path.basename(path) for path in candidates]
+            selected_label, ok = QInputDialog.getItem(
+                self,
+                "Choose Attachment",
+                "Multiple possible files found. Select one to attach:",
+                labels,
+                0,
+                False,
+            )
+            if ok and selected_label in labels:
+                selected_path = candidates[labels.index(selected_label)]
+                attachments.append(selected_path)
+                note = "Attachment selected from multiple possible matches."
+                return attachments, note, False
+
+            QMessageBox.warning(
+                self,
+                "Attachment Required",
+                "A file seems required, but no file was selected.\n\nOpen Composer to add it manually.",
+            )
+            return attachments, plan.get("reason", ""), True
+
+        QMessageBox.warning(
+            self,
+            "Attachment Required",
+            f"{plan.get('reason', 'A required attachment could not be resolved.')}\n\nOpen Composer to add it manually.",
+        )
+        return attachments, plan.get("reason", ""), True
+
+    def _run_plain_reply_review(
+        self,
+        message_data: dict,
+        source: str,
+        recipient: str,
+        subject: str,
+        message_text: str,
+        attachments: list,
+        attachment_note: str = "",
+    ) -> str:
+        """Show pre-send review for plain reply and return decision: send/edit/cancel."""
+        dialog = PlainReplyReviewDialog(
+            source=source,
+            recipient=recipient,
+            subject=subject,
+            message_text=message_text,
+            attachments=attachments,
+            attachment_note=attachment_note,
+            parent=self,
+        )
+        dialog.exec()
+        return dialog.decision
+
+    def _reopen_composer_with_prefill(self, message_data: dict, message_text: str, attachments: list):
+        """Reopen composer quickly with existing content after review/edit decision."""
+        payload = dict(message_data)
+        payload["_prefill_draft_text"] = message_text
+        if attachments:
+            payload["_attachments"] = list(attachments)
+        self.show_send_message_dialog(payload)
+
     def show_send_message_dialog(self, message_data):
         """Display the dialog for sending a new message.
         
@@ -660,7 +1180,8 @@ class AutoReturnApp(QMainWindow):
             message_data (dict): Message data for pre-filling the dialog
         """
         source = message_data.get('source', '')
-        preselected_files = message_data.get('_attachments', [])
+        preselected_files = message_data.get('_attachments', []) or message_data.get('automation_draft_attachments', [])
+        prefill_draft_text = message_data.get('_prefill_draft_text', '') or message_data.get('automation_draft_text', '')
         
         if source == 'slack':
             if not self.slack_service.is_connected:
@@ -688,6 +1209,8 @@ class AutoReturnApp(QMainWindow):
             
             if preselected_files:
                 dialog.set_attachments(preselected_files)
+            if prefill_draft_text and hasattr(dialog, "set_message_text"):
+                dialog.set_message_text(prefill_draft_text)
 
             if dialog.exec() == QDialog.Accepted:
                 selected_user = dialog.get_selected_user()
@@ -700,6 +1223,30 @@ class AutoReturnApp(QMainWindow):
                         message_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {message_text}".strip()
                     else:
                         message_with_tone = ""
+                    if self._is_plain_reply_flow(message_data):
+                        attachments, attachment_note, blocked = self._resolve_plain_reply_attachments(
+                            message_data=message_data,
+                            current_attachments=attachments,
+                        )
+                        if blocked:
+                            self._reopen_composer_with_prefill(message_data, message_text, attachments)
+                            return
+
+                        decision = self._run_plain_reply_review(
+                            message_data=message_data,
+                            source="slack",
+                            recipient=selected_user.get("real_name") or selected_user.get("name") or selected_user.get("id", "Unknown"),
+                            subject=message_data.get("subject", message_data.get("content_preview", "(No Subject)")),
+                            message_text=message_with_tone,
+                            attachments=attachments,
+                            attachment_note=attachment_note,
+                        )
+                        if decision == "edit":
+                            self._reopen_composer_with_prefill(message_data, message_text, attachments)
+                            return
+                        if decision != "send":
+                            return
+
                     self.slack_service.send_dm_by_id(selected_user['id'], message_with_tone, attachments=attachments)
                     QMessageBox.information(self, "Message Sent", 
                         f"Message sent with {selected_tone.value if selected_tone else 'Default'} tone!")
@@ -720,6 +1267,8 @@ class AutoReturnApp(QMainWindow):
             )
             if preselected_files:
                 dialog.set_attachments(preselected_files)
+            if prefill_draft_text and hasattr(dialog, "set_message_text"):
+                dialog.set_message_text(prefill_draft_text)
 
             if dialog.exec() == QDialog.Accepted:
                 reply_text = dialog.get_message_text()
@@ -731,6 +1280,31 @@ class AutoReturnApp(QMainWindow):
                         reply_with_tone = f"[{selected_tone.value if selected_tone else 'Default'}] {reply_text}".strip()
                     else:
                         reply_with_tone = "Please see attached file."
+
+                    if self._is_plain_reply_flow(message_data):
+                        attachments, attachment_note, blocked = self._resolve_plain_reply_attachments(
+                            message_data=message_data,
+                            current_attachments=attachments,
+                        )
+                        if blocked:
+                            self._reopen_composer_with_prefill(message_data, reply_text, attachments)
+                            return
+
+                        decision = self._run_plain_reply_review(
+                            message_data=message_data,
+                            source="gmail",
+                            recipient=to_email or "Unknown",
+                            subject=subject,
+                            message_text=reply_with_tone,
+                            attachments=attachments,
+                            attachment_note=attachment_note,
+                        )
+                        if decision == "edit":
+                            self._reopen_composer_with_prefill(message_data, reply_text, attachments)
+                            return
+                        if decision != "send":
+                            return
+
                     success, msg = self.gmail_service.reply_to_message(message_data, reply_with_tone, attachments=attachments)
                     
                     # NEW: Show tone usage feedback
@@ -795,6 +1369,9 @@ class AutoReturnApp(QMainWindow):
                 self.messages.append(msg)
 
         print(f"   - {len(new_items)} are new, {len(messages) - len(new_items)} updated")
+        policy_groups = self._apply_automation_policy(new_items)
+        draft_candidates = policy_groups.get("draft_candidates", [])
+        auto_reply_candidates = policy_groups.get("auto_reply_candidates", [])
 
         # Desktop notifications for new Gmail messages
         for msg in new_items:
@@ -827,6 +1404,8 @@ class AutoReturnApp(QMainWindow):
         # Summaries are now handled by the Agent, so no need to call generate_summaries_for_messages again
         # but if we want to be safe, we can check if they have summaries
         # self.generate_summaries_for_messages(new_items)
+        self._start_draft_generation_for_messages(draft_candidates)
+        self._start_auto_reply_for_messages(auto_reply_candidates)
 
 
     def on_gmail_error(self, error_message: str):
@@ -921,13 +1500,117 @@ class AutoReturnApp(QMainWindow):
         Args:
             message_data (dict): The message to reply to
         """
-        QMessageBox.information(
-            self, 
-            "Auto Reply", 
-            f"Auto-generating smart reply for message from {message_data.get('sender', 'Unknown')}...\n\n"
-            "This feature uses AI to analyze the message and generate an appropriate response.\n\n"
-            "(Coming soon!)"
-        )
+        msg_id = str(message_data.get("id", "")).strip()
+        sender = message_data.get("sender", "Unknown")
+
+        target_msg = message_data
+        if msg_id:
+            for msg in self.messages:
+                if str(msg.get("id", "")).strip() == msg_id:
+                    target_msg = msg
+                    break
+
+        status = str(target_msg.get("automation_auto_reply_status", "")).strip().lower()
+        reason = str(target_msg.get("automation_auto_reply_reason", "")).strip()
+
+        if msg_id and msg_id in self.automation_auto_reply_pending_ids:
+            QMessageBox.information(
+                self,
+                "Auto Reply In Progress",
+                f"Auto Reply is already in progress for {sender}.",
+            )
+            return
+
+        if status == "sent":
+            self._show_auto_reply_result_preview(target_msg)
+            return
+
+        if status == "failed":
+            self._show_auto_reply_result_preview(target_msg)
+            return
+
+        if msg_id:
+            self.automation_auto_reply_pending_ids.add(msg_id)
+        self.show_status_message(f"Auto Reply started for {sender}...")
+        self._schedule_table_refresh()
+
+        worker = AgentWorker(self._auto_reply_messages([target_msg]))
+        worker.result_ready.connect(lambda results, s=sender: self._on_manual_auto_reply_ready(s, results))
+        worker.error_occurred.connect(self.on_agent_error)
+        worker.finished.connect(lambda: self._clear_automation_auto_reply_pending([msg_id] if msg_id else []))
+        worker.finished.connect(lambda: self._cleanup_worker(worker))
+        self.active_workers.append(worker)
+        worker.start()
+
+    def _on_manual_auto_reply_ready(self, sender: str, results: list):
+        """Handle one-off auto reply action from row button with user feedback."""
+        self._on_auto_reply_ready(results)
+
+        if not results:
+            QMessageBox.warning(self, "Auto Reply", "Auto Reply did not return a result.")
+            return
+
+        outcome = results[0] or {}
+        success = bool(outcome.get("success"))
+        reason = str(outcome.get("reason", "")).strip()
+
+        if success:
+            QMessageBox.information(
+                self,
+                "Auto Reply Sent",
+                f"Auto reply sent to {sender}.",
+            )
+        else:
+            detail = f"\n\nReason: {reason}" if reason else ""
+            QMessageBox.warning(
+                self,
+                "Auto Reply Failed",
+                f"Could not send auto reply to {sender}.{detail}",
+            )
+
+    def _show_auto_reply_result_preview(self, msg: dict):
+        """Show details of a completed auto-reply attempt."""
+        status = str(msg.get("automation_auto_reply_status", "")).strip().lower()
+        sender = msg.get("sender", "Unknown")
+        subject = msg.get("subject", msg.get("content_preview", "No Subject"))
+        reason = str(msg.get("automation_auto_reply_reason", "")).strip()
+        reply_text = str(msg.get("automation_auto_reply_text", "")).strip()
+        attachment_paths = msg.get("automation_auto_reply_attachments", []) or []
+
+        if status == "sent":
+            title = "Auto Reply Sent"
+            header = f"Auto reply was sent to {sender}."
+        else:
+            title = "Auto Reply Failed"
+            header = f"Auto reply could not be sent to {sender}."
+
+        body_parts = [header, f"Subject: {subject}"]
+        if reason:
+            body_parts.append(f"Status Detail: {reason}")
+        body_parts.append("")
+        if attachment_paths:
+            attachment_names = ", ".join(os.path.basename(p) for p in attachment_paths[:5])
+            body_parts.append(f"Attached: {attachment_names}")
+            body_parts.append("")
+        body_parts.append("Reply Preview:")
+        body_parts.append(reply_text if reply_text else "(No generated reply text is available.)")
+
+        QMessageBox.information(self, title, "\n".join(body_parts))
+
+    def _resolve_automation_attachments(self, msg: dict) -> dict:
+        """Resolve attachments for automation flows from allowed local paths."""
+        try:
+            if not self.orchestrator or not hasattr(self.orchestrator, "get_automation_coordinator"):
+                return {"requested": False, "attachments": [], "reason": "", "candidates": []}
+            settings = self.orchestrator.get_automation_coordinator().get_settings()
+            return self.attachment_resolver.resolve(
+                message=msg,
+                allowed_paths=settings.file_access_paths,
+                max_auto_attachments=settings.max_auto_attachments,
+            )
+        except Exception as exc:
+            print(f"Attachment resolution failed: {exc}")
+            return {"requested": False, "attachments": [], "reason": "Attachment resolution failed.", "candidates": []}
     
     def smart_draft_message(self, message_data):
         """Generate a smart draft response to the specified message.
@@ -935,13 +1618,58 @@ class AutoReturnApp(QMainWindow):
         Args:
             message_data (dict): The message to draft a response to
         """
-        QMessageBox.information(
-            self, 
-            "Smart Draft", 
-            f"Generating smart draft suggestions for message from {message_data.get('sender', 'Unknown')}...\n\n"
-            "This feature provides AI-powered draft suggestions you can edit before sending.\n\n"
-            "(Coming soon!)"
+        existing_draft = (message_data.get("automation_draft_text") or "").strip()
+        if existing_draft:
+            data = dict(message_data)
+            data["_prefill_draft_text"] = existing_draft
+            suggested_files = message_data.get("automation_draft_attachments", []) or []
+            if suggested_files:
+                data["_attachments"] = suggested_files
+            self.show_send_message_dialog(data)
+            return
+
+        self.show_status_message("Generating smart draft...")
+        worker = AgentWorker(self.orchestrator.generate_draft_for_message(message_data))
+        worker.result_ready.connect(lambda res, m=dict(message_data): self._on_smart_draft_ready(m, res))
+        worker.error_occurred.connect(self.on_agent_error)
+        worker.finished.connect(lambda: self._cleanup_worker(worker))
+        self.active_workers.append(worker)
+        worker.start()
+
+    def _on_smart_draft_ready(self, message_data: dict, result: dict):
+        """Handle smart draft generation and open compose dialog prefilled."""
+        draft_text = ""
+        if isinstance(result, dict):
+            draft_text = (result.get("draft") or "").strip()
+
+        if not draft_text:
+            QMessageBox.warning(self, "Smart Draft", "Could not generate a draft right now.")
+            return
+
+        msg_id = message_data.get("id")
+        draft_attachment_plan = self._resolve_automation_attachments(message_data)
+        draft_attachments = draft_attachment_plan.get("attachments", []) or []
+        draft_attachment_reason = (
+            draft_attachment_plan.get("reason", "")
+            if draft_attachment_plan.get("requested") and not draft_attachments
+            else ""
         )
+        if msg_id:
+            for msg in self.messages:
+                if msg.get("id") == msg_id:
+                    msg["automation_draft_text"] = draft_text
+                    msg["automation_draft_attachments"] = draft_attachments
+                    msg["automation_draft_attachment_reason"] = draft_attachment_reason
+                    break
+
+        data = dict(message_data)
+        data["automation_draft_text"] = draft_text
+        data["automation_draft_attachments"] = draft_attachments
+        data["automation_draft_attachment_reason"] = draft_attachment_reason
+        data["_prefill_draft_text"] = draft_text
+        if draft_attachments:
+            data["_attachments"] = draft_attachments
+        self.show_send_message_dialog(data)
     
     def attach_file_message(self, message_data):
         """Attach a file to a message.
@@ -1018,6 +1746,9 @@ class AutoReturnApp(QMainWindow):
                 msg['summary'] = clean_summary
                 msg['ai_analysis'] = full_analysis
                 break
+
+        # Keep status metrics (including urgent count) live as background updates arrive.
+        self.update_status_bar()
         
         # Refresh the table row specifically instead of full heavy reload
         # For now, full reload is safer but we can optimize later
@@ -1391,6 +2122,7 @@ class AutoReturnApp(QMainWindow):
             ("Gmail: 0", "statusItem"),
             ("Slack: 0", "statusItem"),
             ("Urgent: 0", "statusItem"),
+            ("Auto Reply: OFF", "autoReplyStatusItem"),
             # NEW: Add tone status indicator
             ("Tone: Formal", "toneStatusItem")
         ]
@@ -1513,7 +2245,7 @@ class AutoReturnApp(QMainWindow):
                     preview_display += "..."
                 preview_text = QLabel(preview_display)
                 preview_text.setObjectName("previewText")
-                
+
                 subject_layout.addWidget(subject_text)
                 subject_layout.addWidget(preview_text)
                 self.table.setCellWidget(row_idx, 3, subject_widget)
@@ -1563,24 +2295,75 @@ class AutoReturnApp(QMainWindow):
                 actions_layout.setContentsMargins(4, 4, 4, 4)
                 actions_layout.setSpacing(4)
 
+                auto_reply_status = str(msg.get("automation_auto_reply_status", "")).strip().lower()
+                row_msg_id = str(msg.get("id", "")).strip()
+
                 reply_btn = QPushButton("Reply")
                 reply_btn.setObjectName("actionBtn")
                 reply_btn.setFixedHeight(30)
                 reply_btn.setMinimumWidth(58)
                 reply_btn.clicked.connect(lambda checked, m=msg: self.show_send_message_dialog(m))
+                draft_preview = self._get_draft_preview_text(msg)
+                if draft_preview:
+                    reply_btn.setToolTip("Reply (generated draft is available)")
+                else:
+                    reply_btn.setToolTip("Reply")
 
                 auto_reply_btn = QPushButton("Auto" if self._is_compact_ui else "Auto Reply")
                 auto_reply_btn.setObjectName("actionBtn")
                 auto_reply_btn.setFixedHeight(30)
                 auto_reply_btn.setMinimumWidth(58 if self._is_compact_ui else 86)
-                auto_reply_btn.setToolTip("Auto Reply")
+                auto_reply_state = auto_reply_status
+                auto_reply_reason = str(msg.get("automation_auto_reply_reason", "")).strip()
+                if row_msg_id and row_msg_id in self.automation_auto_reply_pending_ids and auto_reply_state not in {"sent", "failed"}:
+                    auto_reply_state = "pending"
+                if auto_reply_state not in {"pending", "sent", "failed"}:
+                    auto_reply_state = "none"
+                auto_reply_btn.setProperty("automationState", auto_reply_state)
+                auto_reply_btn.setIconSize(QSize(12, 12))
+                if auto_reply_state == "pending":
+                    auto_reply_btn.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
+                    auto_reply_btn.setToolTip("Auto Reply is in progress")
+                elif auto_reply_state == "sent":
+                    auto_reply_btn.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
+                    auto_reply_btn.setToolTip("Message was auto-replied")
+                elif auto_reply_state == "failed":
+                    auto_reply_btn.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                    if auto_reply_reason:
+                        auto_reply_btn.setToolTip(f"Auto Reply failed: {auto_reply_reason}")
+                    else:
+                        auto_reply_btn.setToolTip("Auto Reply failed")
+                else:
+                    auto_reply_btn.setIcon(QIcon())
+                    auto_reply_btn.setToolTip("Auto Reply")
                 auto_reply_btn.clicked.connect(lambda checked, m=msg: self.auto_reply_message(m))
 
                 smart_draft_btn = QPushButton("Draft")
                 smart_draft_btn.setObjectName("actionBtn")
                 smart_draft_btn.setFixedHeight(30)
                 smart_draft_btn.setMinimumWidth(58)
-                smart_draft_btn.setToolTip("Smart Draft")
+                draft_attachments = msg.get("automation_draft_attachments", []) or []
+                attachment_needed_note = (msg.get("automation_draft_attachment_reason") or "").strip()
+                if draft_attachments or attachment_needed_note:
+                    smart_draft_btn.setIcon(self._get_attachment_suggested_icon())
+                    smart_draft_btn.setIconSize(QSize(14, 14))
+                draft_attachment_preview = self._get_draft_attachment_preview(msg)
+                if draft_attachments and draft_preview:
+                    smart_draft_btn.setToolTip(
+                        f"Draft ready:\n{draft_preview}\n\nSuggested attachments: {draft_attachment_preview}"
+                    )
+                elif draft_attachments:
+                    smart_draft_btn.setToolTip(
+                        f"Suggested attachments: {draft_attachment_preview}" if draft_attachment_preview else "Suggested attachments detected."
+                    )
+                elif attachment_needed_note and draft_preview:
+                    smart_draft_btn.setToolTip(f"Draft ready:\n{draft_preview}\n\nAttachment note: {attachment_needed_note}")
+                elif attachment_needed_note:
+                    smart_draft_btn.setToolTip(f"Attachment note: {attachment_needed_note}")
+                elif draft_preview:
+                    smart_draft_btn.setToolTip(f"Draft ready:\n{draft_preview}")
+                else:
+                    smart_draft_btn.setToolTip("Smart Draft")
                 smart_draft_btn.clicked.connect(lambda checked, m=msg: self.smart_draft_message(m))
 
                 actions_layout.addWidget(reply_btn)
@@ -1598,6 +2381,18 @@ class AutoReturnApp(QMainWindow):
                         item = self.table.item(row_idx, col)
                         if item:
                             item.setBackground(QColor("#E6F7F9"))
+
+                self._apply_auto_reply_row_tint(
+                    row_idx=row_idx,
+                    widgets=[
+                        checkbox_widget,
+                        source_label,
+                        from_widget,
+                        subject_widget,
+                        summary_label,
+                    ],
+                    status=auto_reply_status,
+                )
             self._update_selection_controls()
             self._refresh_pagination_controls(total_pages, len(filtered))
         finally:
@@ -2166,8 +2961,8 @@ class AutoReturnApp(QMainWindow):
         """Show AI Analysis dialog with task classification, priority, and calendar info."""
         dialog = QDialog(self)
         dialog.setWindowTitle("AI Analysis")
-        dialog.resize(860, 680)
-        dialog.setMinimumSize(700, 520)
+        dialog.resize(980, 760)
+        dialog.setMinimumSize(840, 620)
         dialog.setStyleSheet("""
             QDialog {
                 background-color: #ffffff;
@@ -2281,19 +3076,92 @@ class AutoReturnApp(QMainWindow):
         layout.addWidget(actions_header)
 
         action_text = self._get_recommended_action(task_label, priority, msg)
-        action_label = QLabel(action_text)
-        action_label.setObjectName("detailMeta")
-        action_label.setWordWrap(True)
-        action_label.setStyleSheet("""
+        action_box = QLabel(action_text)
+        action_box.setWordWrap(True)
+        action_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        action_box.setStyleSheet("""
             background-color: #F0FAFB;
             border: 1px solid #AFDDE5;
+            border-left: 4px solid #0FA4AF;
             border-radius: 8px;
-            padding: 10px 14px;
+            padding: 10px 12px;
             font-size: 13px;
             color: #024950;
-            line-height: 1.5;
+            font-weight: 600;
         """)
-        layout.addWidget(action_label)
+        layout.addWidget(action_box)
+
+        suggested_attachments = msg.get("automation_draft_attachments", []) or []
+        attachment_reason = (msg.get("automation_draft_attachment_reason") or "").strip()
+
+        # --- Generated Draft Preview ---
+        draft_preview_full = (msg.get("automation_draft_text") or "").strip()
+        if draft_preview_full or suggested_attachments or attachment_reason:
+            draft_title = QLabel("✍️ Generated Draft Preview")
+            draft_title.setObjectName("sectionHeader")
+            layout.addWidget(draft_title)
+
+            if draft_preview_full:
+                draft_box = QTextEdit()
+                draft_box.setReadOnly(True)
+                draft_box.setMinimumHeight(120)
+                draft_box.setMaximumHeight(180)
+                draft_box.setPlainText(draft_preview_full)
+                layout.addWidget(draft_box)
+
+            if suggested_attachments:
+                attach_box = QTextEdit()
+                attach_box.setReadOnly(True)
+                attach_box.setMinimumHeight(120)
+                attach_box.setMaximumHeight(240)
+                attach_box.setLineWrapMode(QTextEdit.WidgetWidth)
+                attach_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                attachment_lines = [
+                    f"• {os.path.basename(path)}"
+                    for path in suggested_attachments[:10]
+                ]
+                attach_box.setPlainText("Suggested attachments:\n" + "\n".join(attachment_lines))
+                attach_box.setStyleSheet(
+                    """
+                    background-color: #EEF8FA;
+                    border: 1px solid #AFDDE5;
+                    border-left: 4px solid #0FA4AF;
+                    border-radius: 8px;
+                    padding: 10px 12px;
+                    color: #003135;
+                    font-size: 13px;
+                    font-weight: 600;
+                    """
+                )
+                layout.addWidget(attach_box)
+
+            if attachment_reason:
+                attach_note = QTextEdit()
+                attach_note.setReadOnly(True)
+                attach_note.setMinimumHeight(120)
+                attach_note.setMaximumHeight(260)
+                attach_note.setLineWrapMode(QTextEdit.WidgetWidth)
+                attach_note.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+                attach_note.setPlainText(f"Attachment note:\n{attachment_reason}")
+                attach_note.setStyleSheet(
+                    """
+                    background-color: #FFF8EE;
+                    border: 1px solid #F2D3A2;
+                    border-left: 4px solid #F59E0B;
+                    border-radius: 8px;
+                    padding: 10px 12px;
+                    color: #5C3B00;
+                    font-size: 13px;
+                    font-weight: 600;
+                    """
+                )
+                layout.addWidget(attach_note)
+
+            if draft_preview_full:
+                open_draft_btn = QPushButton("Open Draft in Composer")
+                open_draft_btn.setObjectName("btnSecondary")
+                open_draft_btn.clicked.connect(lambda: (dialog.accept(), self.smart_draft_message(msg)))
+                layout.addWidget(open_draft_btn, alignment=Qt.AlignLeft)
 
         # --- Calendar Schedule Suggestions ---
         schedule_items = msg.get('ai_events') or []
@@ -2572,12 +3440,17 @@ class AutoReturnApp(QMainWindow):
         total = len(self.messages)
         gmail_count = sum(1 for m in self.messages if m.get('source') == 'gmail')
         slack_count = sum(1 for m in self.messages if m.get('source') == 'slack')
-        urgent_count = sum(1 for m in self.messages if m.get('priority') == 'urgent')
+        urgent_count = sum(
+            1
+            for m in self.messages
+            if self._normalize_priority(m.get('priority', 'Low')) == 'High'
+        )
         
         self.status_labels.get("Total Messages").setText(f"Total Messages: {total}")
         self.status_labels.get("Gmail").setText(f"Gmail: {gmail_count}")
         self.status_labels.get("Slack").setText(f"Slack: {slack_count}")
         self.status_labels.get("Urgent").setText(f"Urgent: {urgent_count}")
+        self._update_auto_reply_status_chip()
         
         # NEW: Update tone status indicator
         if hasattr(self, 'orchestrator') and self.orchestrator:
@@ -2588,6 +3461,33 @@ class AutoReturnApp(QMainWindow):
             except Exception as e:
                 print(f"Error updating tone status: {e}")
                 self.status_labels.get("Tone").setText("Tone: Error")
+
+    def _get_automation_status_snapshot(self) -> Tuple[bool, bool]:
+        """Return (dnd_enabled, auto_reply_enabled) from automation settings."""
+        try:
+            if not self.orchestrator or not hasattr(self.orchestrator, "get_automation_coordinator"):
+                return False, False
+            coordinator = self.orchestrator.get_automation_coordinator()
+            settings = coordinator.get_settings()
+            return bool(settings.dnd_enabled), bool(settings.auto_reply_enabled)
+        except Exception as exc:
+            print(f"Error reading automation status: {exc}")
+            return False, False
+
+    def _update_auto_reply_status_chip(self):
+        """Update Auto Reply chip text and highlight state."""
+        label = self.status_labels.get("Auto Reply")
+        if label is None:
+            return
+
+        dnd_enabled, auto_reply_enabled = self._get_automation_status_snapshot()
+        enabled = bool(dnd_enabled and auto_reply_enabled)
+        state_text = "ON" if enabled else "OFF"
+        label.setText(f"Auto Reply: {state_text}")
+        label.setProperty("enabledState", "on" if enabled else "off")
+        label.style().unpolish(label)
+        label.style().polish(label)
+        label.update()
 
     def show_status_message(self, message: str, timeout: int = 5000):
         """Display a temporary message in the status region (fallback to console)."""
@@ -2601,6 +3501,14 @@ class AutoReturnApp(QMainWindow):
 
     def _notify_desktop(self, title: str, message: str):
         """Send a desktop notification if supported (plyer)."""
+        try:
+            dnd_enabled, _ = self._get_automation_status_snapshot()
+            if dnd_enabled:
+                return
+        except Exception:
+            # If settings cannot be read, keep existing behavior.
+            pass
+
         try:
             from plyer import notification
             notification.notify(title=title, message=message, timeout=6)
@@ -2831,6 +3739,7 @@ class AutoReturnApp(QMainWindow):
         dialog.profile_updated.connect(self.on_profile_updated)
         dialog.refresh_gmail_status()
         dialog.exec()
+        self.update_status_bar()
 
     def on_profile_updated(self, updated_user: dict):
         """Handle updates to the user's profile.

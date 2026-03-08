@@ -44,6 +44,15 @@ class OllamaService(QObject):
     async def generate_summary_async(self, message_text: str, sender: str = "", subject: str = "") -> Optional[str]:
         """Async version of generate_summary for use by agents."""
         return await asyncio.to_thread(self.generate_summary, message_text, sender, subject)
+
+    async def generate_text_async(
+        self,
+        prompt: str,
+        temperature: float = 0.55,
+        max_tokens: int = 260,
+    ) -> Optional[str]:
+        """Async generic text generation for drafting/rewrite tasks."""
+        return await asyncio.to_thread(self.generate_text, prompt, temperature, max_tokens)
     
     def generate_summary(self, message_text: str, sender: str = "", subject: str = "") -> Optional[str]:
         """Generate a summary of the message using Ollama"""
@@ -68,7 +77,7 @@ Task: [Category Name]
 [Brief reason for classification]
 
 Message: {message_text}"""
-            
+
             payload = {
                 "model": self.model_name,
                 "prompt": prompt,
@@ -79,20 +88,20 @@ Message: {message_text}"""
                     "max_tokens": 100
                 }
             }
-            
+
             response = requests.post(
                 self.api_url,
                 json=payload,
                 timeout=60  # Increased timeout for concurrent requests
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 summary = result.get('response', '').strip()
                 return summary if summary else "Unable to generate summary"
             else:
                 return None
-                
+
         except requests.exceptions.Timeout:
             self.error_occurred.emit("Ollama request timed out")
             return None
@@ -101,6 +110,37 @@ Message: {message_text}"""
             return None
         except Exception as e:
             self.error_occurred.emit(f"Error generating summary: {str(e)}")
+            return None
+
+    def generate_text(self, prompt: str, temperature: float = 0.55, max_tokens: int = 260) -> Optional[str]:
+        """Generate direct free-form text from a prompt (no summary wrapper)."""
+        try:
+            payload = {
+                "model": self.model_name,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": temperature,
+                    "top_p": 0.9,
+                    "max_tokens": max_tokens,
+                },
+            }
+
+            response = requests.post(self.api_url, json=payload, timeout=60)
+            if response.status_code != 200:
+                return None
+
+            result = response.json()
+            output = result.get("response", "").strip()
+            return output if output else None
+        except requests.exceptions.Timeout:
+            self.error_occurred.emit("Ollama request timed out")
+            return None
+        except requests.exceptions.ConnectionError:
+            self.error_occurred.emit("Cannot connect to Ollama. Is it running?")
+            return None
+        except Exception as e:
+            self.error_occurred.emit(f"Error generating text: {str(e)}")
             return None
 
 

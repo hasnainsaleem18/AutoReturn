@@ -186,6 +186,26 @@ def get_stylesheet():
             background-color: #024950;
         }
 
+        #actionBtn[automationState="pending"] {
+            background-color: #E7F6F8;
+            color: #024950;
+            border: 1px solid #0FA4AF;
+        }
+
+        #actionBtn[automationState="sent"] {
+            background-color: #DFF5EA;
+            color: #1D6B45;
+            border: 1px solid #63B38D;
+            font-weight: 700;
+        }
+
+        #actionBtn[automationState="failed"] {
+            background-color: #FCE9E5;
+            color: #964734;
+            border: 1px solid #C65A42;
+            font-weight: 700;
+        }
+
         #selectionInfo {
             color: #024950;
             font-weight: 600;
@@ -312,5 +332,33 @@ def get_stylesheet():
         #statusItem {
             font-size: 13px;
             color: #AFDDE5;
+        }
+
+        #toneStatusItem {
+            font-size: 13px;
+            color: #AFDDE5;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        #autoReplyStatusItem {
+            font-size: 13px;
+            color: #AFDDE5;
+            padding: 2px 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(175, 221, 229, 0.4);
+        }
+
+        #autoReplyStatusItem[enabledState="on"] {
+            color: #003135;
+            font-weight: 700;
+            background-color: #AFDDE5;
+            border: 1px solid #AFDDE5;
+        }
+
+        #autoReplyStatusItem[enabledState="off"] {
+            color: #AFDDE5;
+            font-weight: 500;
+            background-color: transparent;
         }
     """

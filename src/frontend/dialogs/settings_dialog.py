@@ -16,17 +16,18 @@ import json
 # Third-party imports
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QWidget, QTabWidget, QScrollArea, QTimeEdit, QLineEdit,
+    QLabel, QWidget, QTabWidget, QScrollArea, QTimeEdit, QLineEdit, QCheckBox,
     QMessageBox, QFileDialog, QTextEdit
 )
-from PySide6.QtCore import Qt, QTime, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt, QTime, Signal, QSize
+from PySide6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush
 
 # Local application imports
 from src.frontend.ui.styles import get_stylesheet
 
 # Local imports for tone features
 from src.backend.models.tone_models import ToneType, get_tone_display_name
+from src.backend.models.automation_models import AutomationSettings
 
 # -------------------------
 # STYLE CONSTANTS
@@ -92,6 +93,65 @@ class UIConstants:
     TAB_PRIORITY_RULES = 2
     TAB_INTEGRATIONS = 3
 
+
+class ToggleSwitch(QCheckBox):
+    """Compact cross-platform switch-style toggle."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFixedSize(52, 28)
+        self.setText("")
+        self.setTristate(False)
+        self.setFocusPolicy(Qt.StrongFocus)
+
+    def sizeHint(self):
+        return QSize(52, 28)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.rect().contains(event.position().toPoint()):
+            self.toggle()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
+            self.toggle()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        rect = self.rect().adjusted(1, 1, -1, -1)
+        radius = rect.height() / 2
+
+        on_color = QColor(StyleConstants.COLOR_PRIMARY)
+        is_dark = self.palette().window().color().lightness() < 128
+        off_color = QColor("#4B5563") if is_dark else QColor("#AFDDE5")
+        border_color = self.palette().dark().color()
+
+        track_color = on_color if self.isChecked() else off_color
+        painter.setPen(QPen(border_color, 1))
+        painter.setBrush(QBrush(track_color))
+        painter.drawRoundedRect(rect, radius, radius)
+
+        knob_d = rect.height() - 6
+        knob_y = rect.top() + 3
+        knob_x = rect.right() - knob_d - 3 if self.isChecked() else rect.left() + 3
+        knob_rect = rect.adjusted(0, 0, 0, 0)
+        knob_rect.setX(knob_x)
+        knob_rect.setY(knob_y)
+        knob_rect.setWidth(knob_d)
+        knob_rect.setHeight(knob_d)
+
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(self.palette().base().color()))
+        painter.drawEllipse(knob_rect)
+
 # -------------------------
 # SETTINGS DIALOG CLASS
 # -------------------------
@@ -120,6 +180,7 @@ class SettingsDialog(QDialog):
         
         # NEW: Add orchestrator for tone features
         self.orchestrator = orchestrator
+        self.automation_settings = self._load_automation_settings()
         
         # -------------------------
         # DIALOG SETUP
@@ -248,6 +309,17 @@ class SettingsDialog(QDialog):
             default_data.update(user_data)
         
         return default_data
+
+    def _load_automation_settings(self) -> AutomationSettings:
+        """Load automation settings from orchestrator coordinator when available."""
+        try:
+            if self.orchestrator and hasattr(self.orchestrator, "get_automation_coordinator"):
+                coordinator = self.orchestrator.get_automation_coordinator()
+                if coordinator:
+                    return coordinator.get_settings()
+        except Exception as e:
+            print(f"Could not load automation settings: {e}")
+        return AutomationSettings()
     
     # -------------------------
     # DIALOG SETUP
@@ -338,6 +410,7 @@ class SettingsDialog(QDialog):
         # NEW: Add tone settings tab if orchestrator is available
         if self.orchestrator:
             tabs.addTab(self._create_tone_settings_tab(), "Tone Settings")
+            tabs.addTab(self._create_automation_settings_tab(), "Automation")
 
         return tabs
     
@@ -462,7 +535,7 @@ class SettingsDialog(QDialog):
         layout.setSpacing(StyleConstants.SPACING_LARGE)
         
         # Section header
-        layout.addWidget(self._create_section_header("⚡ Priority Rules"))
+        layout.addWidget(self._create_section_header("Priority Rules"))
         
         # Description
         description = self._create_description(
@@ -1504,7 +1577,7 @@ This token will let your desktop app send and receive messages as you, including
         layout.setContentsMargins(metrics["margin"], metrics["margin"], metrics["margin"], metrics["margin"])
         layout.setSpacing(metrics["spacing"])
 
-        layout.addWidget(self._create_section_header("🎨 Tone Settings"))
+        layout.addWidget(self._create_section_header("Tone Settings"))
         layout.addWidget(self._create_description("Configure your default tone preferences and auto-suggestion settings."))
 
         layout.addWidget(self._create_default_tone_section())
@@ -1675,6 +1748,242 @@ This token will let your desktop app send and receive messages as you, including
             self.orchestrator.tone_engine.user_profile.tone_effectiveness_scores = {tone: 0.5 for tone in ToneType}
             self.orchestrator.tone_engine._save_user_profile()
             QMessageBox.information(self, "Learning Data Reset", "All learning data has been successfully reset.")
+
+    # -------------------------
+    # AUTOMATION SETTINGS TAB
+    # -------------------------
+    def _automation_ui_tokens(self):
+        palette = self.palette()
+        window = palette.window().color().name()
+        base = palette.base().color().name()
+        text = palette.text().color().name()
+        button = palette.button().color().name()
+        highlight = palette.highlight().color().name()
+        return {
+            "window": window,
+            "base": base,
+            "text": text,
+            "button": button,
+            "highlight": highlight,
+            "border": StyleConstants.COLOR_LIGHT,
+            "muted": StyleConstants.COLOR_DARK_PRIMARY,
+        }
+
+    def _append_unique_lines(self, editor: QTextEdit, values: list[str]):
+        existing = {line.strip() for line in editor.toPlainText().splitlines() if line.strip()}
+        for value in values:
+            v = (value or "").strip()
+            if v:
+                existing.add(v)
+        editor.setPlainText("\n".join(sorted(existing)))
+
+    def _pick_allowlist_entries(self):
+        text, ok = QFileDialog.getOpenFileName(
+            self,
+            "Pick one sample file to extract path root (optional)",
+            "",
+            "All Files (*.*)",
+        )
+        if ok and text:
+            self._append_unique_lines(self.auto_reply_allowlist_text, [])
+
+    def _pick_access_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Allowed Folder")
+        if folder:
+            self._append_unique_lines(self.file_access_paths_text, [folder])
+
+    def _pick_access_files(self):
+        files, _ = QFileDialog.getOpenFileNames(self, "Select Allowed Files")
+        if files:
+            self._append_unique_lines(self.file_access_paths_text, files)
+
+    def _create_automation_toggle_row(self, label_text: str, checked: bool, tokens: dict):
+        row = QWidget()
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(StyleConstants.SPACING_MEDIUM)
+
+        label = QLabel(label_text)
+        label.setStyleSheet(
+            f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['text']}; border: none;"
+        )
+        label.setWordWrap(True)
+
+        toggle = ToggleSwitch()
+        toggle.setChecked(checked)
+
+        row_layout.addWidget(label, 1)
+        row_layout.addWidget(toggle, 0, Qt.AlignRight | Qt.AlignVCenter)
+        return row, toggle
+
+    def _create_automation_settings_tab(self):
+        scroll = self._create_scroll_area()
+        tab = QWidget()
+        tokens = self._tone_ui_tokens()
+        metrics = self._tone_ui_metrics()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(metrics["margin"], metrics["margin"], metrics["margin"], metrics["margin"])
+        layout.setSpacing(metrics["spacing"])
+
+        layout.addWidget(self._create_section_header("Automation Settings"))
+        layout.addWidget(
+            self._create_description(
+                "Configure DND, auto-reply policy, sender allowlist, and file/folder access paths."
+            )
+        )
+
+        input_style = f"""
+            QTextEdit, QLineEdit {{
+                border: 1px solid {tokens['border']};
+                border-radius: {StyleConstants.RADIUS_SMALL}px;
+                padding: {StyleConstants.PADDING_SMALL}px;
+                background-color: {tokens['input_bg']};
+                color: {tokens['input_text']};
+            }}
+            QTextEdit:focus, QLineEdit:focus {{
+                border: 2px solid {tokens['input_focus']};
+            }}
+            QCheckBox {{
+                color: {tokens['text']};
+                spacing: 8px;
+                border: none;
+            }}
+        """
+
+        policy_section = self._tone_section_frame()
+        policy_layout = QVBoxLayout(policy_section)
+        policy_layout.setContentsMargins(metrics["spacing"], metrics["spacing"], metrics["spacing"], metrics["spacing"])
+        policy_layout.setSpacing(StyleConstants.SPACING_SMALL)
+        policy_layout.addWidget(self._create_subsection_header("Policy Controls"))
+        policy_layout.addWidget(self._create_description("Core decision switches for DND, auto-reply, and manual confirmation."))
+
+        dnd_row, self.dnd_enabled_checkbox = self._create_automation_toggle_row(
+            "Enable DND (Do Not Disturb)",
+            self.automation_settings.dnd_enabled,
+            tokens,
+        )
+        policy_layout.addWidget(dnd_row)
+
+        auto_row, self.auto_reply_enabled_checkbox = self._create_automation_toggle_row(
+            "Enable Auto Reply (used only when DND is ON)",
+            self.automation_settings.auto_reply_enabled,
+            tokens,
+        )
+        policy_layout.addWidget(auto_row)
+
+        confirm_row, self.require_user_confirm_plain_reply_checkbox = self._create_automation_toggle_row(
+            "Require user confirmation for Plain Reply",
+            self.automation_settings.require_user_confirm_plain_reply,
+            tokens,
+        )
+        policy_layout.addWidget(confirm_row)
+        layout.addWidget(policy_section)
+
+        allowlist_section = self._tone_section_frame()
+        allowlist_layout = QVBoxLayout(allowlist_section)
+        allowlist_layout.setContentsMargins(metrics["spacing"], metrics["spacing"], metrics["spacing"], metrics["spacing"])
+        allowlist_layout.setSpacing(StyleConstants.SPACING_SMALL)
+        allowlist_layout.addWidget(self._create_subsection_header("Auto-Reply Allowlist"))
+        allowlist_layout.addWidget(self._create_description("One sender identity per line (e.g., email or Slack user ID)."))
+        self.auto_reply_allowlist_text = QTextEdit()
+        self.auto_reply_allowlist_text.setPlaceholderText("sender@example.com\nU01234567")
+        self.auto_reply_allowlist_text.setPlainText("\n".join(self.automation_settings.auto_reply_allowlist))
+        self.auto_reply_allowlist_text.setMinimumHeight(110)
+        self.auto_reply_allowlist_text.setStyleSheet(input_style)
+        allowlist_layout.addWidget(self.auto_reply_allowlist_text)
+        layout.addWidget(allowlist_section)
+
+        access_section = self._tone_section_frame()
+        access_layout = QVBoxLayout(access_section)
+        access_layout.setContentsMargins(metrics["spacing"], metrics["spacing"], metrics["spacing"], metrics["spacing"])
+        access_layout.setSpacing(StyleConstants.SPACING_SMALL)
+        access_layout.addWidget(self._create_subsection_header("File & Folder Access"))
+        access_layout.addWidget(self._create_description("Paths used for attachment lookup. Add folders/files below."))
+        self.file_access_paths_text = QTextEdit()
+        self.file_access_paths_text.setPlaceholderText("/home/user/Documents\n/home/user/Desktop/file.pdf")
+        self.file_access_paths_text.setPlainText("\n".join(self.automation_settings.file_access_paths))
+        self.file_access_paths_text.setMinimumHeight(130)
+        self.file_access_paths_text.setStyleSheet(input_style)
+        access_layout.addWidget(self.file_access_paths_text)
+
+        picker_row = QHBoxLayout()
+        add_folder_btn = self._create_primary_button("Add Folder", self._pick_access_folder)
+        add_file_btn = self._create_primary_button("Add Files", self._pick_access_files)
+        add_folder_btn.setMinimumHeight(metrics["control_h"])
+        add_file_btn.setMinimumHeight(metrics["control_h"])
+        picker_row.addWidget(add_folder_btn)
+        picker_row.addWidget(add_file_btn)
+        picker_row.addStretch()
+        access_layout.addLayout(picker_row)
+
+        max_label = QLabel("Max auto attachments (0-10)")
+        max_label.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;")
+        access_layout.addWidget(max_label)
+        self.max_auto_attachments_input = QLineEdit(str(self.automation_settings.max_auto_attachments))
+        self.max_auto_attachments_input.setPlaceholderText("Max auto attachments (0-10)")
+        self.max_auto_attachments_input.setMaximumWidth(220)
+        self.max_auto_attachments_input.setStyleSheet(input_style)
+        access_layout.addWidget(self.max_auto_attachments_input, 0, Qt.AlignLeft)
+        layout.addWidget(access_section)
+
+        actions_section = self._tone_section_frame()
+        actions_layout = QVBoxLayout(actions_section)
+        actions_layout.setContentsMargins(metrics["spacing"], metrics["spacing"], metrics["spacing"], metrics["spacing"])
+        actions_layout.setSpacing(StyleConstants.SPACING_SMALL)
+        actions_layout.addWidget(self._create_subsection_header("Save Changes"))
+        actions_layout.addWidget(self._create_description("Apply and persist automation settings."))
+        save_btn = self._create_primary_button("Save Automation Settings", self._save_automation_settings)
+        save_btn.setMinimumHeight(metrics["control_h"])
+        save_btn.setMaximumWidth(280)
+        actions_layout.addWidget(save_btn, alignment=Qt.AlignLeft)
+        layout.addWidget(actions_section)
+
+        layout.addStretch()
+        scroll.setWidget(tab)
+        return scroll
+
+    def _save_automation_settings(self):
+        try:
+            allowlist = [
+                line.strip()
+                for line in self.auto_reply_allowlist_text.toPlainText().splitlines()
+                if line.strip()
+            ]
+            file_access_paths = [
+                line.strip()
+                for line in self.file_access_paths_text.toPlainText().splitlines()
+                if line.strip()
+            ]
+
+            max_auto_attachments = int((self.max_auto_attachments_input.text() or "3").strip())
+            if max_auto_attachments < 0 or max_auto_attachments > 10:
+                raise ValueError("Max auto attachments must be between 0 and 10.")
+
+            updated = AutomationSettings(
+                dnd_enabled=self.dnd_enabled_checkbox.isChecked(),
+                auto_reply_enabled=self.auto_reply_enabled_checkbox.isChecked(),
+                auto_reply_allowlist=allowlist,
+                file_access_paths=file_access_paths,
+                max_auto_attachments=max_auto_attachments,
+                require_user_confirm_plain_reply=self.require_user_confirm_plain_reply_checkbox.isChecked(),
+            )
+
+            if not self.orchestrator or not hasattr(self.orchestrator, "get_automation_coordinator"):
+                QMessageBox.warning(self, "Automation Settings", "Automation coordinator is not available.")
+                return
+
+            coordinator = self.orchestrator.get_automation_coordinator()
+            ok = coordinator.update_settings(updated)
+            if not ok:
+                QMessageBox.warning(self, "Automation Settings", "Failed to save automation settings.")
+                return
+
+            self.automation_settings = updated
+            QMessageBox.information(self, "Automation Settings", "Automation settings updated successfully.")
+        except ValueError as e:
+            QMessageBox.warning(self, "Invalid Input", str(e))
+        except Exception as e:
+            QMessageBox.warning(self, "Automation Settings", f"Could not save settings: {e}")
 
 
 # -------------------------
