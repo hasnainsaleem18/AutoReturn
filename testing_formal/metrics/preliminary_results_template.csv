@@ -1,0 +1,2 @@
+run_id,run_timestamp,python_version,platform,tests_executed,tests_passed,tests_failed,ollama_reachable,event_extraction_feasible,notes
+sample_001,2026-03-09T00:00:00Z,3.12.x,macOS,10,8,2,true,true,Replace with real run output

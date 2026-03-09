@@ -35,7 +35,7 @@ def main():
         """Callback when user is authenticated"""
         global main_window
         
-        print(f"✅ User authenticated: {user_data.get('email', 'Unknown')}")
+        print(f" User authenticated: {user_data.get('email', 'Unknown')}")
         
         # Create and show main application window
         main_window = AutoReturnApp()

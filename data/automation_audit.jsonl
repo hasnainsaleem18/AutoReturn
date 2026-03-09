@@ -12,3 +12,6 @@
 {"timestamp": "2026-03-08T11:17:29.267748", "message_id": "1772540150.159909", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
 {"timestamp": "2026-03-08T11:17:38.304341", "message_id": "1772540096.730029", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
 {"timestamp": "2026-03-08T11:18:17.629307", "message_id": "19ccc08bdf423cd8", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T22:38:35.152969", "message_id": "19ccb0d80ee49427", "source": "gmail", "action": "auto_reply", "success": false, "reason": "Attachment request detected, but no readable files found in allowed paths."}
+{"timestamp": "2026-03-08T22:38:42.163252", "message_id": "19ccafd2a40dd2a8", "source": "gmail", "action": "auto_reply", "success": false, "reason": "Attachment request detected, but no readable files found in allowed paths."}
+{"timestamp": "2026-03-08T22:38:44.453614", "message_id": "1772540150.159909", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}

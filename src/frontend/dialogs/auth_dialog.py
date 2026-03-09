@@ -12,13 +12,18 @@ login, signup, and password reset functionality.
 # IMPORTS
 # -------------------------
 # Standard library imports
+import json
+import os
+import shutil
+from urllib.error import HTTPError, URLError
+from urllib.request import Request as UrlRequest, urlopen
 from typing import Optional, Tuple
 
 # Third-party imports
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
     QLabel, QLineEdit, QWidget, QStackedWidget, QCheckBox,
-    QMessageBox, QScrollArea, QInputDialog
+    QMessageBox, QScrollArea, QInputDialog, QFileDialog
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
@@ -49,7 +54,7 @@ class AuthDialog(QDialog):
             parent: Parent widget (optional)
         """
         super().__init__(parent)
-        self.setWindowTitle("WorkEase - Welcome")
+        self.setWindowTitle("AutoReturn - Welcome")
         self.setFixedSize(520, 720)
         self.setModal(True)
         
@@ -145,7 +150,7 @@ class AuthDialog(QDialog):
         """)
         welcome.setAlignment(Qt.AlignCenter)
         
-        subtitle = QLabel("Sign in to continue to WorkEase")
+        subtitle = QLabel("Sign in to continue to AutoReturn")
         subtitle.setStyleSheet("""
             font-size: 13px;
             color: #024950;
@@ -825,12 +830,191 @@ class AuthDialog(QDialog):
         Args:
             provider: Name of the social login provider (e.g., 'Google')
         """
-        # TODO: Implement OAuth flow here
-        QMessageBox.information(
+        if provider.lower() != "google":
+            QMessageBox.information(
+                self,
+                f"{provider} Login",
+                f"{provider} authentication is not implemented yet."
+            )
+            return
+
+        try:
+            from google.oauth2.credentials import Credentials
+            from google.auth.transport.requests import Request
+            from google_auth_oauthlib.flow import InstalledAppFlow
+        except Exception:
+            QMessageBox.warning(
+                self,
+                "Google Login",
+                "Google OAuth libraries are missing.\nInstall requirements and restart the app."
+            )
+            return
+
+        scopes = [
+            "openid",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile",
+        ]
+
+        try:
+            client_secret_path = self._ensure_google_client_secret()
+            if not client_secret_path:
+                return
+
+            token_path = self._google_login_token_path()
+            os.makedirs(os.path.dirname(token_path), exist_ok=True)
+
+            creds = None
+            if os.path.exists(token_path):
+                try:
+                    creds = Credentials.from_authorized_user_file(token_path, scopes=scopes)
+                except Exception:
+                    creds = None
+
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                with open(token_path, "w", encoding="utf-8") as f:
+                    f.write(creds.to_json())
+
+            if not creds or not creds.valid:
+                flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, scopes=scopes)
+                creds = flow.run_local_server(
+                    host="localhost",
+                    port=0,
+                    open_browser=True,
+                    authorization_prompt_message=(
+                        "Your browser has been opened for Google sign in.\n"
+                        "Complete sign in, then return to AutoReturn."
+                    ),
+                )
+                with open(token_path, "w", encoding="utf-8") as f:
+                    f.write(creds.to_json())
+
+            user_info = self._fetch_google_user_info(creds.token)
+            email = (user_info.get("email") or "").strip()
+            name = (user_info.get("name") or "").strip()
+
+            if not email:
+                QMessageBox.warning(
+                    self,
+                    "Google Login",
+                    "Google login succeeded but email could not be retrieved."
+                )
+                return
+
+            if not name:
+                name = email.split("@")[0].replace(".", " ").title()
+
+            user_data = {
+                "email": email,
+                "name": name,
+                "auth_method": "google",
+                "google_sub": user_info.get("sub", "")
+            }
+
+            self.authenticated.emit(user_data)
+            self.accept()
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Google Login Failed",
+                f"Authentication failed:\n{exc}"
+            )
+
+    def _project_root(self) -> str:
+        """Get project root path from this file location."""
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+
+    def _google_client_secret_path(self) -> str:
+        """Path for Google OAuth client secret JSON used by app."""
+        return os.path.join(self._project_root(), "data", "gmail_data", "client_secret.json")
+
+    def _google_login_token_path(self) -> str:
+        """Path for storing Google login token."""
+        return os.path.join(self._project_root(), "data", "auth", "google_login_token.json")
+
+    def _ensure_google_client_secret(self) -> Optional[str]:
+        """Ensure client secret exists; optionally prompt user to select JSON."""
+        target_path = self._google_client_secret_path()
+        if os.path.exists(target_path):
+            if self._is_valid_google_client_secret(target_path):
+                return target_path
+            QMessageBox.warning(
+                self,
+                "Google OAuth Setup",
+                "Existing client_secret.json is invalid.\nSelect a valid OAuth Desktop client file."
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "Google OAuth Setup",
+                "Select your Google OAuth Desktop client JSON (client_secret.json)."
+            )
+
+        file_path, _ = QFileDialog.getOpenFileName(
             self,
-            f"{provider} Login",
-            f"{provider} authentication coming soon!"
+            "Select Google OAuth client_secret.json",
+            os.path.expanduser("~"),
+            "JSON Files (*.json);;All Files (*)",
         )
+
+        file_path = (file_path or "").strip()
+        if not file_path:
+            return None
+        if not os.path.exists(file_path):
+            QMessageBox.warning(self, "Google OAuth Setup", "Selected file path does not exist.")
+            return None
+        if not self._is_valid_google_client_secret(file_path):
+            QMessageBox.warning(
+                self,
+                "Google OAuth Setup",
+                "Selected JSON is not a valid OAuth Desktop/Web client secret file."
+            )
+            return None
+
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        try:
+            shutil.copyfile(file_path, target_path)
+            return target_path
+        except Exception as exc:
+            QMessageBox.warning(self, "Google OAuth Setup", f"Could not copy file:\n{exc}")
+            return None
+
+    def _is_valid_google_client_secret(self, file_path: str) -> bool:
+        """Validate Google OAuth client secret JSON shape."""
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return False
+            client = data.get("installed") or data.get("web")
+            if not isinstance(client, dict):
+                return False
+            if not client.get("client_id") or not client.get("client_secret"):
+                return False
+            redirect_uris = client.get("redirect_uris") or []
+            return isinstance(redirect_uris, list) and len(redirect_uris) > 0
+        except Exception:
+            return False
+
+    def _fetch_google_user_info(self, access_token: str) -> dict:
+        """Fetch Google profile (email/name) using access token."""
+        req = UrlRequest(
+            "https://openidconnect.googleapis.com/v1/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        try:
+            with urlopen(req, timeout=15) as response:
+                body = response.read().decode("utf-8")
+        except HTTPError as exc:
+            raise RuntimeError(f"userinfo request failed ({exc.code})") from exc
+        except URLError as exc:
+            raise RuntimeError(f"Could not reach Google userinfo endpoint: {exc.reason}") from exc
+
+        data = json.loads(body)
+        if not isinstance(data, dict):
+            raise RuntimeError("Invalid user info response")
+        return data
     
     # -------------------------
     # PASSWORD RECOVERY
