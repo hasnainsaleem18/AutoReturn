@@ -71,8 +71,9 @@ class OllamaService(QObject):
     # plus a task classification (Smart Draft, Auto Reply, etc.).
     # Returns the AI response string, or None on failure.
     # -------------------------
-    def generate_summary(self, message_text: str, sender: str = "", subject: str = "") -> Optional[str]:
         try:
+            import re
+            
             # Build the prompt that instructs the AI on what format to produce
             prompt = f"""You are an email assistant. Analyze the message and provide a Summary and a Task Classification.
 
@@ -85,13 +86,10 @@ Categories for Task Classification:
 Rules:
 1. Refer to the sender as "The sender". DO NOT use their real name ({sender}).
 2. If it's a channel join message, classify as "Simple Reply".
-3. Provide ONLY the final output format. Do not include your reasoning steps in the final output.
-4. Format the output EXACTLY as follows:
+3. Wrap your final output EXACTLY in these XML tags. Do not put reasoning inside the tags:
 
-Summary: [1-2 sentence summary]
-
-Task: [Category Name]
-[Brief reason for classification]
+<summary>[1-2 sentence summary]</summary>
+<task>[Category Name]</task>
 
 Message: {message_text}"""
 
@@ -108,19 +106,25 @@ Message: {message_text}"""
             if response.status_code == 200:
                 result  = response.json()
                 
-                # We need to extract just the final summary section so we don't show the user 
-                # the AI's "chain of thought" or reasoning steps, regardless of where it put them.
-                raw_text = result.get('response', '').strip()
-                if not raw_text:
-                    raw_text = result.get('thinking', '').strip()
+                raw_text = result.get('response', '')
+                if not raw_text.strip():
+                    raw_text = result.get('thinking', '')
                     
-                if "Summary:" in raw_text:
-                    summary = raw_text.split("Summary:", 1)[1].strip()
+                # Robustly extract the text exactly between the <summary> tags
+                summary_match = re.search(r'<summary>(.*?)</summary>', raw_text, re.DOTALL | re.IGNORECASE)
+                
+                if summary_match:
+                    summary = summary_match.group(1).strip()
                 else:
-                    summary = raw_text.strip()
-                    
-                if "Task:" in summary:
-                    summary = summary.split("Task:", 1)[0].strip()
+                    # Fallback to older line-parsing if the model failed to generate the XML tags
+                    if "Summary:" in raw_text:
+                        summary = raw_text.split("Summary:", 1)[1].strip()
+                        if "Task:" in summary:
+                            summary = summary.split("Task:", 1)[0].strip()
+                        elif "<task>" in summary:
+                            summary = summary.split("<task>", 1)[0].strip()
+                    else:
+                        summary = raw_text.strip()
                     
                 return summary if summary else "Unable to generate summary"
             else:
@@ -142,8 +146,9 @@ Message: {message_text}"""
     # Sends any custom prompt to Ollama and returns the raw AI text response.
     # Used by the Tone Engine and Draft Manager for reply generation and rewriting.
     # -------------------------
-    def generate_text(self, prompt: str, temperature: float = 0.55, max_tokens: int = 260) -> Optional[str]:
         try:
+            import re
+            
             payload = {
                 "model":   self.model_name,
                 "prompt":  prompt,
@@ -155,15 +160,26 @@ Message: {message_text}"""
             if response.status_code != 200:
                 return None
             result = response.json()
-            output = result.get("response", "").strip()
             
-            # If the reasoning model only populated the 'thinking' block
-            if not output and result.get("thinking"):
-                thinking_text = result.get("thinking", "")
-                if "Summary:" in thinking_text:
-                     output = thinking_text.split("Summary:", 1)[1].strip()
+            raw_text = result.get("response", "")
+            if not raw_text.strip():
+                raw_text = result.get('thinking', '')
+            
+            # Robustly extract the text exactly between the <summary> tags
+            summary_match = re.search(r'<summary>(.*?)</summary>', raw_text, re.DOTALL | re.IGNORECASE)
+            
+            if summary_match:
+                output = summary_match.group(1).strip()
+            else:
+                # Fallback to older line-parsing if the model failed to generate the XML tags
+                if "Summary:" in raw_text:
+                    output = raw_text.split("Summary:", 1)[1].strip()
+                    if "Task:" in output:
+                        output = output.split("Task:", 1)[0].strip()
+                    elif "<task>" in output:
+                        output = output.split("<task>", 1)[0].strip()
                 else:
-                     output = thinking_text.strip()
+                    output = raw_text.strip()
                 
             return output if output else None
 
