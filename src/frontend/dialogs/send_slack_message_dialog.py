@@ -174,7 +174,7 @@ class SendSlackMessageDialog(QDialog):
             layout.addSpacing(8)
             layout.addWidget(self.tone_detection_display)
 
-        info_label = QLabel("📊 Analyze message mood, then select tone for your reply:")
+        info_label = QLabel("Analyze message mood, then select tone for your reply:")
         info_label.setStyleSheet("font-size: 12px; color: #024950; margin-bottom: 8px;")
         layout.addWidget(info_label)
         

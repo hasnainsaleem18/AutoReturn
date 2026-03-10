@@ -16,6 +16,10 @@ from src.frontend.ui.autoreturn_app import AutoReturnApp
 from src.frontend.dialogs.auth_dialog import AuthDialog
 
 
+# -------------------------
+# MAIN
+# Handles main functionality for the operation.
+# -------------------------
 def main():
     """Main application entry point"""
     app = QApplication(sys.argv)
@@ -31,6 +35,10 @@ def main():
     # Show authentication dialog first
     auth_dialog = AuthDialog()
     
+    # -------------------------
+    # ON AUTHENTICATED
+    # Event handler triggered when authenticated.
+    # -------------------------
     def on_authenticated(user_data):
         """Callback when user is authenticated"""
         global main_window

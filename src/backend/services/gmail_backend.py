@@ -83,16 +83,28 @@ class GmailIntegrationService(QObject):
         shutil.copyfile(source_path, self.client_secret_path)
         return self.client_secret_path
 
+    # -------------------------
+    # HAS CLIENT SECRET
+    # Checks if the system has client secret.
+    # -------------------------
     def has_client_secret(self) -> bool:
         """Check if client secret file exists."""
         return os.path.exists(self.client_secret_path)
 
+    # -------------------------
+    # GET CLIENT SECRET DISPLAY
+    # Retrieves client secret display.
+    # -------------------------
     def get_client_secret_display(self) -> Optional[str]:
         """Get the display name of the client secret file if it exists."""
         if self.has_client_secret():
             return os.path.basename(self.client_secret_path)
         return None
 
+    # -------------------------
+    # HAS TOKEN
+    # Checks if the system has token.
+    # -------------------------
     def has_token(self) -> bool:
         """Check if an authentication token exists."""
         return os.path.exists(self.token_path)
@@ -132,12 +144,20 @@ class GmailIntegrationService(QObject):
         self.connection_status.emit(True, message)
         return True, message
 
+    # -------------------------
+    # DISCONNECT
+    # Terminates connections for the operation.
+    # -------------------------
     def disconnect(self):
         """Disconnect from Gmail API and clean up resources."""
         self.gmail_api = None
         self.is_connected = False
         self.connection_status.emit(False, "Disconnected from Gmail")
 
+    # -------------------------
+    # GET STATUS SNAPSHOT
+    # Retrieves status snapshot.
+    # -------------------------
     def get_status_snapshot(self) -> dict:
         """Get current connection and authentication status.
         
@@ -169,6 +189,10 @@ class GmailIntegrationService(QObject):
             self.new_messages.emit(messages)
         return messages
 
+    # -------------------------
+    # FETCH MESSAGES
+    # Pulls data for messages.
+    # -------------------------
     def fetch_messages(self, max_results: int = 25, query: str = "in:inbox") -> List[dict]:
         """Fetch messages from Gmail API.
         
@@ -273,6 +297,10 @@ class GmailIntegrationService(QObject):
             self.error_occurred.emit(message)
             return False, message
 
+    # -------------------------
+    # CREATE DRAFT FOR MESSAGE
+    # Instantiates and creates draft for message.
+    # -------------------------
     def create_draft_for_message(self, ui_message: dict, draft_body: str) -> tuple[bool, str]:
         """Create a Gmail draft reply for the specified message."""
         if not self.gmail_api:
@@ -351,6 +379,10 @@ class GmailIntegrationService(QObject):
             "ai_insights": None
         }
 
+    # -------------------------
+    # CLEAN DISPLAY TEXT
+    # Handles clean functionality for display text.
+    # -------------------------
     def _clean_display_text(self, text: Optional[str]) -> str:
         """Clean and format message text for display.
         
@@ -371,6 +403,10 @@ class GmailIntegrationService(QObject):
 
         return cleaned.strip()
 
+    # -------------------------
+    # PARSE SENDER
+    # Extracts and parses sender.
+    # -------------------------
     def _parse_sender(self, sender_value: str) -> tuple[str, str]:
         """Parse sender information from email header.
         
@@ -383,6 +419,10 @@ class GmailIntegrationService(QObject):
         name, email_addr = parseaddr(sender_value)
         return name, email_addr
 
+    # -------------------------
+    # INTERNALDATE TO DATETIME
+    # Handles internaldate functionality for to datetime.
+    # -------------------------
     def _internaldate_to_datetime(self, internal_date: Optional[str]) -> Optional[datetime]:
         """Convert Gmail's internal date string to datetime object.
         
@@ -399,6 +439,10 @@ class GmailIntegrationService(QObject):
             return None
         return None
 
+    # -------------------------
+    # FORMAT RELATIVE TIME
+    # Formats output for relative time.
+    # -------------------------
     def _format_relative_time(self, msg_datetime: Optional[datetime]) -> str:
         """Format datetime as a relative time string (e.g., '2 hours ago').
         
@@ -425,6 +469,10 @@ class GmailIntegrationService(QObject):
             return f"{days}d ago"
         return msg_datetime.strftime("%b %d")
 
+    # -------------------------
+    # DETECT PRIORITY
+    # Handles detect functionality for priority.
+    # -------------------------
     def _detect_priority(self, raw_message: dict) -> str:
         """Determine message priority based on various factors.
         

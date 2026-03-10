@@ -72,12 +72,20 @@ class AgentWorker(QThread):
     result_ready = Signal(object)
     error_occurred = Signal(str)
 
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self, coro):
         super().__init__()
         self.coro = coro
 
+    # -------------------------
+    # RUN
+    # Handles run functionality for the operation.
+    # -------------------------
     def run(self):
-        print(f"⚙️ AgentWorker: Starting background task...")
+        print(f"AgentWorker: Starting background task...")
         try:
             # Create a new event loop for this thread
             loop = asyncio.new_event_loop()
@@ -244,6 +252,10 @@ class AutoReturnApp(QMainWindow):
             print(f"Failed to prepare Gmail data dir: {exc}")
         return base_dir
 
+    # -------------------------
+    # GET ICS OUTPUT DIR
+    # Retrieves ics output dir.
+    # -------------------------
     def _get_ics_output_dir(self):
         """Get directory for ICS exports."""
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
@@ -334,6 +346,10 @@ class AutoReturnApp(QMainWindow):
             if hasattr(self, 'notif_badge'):
                 self.notif_badge.setText(str(unread_count))
     
+    # -------------------------
+    # NORMALIZE PRIORITY
+    # Handles normalize functionality for priority.
+    # -------------------------
     def _normalize_priority(self, raw_priority: str) -> str:
         """Normalize any priority value to High / Medium / Low.
         
@@ -348,6 +364,10 @@ class AutoReturnApp(QMainWindow):
             return 'Medium'
         return 'Low'
 
+    # -------------------------
+    # GET DRAFT PREVIEW TEXT
+    # Retrieves draft preview text.
+    # -------------------------
     def _get_draft_preview_text(self, msg: dict, limit: int = 200) -> str:
         """Return a compact preview of generated automation draft text."""
         draft = (msg.get("automation_draft_text") or "").strip()
@@ -357,6 +377,10 @@ class AutoReturnApp(QMainWindow):
             return draft
         return draft[: limit - 3] + "..."
 
+    # -------------------------
+    # GET DRAFT ATTACHMENT PREVIEW
+    # Retrieves draft attachment preview.
+    # -------------------------
     def _get_draft_attachment_preview(self, msg: dict, limit: int = 3) -> str:
         """Return compact attachment suggestion text for a generated draft."""
         paths = msg.get("automation_draft_attachments", []) or []
@@ -368,6 +392,10 @@ class AutoReturnApp(QMainWindow):
             preview += f" +{len(paths) - limit} more"
         return preview
 
+    # -------------------------
+    # GET DRAFT READY ICON
+    # Retrieves draft ready icon.
+    # -------------------------
     def _get_draft_ready_icon(self) -> QIcon:
         """Create (and cache) a small green dot icon to indicate draft readiness."""
         if hasattr(self, "_draft_ready_icon_cache") and self._draft_ready_icon_cache:
@@ -393,6 +421,10 @@ class AutoReturnApp(QMainWindow):
         self._draft_ready_icon_cache = QIcon(pixmap)
         return self._draft_ready_icon_cache
 
+    # -------------------------
+    # GET ATTACHMENT SUGGESTED ICON
+    # Retrieves attachment suggested icon.
+    # -------------------------
     def _get_attachment_suggested_icon(self) -> QIcon:
         """Get a cross-platform attachment marker icon (paperclip-style)."""
         if hasattr(self, "_attachment_suggested_icon_cache") and self._attachment_suggested_icon_cache:
@@ -421,6 +453,10 @@ class AutoReturnApp(QMainWindow):
         self._attachment_suggested_icon_cache = icon
         return icon
 
+    # -------------------------
+    # APPLY AUTOMATION POLICY
+    # Executes and applies automation policy.
+    # -------------------------
     def _apply_automation_policy(self, messages: list) -> dict:
         """Apply automation policy decision to incoming messages and partition candidates."""
         if not messages or not self.orchestrator or not hasattr(self.orchestrator, "get_automation_coordinator"):
@@ -466,6 +502,10 @@ class AutoReturnApp(QMainWindow):
             "auto_reply_candidates": auto_reply_candidates,
         }
 
+    # -------------------------
+    # START DRAFT GENERATION FOR MESSAGES
+    # Initiates the process for draft generation for messages.
+    # -------------------------
     def _start_draft_generation_for_messages(self, draft_candidates: list):
         """Generate draft-only outputs in a background worker."""
         if not draft_candidates:
@@ -484,12 +524,20 @@ class AutoReturnApp(QMainWindow):
         self.active_workers.append(worker)
         worker.start()
 
+    # -------------------------
+    # CLEAR AUTOMATION DRAFT PENDING
+    # Resets and clears automation draft pending.
+    # -------------------------
     def _clear_automation_draft_pending(self, pending_ids: list):
         """Clear pending draft ids after worker completion."""
         for mid in pending_ids:
             if mid in self.automation_draft_pending_ids:
                 self.automation_draft_pending_ids.remove(mid)
 
+    # -------------------------
+    # START AUTO REPLY FOR MESSAGES
+    # Initiates the process for auto reply for messages.
+    # -------------------------
     def _start_auto_reply_for_messages(self, auto_reply_candidates: list):
         """Execute auto-replies in background for policy-approved messages."""
         if not auto_reply_candidates:
@@ -508,12 +556,20 @@ class AutoReturnApp(QMainWindow):
         self.active_workers.append(worker)
         worker.start()
 
+    # -------------------------
+    # CLEAR AUTOMATION AUTO REPLY PENDING
+    # Resets and clears automation auto reply pending.
+    # -------------------------
     def _clear_automation_auto_reply_pending(self, pending_ids: list):
         """Clear pending auto-reply ids after worker completion."""
         for mid in pending_ids:
             if mid in self.automation_auto_reply_pending_ids:
                 self.automation_auto_reply_pending_ids.remove(mid)
 
+    # -------------------------
+    # SHOULD SKIP AUTO REPLY
+    # Handles should functionality for skip auto reply.
+    # -------------------------
     def _should_skip_auto_reply(self, msg: dict) -> bool:
         """Safety checks to avoid replying to our own/automated messages."""
         source = str(msg.get("source", "")).lower()
@@ -540,6 +596,10 @@ class AutoReturnApp(QMainWindow):
 
         return False
 
+    # -------------------------
+    # AUTO REPLY MESSAGES
+    # Handles auto functionality for reply messages.
+    # -------------------------
     async def _auto_reply_messages(self, messages: list) -> list:
         """Generate and send auto-replies for policy-approved messages."""
         results = []
@@ -617,6 +677,10 @@ class AutoReturnApp(QMainWindow):
 
         return results
 
+    # -------------------------
+    # LOG AUTOMATION AUDIT EVENT
+    # Handles log functionality for automation audit event.
+    # -------------------------
     def _log_automation_audit_event(self, payload: dict):
         """Append automation action record to audit log."""
         try:
@@ -628,6 +692,10 @@ class AutoReturnApp(QMainWindow):
         except Exception as e:
             print(f"Automation audit log failed: {e}")
 
+    # -------------------------
+    # ON AUTO REPLY READY
+    # Event handler triggered when auto reply ready.
+    # -------------------------
     def _on_auto_reply_ready(self, results: list):
         """Handle completion of policy-driven auto-replies."""
         if not results:
@@ -667,6 +735,10 @@ class AutoReturnApp(QMainWindow):
             self.show_status_message(f"Auto Reply sent for {success_count} message(s)")
         self._schedule_table_refresh()
 
+    # -------------------------
+    # APPLY AUTO REPLY ROW TINT
+    # Executes and applies auto reply row tint.
+    # -------------------------
     def _apply_auto_reply_row_tint(self, row_idx: int, widgets: list, status: str):
         """Apply subtle row tint for completed auto-reply states."""
         status = (status or "").strip().lower()
@@ -689,6 +761,10 @@ class AutoReturnApp(QMainWindow):
             if item:
                 item.setBackground(item_bg)
 
+    # -------------------------
+    # GENERATE DRAFTS FOR MESSAGES
+    # Creates and returns drafts for messages.
+    # -------------------------
     async def _generate_drafts_for_messages(self, messages: list) -> list:
         """Generate drafts for policy-selected messages and create Gmail drafts only for draft-only mode."""
         results = []
@@ -745,6 +821,10 @@ class AutoReturnApp(QMainWindow):
 
         return results
 
+    # -------------------------
+    # ON AUTOMATION DRAFTS READY
+    # Event handler triggered when automation drafts ready.
+    # -------------------------
     def _on_automation_drafts_ready(self, results: list):
         """Handle completed draft-only generation results."""
         if not results:
@@ -766,6 +846,10 @@ class AutoReturnApp(QMainWindow):
         self.show_status_message(f"Automation draft generated for {len(results)} message(s)")
         self._schedule_table_refresh()
 
+    # -------------------------
+    # ON SLACK NEW MESSAGES
+    # Event handler triggered when slack new messages.
+    # -------------------------
     def on_slack_new_messages(self, new_messages: list):
         """Handle new messages received from Slack.
         
@@ -837,6 +921,10 @@ class AutoReturnApp(QMainWindow):
         self._start_draft_generation_for_messages(draft_candidates)
         self._start_auto_reply_for_messages(auto_reply_candidates)
 
+    # -------------------------
+    # ENRICH SLACK MESSAGES WITH SCHEDULE
+    # Handles enrich functionality for slack messages with schedule.
+    # -------------------------
     def _enrich_slack_messages_with_schedule(self, messages: list):
         """Extract schedule suggestions for Slack messages that don't have them yet."""
         if not messages:
@@ -853,6 +941,10 @@ class AutoReturnApp(QMainWindow):
         if not pending:
             return
 
+        # -------------------------
+        # EXTRACT BATCH
+        # Handles extract functionality for batch.
+        # -------------------------
         async def _extract_batch():
             return await asyncio.gather(
                 *(extractor.extract_from_message(m) for m in pending),
@@ -868,7 +960,7 @@ class AutoReturnApp(QMainWindow):
                 asyncio.set_event_loop(None)
                 loop.close()
         except Exception as exc:
-            print(f"⚠️ Slack schedule enrichment failed: {exc}")
+            print(f"Slack schedule enrichment failed: {exc}")
             return
 
         for msg, result in zip(pending, results):
@@ -879,6 +971,10 @@ class AutoReturnApp(QMainWindow):
             msg['ai_events'] = [e.model_dump(mode="json") for e in result] if result else []
             msg['ai_events_count'] = len(msg['ai_events'])
     
+    # -------------------------
+    # ON SLACK MESSAGE SENT
+    # Event handler triggered when slack message sent.
+    # -------------------------
     def on_slack_message_sent(self, success: bool, message: str):
         """Handle completion of a Slack message send operation.
         
@@ -891,6 +987,10 @@ class AutoReturnApp(QMainWindow):
         else:
             QMessageBox.warning(self, "Send Failed", message)
     
+    # -------------------------
+    # ON SLACK USERS LOADED
+    # Event handler triggered when slack users loaded.
+    # -------------------------
     def on_slack_users_loaded(self, users: list):
         """Handle when Slack users are loaded.
         
@@ -900,6 +1000,10 @@ class AutoReturnApp(QMainWindow):
         self.slack_users = users
         print(f"👥 Loaded {len(users)} Slack users")
     
+    # -------------------------
+    # ON SLACK ERROR
+    # Event handler triggered when slack error.
+    # -------------------------
     def on_slack_error(self, error_message: str):
         """Handle errors from the Slack service.
         
@@ -924,12 +1028,20 @@ class AutoReturnApp(QMainWindow):
         self.slack_listener.start()
         print("Slack listener started (5s interval)")
 
+    # -------------------------
+    # STOP SLACK LISTENER
+    # Terminates the process for slack listener.
+    # -------------------------
     def stop_slack_listener(self):
         """Stop listening for real-time Slack messages."""
         if self.slack_listener:
             self.slack_listener.stop()
             self.slack_listener = None
     
+    # -------------------------
+    # CONNECT SLACK
+    # Establishes connections for slack.
+    # -------------------------
     def connect_slack(self, user_token: str) -> bool:
         is_valid, error_msg = validate_user_token(user_token)
         if not is_valid:
@@ -947,6 +1059,10 @@ class AutoReturnApp(QMainWindow):
         
         return success
     
+    # -------------------------
+    # DISCONNECT SLACK
+    # Terminates connections for slack.
+    # -------------------------
     def disconnect_slack(self):
         """Disconnect from Slack and clean up resources."""
         self.stop_slack_listener()
@@ -961,6 +1077,10 @@ class AutoReturnApp(QMainWindow):
         except:
             pass
     
+    # -------------------------
+    # SYNC ALL MESSAGES
+    # Handles sync functionality for all messages.
+    # -------------------------
     def sync_all_messages(self):
         """Synchronize all messages from connected services using the Orchestrator."""
         if self._is_syncing_gmail:
@@ -987,12 +1107,20 @@ class AutoReturnApp(QMainWindow):
         self.active_workers.append(worker)
         worker.start()
 
+    # -------------------------
+    # CLEANUP WORKER
+    # Handles cleanup functionality for worker.
+    # -------------------------
     def _cleanup_worker(self, worker):
         """Clean up finished worker thread."""
         if worker in self.active_workers:
             self.active_workers.remove(worker)
         worker.deleteLater()
 
+    # -------------------------
+    # ON ALL SYNC COMPLETE
+    # Event handler triggered when all sync complete.
+    # -------------------------
     def on_all_sync_complete(self, response: AgentResponse):
         """Handle completion of unified sync from Orchestrator."""
         self._is_syncing_gmail = False
@@ -1002,7 +1130,7 @@ class AutoReturnApp(QMainWindow):
             
             if errors:
                 error_msg = "\n".join(errors)
-                print(f"⚠️ Sync warnings: {error_msg}")
+                print(f"Sync warnings: {error_msg}")
                 self.show_status_message(f"Sync complete with errors (see log)")
             
             if messages:
@@ -1022,6 +1150,10 @@ class AutoReturnApp(QMainWindow):
             self.on_agent_error(response.error or "Sync failed")
 
 
+    # -------------------------
+    # ON AGENT ERROR
+    # Event handler triggered when agent error.
+    # -------------------------
     def on_agent_error(self, error_message: str):
         """Handle errors from agent workers."""
         self._is_syncing_gmail = False
@@ -1073,6 +1205,10 @@ class AutoReturnApp(QMainWindow):
         """True when this message should use the plain-reply review step."""
         return str(message_data.get("automation_action", "")).strip().lower() == "plain_reply"
 
+    # -------------------------
+    # RESOLVE PLAIN REPLY ATTACHMENTS
+    # Handles resolve functionality for plain reply attachments.
+    # -------------------------
     def _resolve_plain_reply_attachments(self, message_data: dict, current_attachments: list) -> tuple[list, str, bool]:
         """
         Resolve attachment requirements for plain-reply send.
@@ -1127,6 +1263,10 @@ class AutoReturnApp(QMainWindow):
         )
         return attachments, plan.get("reason", ""), True
 
+    # -------------------------
+    # RUN PLAIN REPLY REVIEW
+    # Handles run functionality for plain reply review.
+    # -------------------------
     def _run_plain_reply_review(
         self,
         message_data: dict,
@@ -1150,6 +1290,10 @@ class AutoReturnApp(QMainWindow):
         dialog.exec()
         return dialog.decision
 
+    # -------------------------
+    # REOPEN COMPOSER WITH PREFILL
+    # Handles reopen functionality for composer with prefill.
+    # -------------------------
     def _reopen_composer_with_prefill(self, message_data: dict, message_text: str, attachments: list):
         """Reopen composer quickly with existing content after review/edit decision."""
         payload = dict(message_data)
@@ -1158,6 +1302,10 @@ class AutoReturnApp(QMainWindow):
             payload["_attachments"] = list(attachments)
         self.show_send_message_dialog(payload)
 
+    # -------------------------
+    # SHOW SEND MESSAGE DIALOG
+    # Displays the UI for send message dialog.
+    # -------------------------
     def show_send_message_dialog(self, message_data):
         """Display the dialog for sending a new message.
         
@@ -1314,10 +1462,14 @@ class AutoReturnApp(QMainWindow):
         if not connected and self.user_data:
             self.user_data.setdefault('connected_accounts', {})['gmail'] = False
 
+    # -------------------------
+    # ON GMAIL NEW MESSAGES
+    # Event handler triggered when gmail new messages.
+    # -------------------------
     def on_gmail_new_messages(self, messages: list):
         """Handle new messages received from Gmail."""
         if not messages:
-            print("ℹ️ Gmail Handler: Received empty message list")
+            print("ℹGmail Handler: Received empty message list")
             return
             
         print(f"Gmail Handler: Syncing {len(messages)} messages...")
@@ -1390,6 +1542,10 @@ class AutoReturnApp(QMainWindow):
         self._start_auto_reply_for_messages(auto_reply_candidates)
 
 
+    # -------------------------
+    # ON GMAIL ERROR
+    # Event handler triggered when gmail error.
+    # -------------------------
     def on_gmail_error(self, error_message: str):
         """Handle errors from the Gmail service.
         
@@ -1414,6 +1570,10 @@ class AutoReturnApp(QMainWindow):
         except Exception as exc:
             return False, f"Failed to upload: {exc}"
 
+    # -------------------------
+    # AUTHORIZE GMAIL
+    # Handles authorize functionality for gmail.
+    # -------------------------
     def authorize_gmail(self):
         """Initiate the Gmail OAuth authorization flow."""
         success, message = self.gmail_service.connect(allow_flow=True)
@@ -1457,6 +1617,10 @@ class AutoReturnApp(QMainWindow):
         self.active_workers.append(worker)
         worker.start()
 
+    # -------------------------
+    # ON GMAIL SYNC COMPLETE
+    # Event handler triggered when gmail sync complete.
+    # -------------------------
     def on_gmail_sync_complete(self, response: AgentResponse, quiet: bool):
         """Handle completion of Gmail sync from agent."""
         self._is_syncing_gmail = False
@@ -1524,6 +1688,10 @@ class AutoReturnApp(QMainWindow):
         self.active_workers.append(worker)
         worker.start()
 
+    # -------------------------
+    # ON MANUAL AUTO REPLY READY
+    # Event handler triggered when manual auto reply ready.
+    # -------------------------
     def _on_manual_auto_reply_ready(self, sender: str, results: list):
         """Handle one-off auto reply action from row button with user feedback."""
         self._on_auto_reply_ready(results)
@@ -1550,6 +1718,10 @@ class AutoReturnApp(QMainWindow):
                 f"Could not send auto reply to {sender}.{detail}",
             )
 
+    # -------------------------
+    # SHOW AUTO REPLY RESULT PREVIEW
+    # Displays the UI for auto reply result preview.
+    # -------------------------
     def _show_auto_reply_result_preview(self, msg: dict):
         """Show details of a completed auto-reply attempt."""
         status = str(msg.get("automation_auto_reply_status", "")).strip().lower()
@@ -1579,6 +1751,10 @@ class AutoReturnApp(QMainWindow):
 
         QMessageBox.information(self, title, "\n".join(body_parts))
 
+    # -------------------------
+    # RESOLVE AUTOMATION ATTACHMENTS
+    # Handles resolve functionality for automation attachments.
+    # -------------------------
     def _resolve_automation_attachments(self, msg: dict) -> dict:
         """Resolve attachments for automation flows from allowed local paths."""
         try:
@@ -1594,6 +1770,10 @@ class AutoReturnApp(QMainWindow):
             print(f"Attachment resolution failed: {exc}")
             return {"requested": False, "attachments": [], "reason": "Attachment resolution failed.", "candidates": []}
     
+    # -------------------------
+    # SMART DRAFT MESSAGE
+    # Handles smart functionality for draft message.
+    # -------------------------
     def smart_draft_message(self, message_data):
         """Generate a smart draft response to the specified message.
         
@@ -1618,6 +1798,10 @@ class AutoReturnApp(QMainWindow):
         self.active_workers.append(worker)
         worker.start()
 
+    # -------------------------
+    # ON SMART DRAFT READY
+    # Event handler triggered when smart draft ready.
+    # -------------------------
     def _on_smart_draft_ready(self, message_data: dict, result: dict):
         """Handle smart draft generation and open compose dialog prefilled."""
         draft_text = ""
@@ -1653,6 +1837,10 @@ class AutoReturnApp(QMainWindow):
             data["_attachments"] = draft_attachments
         self.show_send_message_dialog(data)
     
+    # -------------------------
+    # ATTACH FILE MESSAGE
+    # Handles attach functionality for file message.
+    # -------------------------
     def attach_file_message(self, message_data):
         """Attach a file to a message.
         
@@ -1684,7 +1872,7 @@ class AutoReturnApp(QMainWindow):
         """
         """Generate AI summaries for a list of messages"""
         if not self.ollama_service.check_connection():
-            print("⚠️ Ollama is not running. Summaries will not be generated.")
+            print("Ollama is not running. Summaries will not be generated.")
             return
         
         # Add messages to the queue processor
@@ -1702,7 +1890,7 @@ class AutoReturnApp(QMainWindow):
             summary (str): Generated summary text
         """
         """Handle when a summary is generated"""
-        print(f"✅ Summary generated for message {message_id[:8]}...")
+        print(f"Summary generated for message {message_id[:8]}...")
         
         # Update the message with the summary
         for msg in self.messages:
@@ -1746,6 +1934,10 @@ class AutoReturnApp(QMainWindow):
         if message_id in self.summary_threads:
             del self.summary_threads[message_id]
     
+    # -------------------------
+    # ON SUMMARY ERROR
+    # Event handler triggered when summary error.
+    # -------------------------
     def on_summary_error(self, message_id: str, error: str):
         """Handle errors during summary generation.
         
@@ -1754,12 +1946,16 @@ class AutoReturnApp(QMainWindow):
             error (str): Error message
         """
         """Handle summary generation error"""
-        print(f"❌ Error generating summary for {message_id[:8]}: {error}")
+        print(f"Error generating summary for {message_id[:8]}: {error}")
         
         # Clean up thread
         if message_id in self.summary_threads:
             del self.summary_threads[message_id]
     
+    # -------------------------
+    # ON SUMMARY PROGRESS
+    # Event handler triggered when summary progress.
+    # -------------------------
     def on_summary_progress(self, current: int, total: int):
         """Update progress of batch summary generation.
         
@@ -1768,8 +1964,12 @@ class AutoReturnApp(QMainWindow):
             total (int): Total number of messages to process
         """
         """Handle batch summary progress updates"""
-        print(f"📊 Summary progress: {current}/{total}")
+        print(f"Summary progress: {current}/{total}")
     
+    # -------------------------
+    # ON BATCH SUMMARY COMPLETE
+    # Event handler triggered when batch summary complete.
+    # -------------------------
     def on_batch_summary_complete(self, count: int):
         """Handle completion of a batch summary generation.
         
@@ -1777,7 +1977,7 @@ class AutoReturnApp(QMainWindow):
             count (int): Number of summaries generated
         """
         """Handle batch summary completion"""
-        print(f"✅ Batch summary complete: {count} summaries generated")
+        print(f"Batch summary complete: {count} summaries generated")
         self.populate_table()
     
     # -------------------------
@@ -1795,6 +1995,10 @@ class AutoReturnApp(QMainWindow):
             self.populate_table()
             self.table.verticalScrollBar().setValue(current_scroll)
     
+    # -------------------------
+    # AUTO SYNC GMAIL
+    # Handles auto functionality for sync gmail.
+    # -------------------------
     def auto_sync_gmail(self):
         """Periodically synchronize Gmail messages."""
         if self.gmail_service.is_connected:
@@ -1886,6 +2090,10 @@ class AutoReturnApp(QMainWindow):
         
         return header
     
+    # -------------------------
+    # CREATE MAIN CONTENT
+    # Instantiates and creates main content.
+    # -------------------------
     def create_main_content(self):
         """Create the main content area of the application."""
         content = QWidget()
@@ -2044,11 +2252,19 @@ class AutoReturnApp(QMainWindow):
         
         return content
 
+    # -------------------------
+    # RESIZEEVENT
+    # Handles resizeevent functionality for the operation.
+    # -------------------------
     def resizeEvent(self, event):
         """Adapt layout for different window sizes."""
         super().resizeEvent(event)
         self.apply_responsive_table_layout()
 
+    # -------------------------
+    # APPLY RESPONSIVE TABLE LAYOUT
+    # Executes and applies responsive table layout.
+    # -------------------------
     def apply_responsive_table_layout(self):
         """Make the inbox table adapt for desktop/laptop widths."""
         if not hasattr(self, "table"):
@@ -2084,6 +2300,10 @@ class AutoReturnApp(QMainWindow):
         else:
             self.table.setColumnWidth(7, 280)
     
+    # -------------------------
+    # CREATE STATUS BAR
+    # Instantiates and creates status bar.
+    # -------------------------
     def create_status_bar(self):
         """Create and configure the status bar."""
         status_bar = QWidget()
@@ -2135,7 +2355,7 @@ class AutoReturnApp(QMainWindow):
             paged, total_pages = self._get_paginated_messages(filtered)
             self._current_page_messages = paged
             print(
-                f"📋 Populating table with {len(paged)} items "
+                f"Populating table with {len(paged)} items "
                 f"(Filtered: {len(filtered)}, Total: {len(self.messages)})"
             )
             
@@ -2375,6 +2595,10 @@ class AutoReturnApp(QMainWindow):
             self.table.blockSignals(False)
             self.table.setUpdatesEnabled(True)
 
+    # -------------------------
+    # MESSAGE KEY
+    # Handles message functionality for key.
+    # -------------------------
     def _message_key(self, msg: dict) -> str:
         """Build a stable key for row selection/deletion."""
         message_id = msg.get('id')
@@ -2390,6 +2614,10 @@ class AutoReturnApp(QMainWindow):
             ]
         )
 
+    # -------------------------
+    # SUMMARY FOR TABLE
+    # Handles summary functionality for for table.
+    # -------------------------
     def _summary_for_table(self, msg: dict) -> str:
         """Get the best available short summary text for table display."""
         summary = (msg.get('summary') or "").strip()
@@ -2404,6 +2632,10 @@ class AutoReturnApp(QMainWindow):
             ai_analysis = ai_analysis.split("Task:", 1)[0]
         return ai_analysis.replace("Summary:", "").strip()
 
+    # -------------------------
+    # GET PAGINATED MESSAGES
+    # Retrieves paginated messages.
+    # -------------------------
     def _get_paginated_messages(self, filtered: List[dict]) -> Tuple[List[dict], int]:
         total_items = len(filtered)
         total_pages = max(1, (total_items + self.rows_per_page - 1) // self.rows_per_page)
@@ -2413,6 +2645,10 @@ class AutoReturnApp(QMainWindow):
         end = start + self.rows_per_page
         return filtered[start:end], total_pages
 
+    # -------------------------
+    # CLEAR PAGE BUTTONS
+    # Resets and clears page buttons.
+    # -------------------------
     def _clear_page_buttons(self):
         while self.page_buttons_layout.count():
             item = self.page_buttons_layout.takeAt(0)
@@ -2420,6 +2656,10 @@ class AutoReturnApp(QMainWindow):
             if widget is not None:
                 widget.deleteLater()
 
+    # -------------------------
+    # REFRESH PAGINATION CONTROLS
+    # Handles refresh functionality for pagination controls.
+    # -------------------------
     def _refresh_pagination_controls(self, total_pages: int, filtered_count: int):
         self.page_status_label.setText(f"Page {self.current_page} of {total_pages} ({filtered_count} items)")
         self.prev_page_btn.setEnabled(self.current_page > 1)
@@ -2441,6 +2681,10 @@ class AutoReturnApp(QMainWindow):
             btn.clicked.connect(lambda _, p=page: self.change_page(p))
             self.page_buttons_layout.addWidget(btn)
 
+    # -------------------------
+    # ON ROWS PER PAGE CHANGED
+    # Event handler triggered when rows per page changed.
+    # -------------------------
     def on_rows_per_page_changed(self, text: str):
         try:
             self.rows_per_page = max(1, int(text))
@@ -2449,12 +2693,20 @@ class AutoReturnApp(QMainWindow):
         self.current_page = 1
         self.populate_table()
 
+    # -------------------------
+    # CHANGE PAGE
+    # Handles change functionality for page.
+    # -------------------------
     def change_page(self, page: int):
         if page < 1:
             return
         self.current_page = page
         self.populate_table()
 
+    # -------------------------
+    # ON MESSAGE CHECKBOX TOGGLED
+    # Event handler triggered when message checkbox toggled.
+    # -------------------------
     def on_message_checkbox_toggled(self, message_key: str, state: int):
         if state == Qt.Checked:
             self.selected_message_keys.add(message_key)
@@ -2462,6 +2714,10 @@ class AutoReturnApp(QMainWindow):
             self.selected_message_keys.discard(message_key)
         self._update_selection_controls()
 
+    # -------------------------
+    # UPDATE SELECTION CONTROLS
+    # Refreshes or updates selection controls.
+    # -------------------------
     def _update_selection_controls(self):
         selected_count = len(self.selected_message_keys)
         if selected_count > 0:
@@ -2472,6 +2728,10 @@ class AutoReturnApp(QMainWindow):
             self.selection_label.hide()
             self.delete_selected_btn.hide()
 
+    # -------------------------
+    # DELETE SELECTED MESSAGES
+    # Removes or deletes selected messages.
+    # -------------------------
     def delete_selected_messages(self):
         """Delete all selected messages after confirmation."""
         selected_count = len(self.selected_message_keys)
@@ -2512,6 +2772,10 @@ class AutoReturnApp(QMainWindow):
         self.current_page = 1
         self.populate_table()
 
+    # -------------------------
+    # PARSE SEARCH QUERY
+    # Extracts and parses search query.
+    # -------------------------
     def _parse_search_query(self, query: str):
         """Parse the search query into filter components.
         
@@ -2558,6 +2822,10 @@ class AutoReturnApp(QMainWindow):
 
         return filters
     
+    # -------------------------
+    # PARSE TIME TO MINUTES
+    # Extracts and parses time to minutes.
+    # -------------------------
     def parse_time_to_minutes(self, time_str: str) -> int:
         try:
             if 's ago' in time_str:
@@ -2620,6 +2888,10 @@ class AutoReturnApp(QMainWindow):
                 full_content_text = msg.get('full_content', '').lower()
                 channel_name_text = msg.get('channel_name', '').lower()
 
+                # -------------------------
+                # MATCHES TERM
+                # Handles matches functionality for term.
+                # -------------------------
                 def matches_term(term: str) -> bool:
                     return (
                         term in sender_text or
@@ -2641,6 +2913,10 @@ class AutoReturnApp(QMainWindow):
         
         return filter_match and search_match
     
+    # -------------------------
+    # APPLY FILTER
+    # Executes and applies filter.
+    # -------------------------
     def apply_filter(self, filter_id):
         """Apply the specified filter to the message list.
         
@@ -2697,6 +2973,10 @@ class AutoReturnApp(QMainWindow):
             return
         return
 
+    # -------------------------
+    # ON TABLE CELL DOUBLE CLICKED
+    # Event handler triggered when table cell double clicked.
+    # -------------------------
     def on_table_cell_double_clicked(self, row, column):
         """Handle double-clicks on table cells.
         
@@ -2710,6 +2990,10 @@ class AutoReturnApp(QMainWindow):
         msg = self._current_page_messages[row]
         self.on_table_cell_clicked(row, column)
 
+    # -------------------------
+    # SHOW FULL SUMMARY DIALOG
+    # Displays the UI for full summary dialog.
+    # -------------------------
     def show_full_summary_dialog(self, msg):
         """Show AI summary with task classification badges and recommended actions."""
         # Support both old (string) and new (dict) call signatures
@@ -2797,11 +3081,11 @@ class AutoReturnApp(QMainWindow):
             t_fg, t_bg = task_colors.get(task_label, ('#555', '#eee'))
             task_icon = {
                 'File Attachment Required': '📎',
-                'Draft Generation': '✍️',
+                'Draft Generation': '✍',
                 'Auto Reply': '⚡',
                 'Simple Reply Required': '💬',
-                'Informational': 'ℹ️',
-            }.get(task_label, 'ℹ️')
+                'Informational': 'ℹ',
+            }.get(task_label, 'ℹ')
             task_badge = QLabel(f"  {task_icon} {task_label}  ")
             task_badge.setStyleSheet(f"""
                 background-color: {t_bg}; color: {t_fg};
@@ -2813,7 +3097,7 @@ class AutoReturnApp(QMainWindow):
             layout.addLayout(badge_row)
 
             # --- Recommended Actions ---
-            actions_header = QLabel("📋 Recommended Actions")
+            actions_header = QLabel("Recommended Actions")
             actions_header.setObjectName("sectionHeader")
             layout.addWidget(actions_header)
 
@@ -2851,6 +3135,10 @@ class AutoReturnApp(QMainWindow):
         layout.addLayout(btn_layout)
         dialog.exec()
 
+    # -------------------------
+    # SHOW SENDER DETAILS DIALOG
+    # Displays the UI for sender details dialog.
+    # -------------------------
     def show_sender_details_dialog(self, msg: dict):
         """Show sender-focused information only."""
         dialog = QDialog(self)
@@ -2933,6 +3221,10 @@ class AutoReturnApp(QMainWindow):
 
         dialog.exec()
 
+    # -------------------------
+    # SHOW FULL MESSAGE DIALOG
+    # Displays the UI for full message dialog.
+    # -------------------------
     def show_full_message_dialog(self, msg: dict):
         """Show AI Analysis dialog with task classification, priority, and calendar info."""
         dialog = QDialog(self)
@@ -3032,11 +3324,11 @@ class AutoReturnApp(QMainWindow):
         t_fg, t_bg = task_colors.get(task_label, ('#555', '#eee'))
         task_icon = {
             'File Attachment Required': '📎',
-            'Draft Generation': '✍️',
+            'Draft Generation': '✍',
             'Auto Reply': '⚡',
             'Simple Reply Required': '💬',
-            'Informational': 'ℹ️',
-        }.get(task_label, 'ℹ️')
+            'Informational': 'ℹ',
+        }.get(task_label, 'ℹ')
         task_badge = QLabel(f"  {task_icon} {task_label}  ")
         task_badge.setStyleSheet(f"""
             background-color: {t_bg}; color: {t_fg};
@@ -3048,7 +3340,7 @@ class AutoReturnApp(QMainWindow):
         # Event count badge (if events detected)
         event_count = len(msg.get('ai_events', []))
         if event_count > 0:
-            event_badge = QLabel(f"  📅 {event_count} Event{'s' if event_count > 1 else ''} Detected  ")
+            event_badge = QLabel(f"  {event_count} Event{'s' if event_count > 1 else ''} Detected  ")
             event_badge.setStyleSheet("""
                 background-color: #E8F5E9; color: #1B5E20;
                 padding: 4px 12px; border-radius: 10px;
@@ -3062,7 +3354,7 @@ class AutoReturnApp(QMainWindow):
         # --- AI Summary ---
         summary_text = msg.get('summary', '').strip()
         if summary_text and summary_text != "Generating summary..." and not summary_text.startswith("Failed"):
-            summary_title = QLabel("🧠 AI Summary")
+            summary_title = QLabel("AI Summary")
             summary_title.setObjectName("sectionHeader")
             layout.addWidget(summary_title)
             
@@ -3083,7 +3375,7 @@ class AutoReturnApp(QMainWindow):
             layout.addWidget(summary_box)
 
         # --- Recommended Actions Section ---
-        actions_header = QLabel("📋 Recommended Actions")
+        actions_header = QLabel("Recommended Actions")
         actions_header.setObjectName("sectionHeader")
         layout.addWidget(actions_header)
 
@@ -3109,7 +3401,7 @@ class AutoReturnApp(QMainWindow):
         # --- Generated Draft Preview ---
         draft_preview_full = (msg.get("automation_draft_text") or "").strip()
         if draft_preview_full or suggested_attachments or attachment_reason:
-            draft_title = QLabel("✍️ Generated Draft Preview")
+            draft_title = QLabel("✍Generated Draft Preview")
             draft_title.setObjectName("sectionHeader")
             layout.addWidget(draft_title)
 
@@ -3178,7 +3470,7 @@ class AutoReturnApp(QMainWindow):
         # --- Calendar Schedule Suggestions ---
         schedule_items = msg.get('ai_events') or []
         if schedule_items:
-            schedule_title = QLabel("📅 Calendar Events Detected")
+            schedule_title = QLabel("Calendar Events Detected")
             schedule_title.setObjectName("sectionHeader")
             layout.addWidget(schedule_title)
 
@@ -3224,6 +3516,10 @@ class AutoReturnApp(QMainWindow):
 
         dialog.exec()
 
+    # -------------------------
+    # GET RECOMMENDED ACTION
+    # Retrieves recommended action.
+    # -------------------------
     def _get_recommended_action(self, task_label: str, priority: str, msg: dict) -> str:
         """Generate a contextual recommended action based on task classification."""
         sender = msg.get('sender', 'the sender')
@@ -3234,7 +3530,7 @@ class AutoReturnApp(QMainWindow):
                 "→ If the file isn't ready, send an acknowledgement with an ETA."
             ),
             'Draft Generation': (
-                f"✍️ This message from {sender} requires a detailed, composed reply.\n"
+                f"✍This message from {sender} requires a detailed, composed reply.\n"
                 "→ Use the 'Smart Draft' feature to generate a starting draft.\n"
                 "→ Review and personalize the draft before sending."
             ),
@@ -3249,7 +3545,7 @@ class AutoReturnApp(QMainWindow):
                 "→ Keep your response concise and actionable."
             ),
             'Informational': (
-                "ℹ️ This message is informational — no action is strictly required.\n"
+                "ℹThis message is informational — no action is strictly required.\n"
                 "→ Read and archive, or flag for later reference if relevant."
             ),
         }
@@ -3258,6 +3554,10 @@ class AutoReturnApp(QMainWindow):
             base = "🔴 HIGH PRIORITY — Respond as soon as possible.\n\n" + base
         return base
 
+    # -------------------------
+    # SHOW PRIORITY DETAILS DIALOG
+    # Displays the UI for priority details dialog.
+    # -------------------------
     def show_priority_details_dialog(self, msg: dict):
         """Show a simple explanation of message priority."""
         dialog = QDialog(self)
@@ -3304,6 +3604,10 @@ class AutoReturnApp(QMainWindow):
         layout.addLayout(btn_layout)
         dialog.exec()
 
+    # -------------------------
+    # FORMAT SCHEDULE ITEMS
+    # Formats output for schedule items.
+    # -------------------------
     def _format_schedule_items(self, items: List[dict]) -> str:
         if not items:
             return (
@@ -3324,6 +3628,10 @@ class AutoReturnApp(QMainWindow):
             )
         return "\n\n".join(lines)
 
+    # -------------------------
+    # FMT SCHEDULE DT
+    # Handles fmt functionality for schedule dt.
+    # -------------------------
     def _fmt_schedule_dt(self, value: Any) -> str:
         if not value:
             return "-"
@@ -3334,6 +3642,10 @@ class AutoReturnApp(QMainWindow):
         except Exception:
             return str(value)
 
+    # -------------------------
+    # BUILD SENDER RECENT MESSAGES
+    # Handles build functionality for sender recent messages.
+    # -------------------------
     def _build_sender_recent_messages(self, msg: dict) -> str:
         sender = msg.get('sender', '')
         email = msg.get('email', '')
@@ -3344,6 +3656,10 @@ class AutoReturnApp(QMainWindow):
             elif email and item.get('email') == email:
                 related.append(item)
 
+        # -------------------------
+        # SAFE TS
+        # Handles safe functionality for ts.
+        # -------------------------
         def _safe_ts(entry: dict) -> float:
             try:
                 return float(entry.get('timestamp', 0))
@@ -3475,6 +3791,10 @@ class AutoReturnApp(QMainWindow):
                 print(f"Error updating tone status: {e}")
                 self.status_labels.get("Tone").setText("Tone: Error")
 
+    # -------------------------
+    # GET AUTOMATION STATUS SNAPSHOT
+    # Retrieves automation status snapshot.
+    # -------------------------
     def _get_automation_status_snapshot(self) -> Tuple[bool, bool]:
         """Return (dnd_enabled, auto_reply_enabled) from automation settings."""
         try:
@@ -3487,6 +3807,10 @@ class AutoReturnApp(QMainWindow):
             print(f"Error reading automation status: {exc}")
             return False, False
 
+    # -------------------------
+    # UPDATE AUTO REPLY STATUS CHIP
+    # Refreshes or updates auto reply status chip.
+    # -------------------------
     def _update_auto_reply_status_chip(self):
         """Update Auto Reply chip text and highlight state."""
         label = self.status_labels.get("Auto Reply")
@@ -3502,16 +3826,24 @@ class AutoReturnApp(QMainWindow):
         label.style().polish(label)
         label.update()
 
+    # -------------------------
+    # SHOW STATUS MESSAGE
+    # Displays the UI for status message.
+    # -------------------------
     def show_status_message(self, message: str, timeout: int = 5000):
         """Display a temporary message in the status region (fallback to console)."""
-        print(f"📊 {message}")
+        print(f"{message}")
         # If we have a status bar label, update it
         if hasattr(self, 'status_labels') and 'Total Messages' in self.status_labels:
             original_text = self.status_labels['Total Messages'].text()
-            self.status_labels['Total Messages'].setText(f"ℹ️ {message}")
+            self.status_labels['Total Messages'].setText(f"ℹ{message}")
             # Restore after timeout if possible, but for now just leave it or use a timer
         pass
 
+    # -------------------------
+    # NOTIFY DESKTOP
+    # Handles notify functionality for desktop.
+    # -------------------------
     def _notify_desktop(self, title: str, message: str):
         """Send a desktop notification if supported (plyer)."""
         try:
@@ -3528,6 +3860,10 @@ class AutoReturnApp(QMainWindow):
         except Exception as exc:
             print(f"Notification error: {exc}")
 
+    # -------------------------
+    # SCHEDULE TABLE REFRESH
+    # Handles schedule functionality for table refresh.
+    # -------------------------
     def _schedule_table_refresh(self, delay_ms: int = 200):
         """Debounced table refresh to keep UI responsive."""
         if not hasattr(self, '_table_refresh_timer'):
@@ -3570,10 +3906,18 @@ class AutoReturnApp(QMainWindow):
             self.expanded_row = row
         # Do not repopulate table here; it clears the expanded view.
 
+    # -------------------------
+    # TOGGLE MESSAGE EXPAND
+    # Switches the state of message expand.
+    # -------------------------
     def toggle_message_expand(self, msg: dict):
         """Legacy handler kept for compatibility; opens details dialog."""
         self.show_full_message_dialog(msg)
     
+    # -------------------------
+    # EXPAND ROW
+    # Handles expand functionality for row.
+    # -------------------------
     def expand_row(self, row, msg):
         """Expand a row to show message details.
         
@@ -3663,6 +4007,10 @@ class AutoReturnApp(QMainWindow):
         
         self.table.setCellWidget(row, 3, expanded_widget)
     
+    # -------------------------
+    # COLLAPSE ROW
+    # Handles collapse functionality for row.
+    # -------------------------
     def collapse_row(self, row):
         """Collapse an expanded row.
         
@@ -3692,6 +4040,10 @@ class AutoReturnApp(QMainWindow):
             
             self.table.setCellWidget(row, 3, subject_widget)
     
+    # -------------------------
+    # GENERATE AI INSIGHTS
+    # Creates and returns ai insights.
+    # -------------------------
     def generate_ai_insights(self, msg):
         """Generate AI-powered insights for a message.
         
@@ -3707,6 +4059,10 @@ class AutoReturnApp(QMainWindow):
         else:
             return "Standard message. Review when convenient."
 
+    # -------------------------
+    # SHOW EVENT REVIEW DIALOG
+    # Displays the UI for event review dialog.
+    # -------------------------
     def show_event_review_dialog(self, msg: dict):
         """Show extracted schedule suggestions for review and calendar insertion."""
         events = msg.get('ai_events', []) or []
@@ -3754,6 +4110,10 @@ class AutoReturnApp(QMainWindow):
         dialog.exec()
         self.update_status_bar()
 
+    # -------------------------
+    # ON PROFILE UPDATED
+    # Event handler triggered when profile updated.
+    # -------------------------
     def on_profile_updated(self, updated_user: dict):
         """Handle updates to the user's profile.
         

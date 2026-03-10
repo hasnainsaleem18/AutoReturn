@@ -323,7 +323,7 @@ class SettingsDialog(QDialog):
     # -------------------------
     def _setup_dialog(self):
         """Configure basic dialog properties and appearance."""
-        self.setWindowTitle("⚙️ Settings")
+        self.setWindowTitle("Settings")
         self.setMinimumSize(
             UIConstants.DIALOG_MIN_WIDTH,
             UIConstants.DIALOG_MIN_HEIGHT
@@ -363,7 +363,7 @@ class SettingsDialog(QDialog):
         )
         
         # Title
-        title = QLabel("⚙️ Settings")
+        title = QLabel("Settings")
         title.setObjectName("logo")
 
         # Close button
@@ -696,7 +696,7 @@ class SettingsDialog(QDialog):
         ))
         
         # Setup section
-        card_layout.addWidget(self._create_subsection_header("📋 Setup Instructions"))
+        card_layout.addWidget(self._create_subsection_header("Setup Instructions"))
         setup_desc = self._create_description(
             "1. Upload the Google OAuth JSON you downloaded.\n"
             "2. Run the authorization flow (browser will open for login).\n"
@@ -1442,7 +1442,7 @@ This token will let your desktop app send and receive messages as you, including
                 QMessageBox.information(
                     self,
                     "Connected",
-                    "✅ Successfully connected to Slack!\n\n"
+                    "Successfully connected to Slack!\n\n"
                     "Real-time message monitoring has started.\n"
                     "You can now send and receive DMs."
                 )
@@ -1464,7 +1464,7 @@ This token will let your desktop app send and receive messages as you, including
                 QMessageBox.information(
                     self,
                     "Connected",
-                    "✅ Successfully connected to Slack!\n\n"
+                    "Successfully connected to Slack!\n\n"
                     "Real-time message monitoring has started."
                 )
                 self.accept()
@@ -1596,9 +1596,9 @@ This token will let your desktop app send and receive messages as you, including
 
         if self.orchestrator:
             current_default = self.orchestrator.tone_engine.user_profile.default_tone
-            current_lbl = QLabel(f"Current default: {get_tone_display_name(current_default)}")
-            current_lbl.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;")
-            layout.addWidget(current_lbl)
+            self.current_default_tone_lbl = QLabel(f"Current default: {get_tone_display_name(current_default)}")
+            self.current_default_tone_lbl.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;")
+            layout.addWidget(self.current_default_tone_lbl)
 
             self.default_tone_combo = QComboBox()
             self.default_tone_combo.setMinimumHeight(metrics["control_h"])
@@ -1669,19 +1669,25 @@ This token will let your desktop app send and receive messages as you, including
         layout.addWidget(self._create_subsection_header("Usage Statistics"))
 
         if self.orchestrator:
-            stats = self.orchestrator.tone_engine.get_tone_statistics()
-            stats_text = (
-                f"<b>Default Tone:</b> {stats.get('default_tone', 'N/A')}<br>"
-                f"<b>Auto-Tone:</b> {'Enabled' if stats.get('auto_tone_enabled') else 'Disabled'}<br>"
-                f"<b>Manual Overrides:</b> {stats.get('total_manual_overrides', 0)}<br>"
-                f"<b>Sender Preferences:</b> {stats.get('sender_preferences_count', 0)}<br>"
-                f"<b>Domain Preferences:</b> {stats.get('domain_preferences_count', 0)}"
-            )
-            stats_label = QLabel(stats_text)
-            stats_label.setTextFormat(Qt.RichText)
-            stats_label.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;")
-            layout.addWidget(stats_label)
+            self.tone_stats_label = QLabel()
+            self.tone_stats_label.setTextFormat(Qt.RichText)
+            self.tone_stats_label.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;")
+            layout.addWidget(self.tone_stats_label)
+            self._update_tone_statistics()
         return section
+
+    def _update_tone_statistics(self):
+        if not hasattr(self, "tone_stats_label") or not self.orchestrator:
+            return
+        stats = self.orchestrator.tone_engine.get_tone_statistics()
+        stats_text = (
+            f"<b>Default Tone:</b> {stats.get('default_tone', 'N/A')}<br>"
+            f"<b>Auto-Tone:</b> {'Enabled' if stats.get('auto_tone_enabled') else 'Disabled'}<br>"
+            f"<b>Manual Overrides:</b> {stats.get('total_manual_overrides', 0)}<br>"
+            f"<b>Sender Preferences:</b> {stats.get('sender_preferences_count', 0)}<br>"
+            f"<b>Domain Preferences:</b> {stats.get('domain_preferences_count', 0)}"
+        )
+        self.tone_stats_label.setText(stats_text)
 
     def _create_learning_section(self):
         section = self._tone_section_frame()
@@ -1704,13 +1710,19 @@ This token will let your desktop app send and receive messages as you, including
     def _on_default_tone_combo_changed(self, index):
         if not hasattr(self, "default_tone_combo"):
             return
-        tone = self.default_tone_combo.itemData(index)
-        if isinstance(tone, ToneType):
+        tone_val = self.default_tone_combo.itemData(index)
+        try:
+            tone = ToneType(tone_val)
             self._on_default_tone_changed(tone)
+        except ValueError:
+            pass
 
     def _on_default_tone_changed(self, tone):
         if self.orchestrator:
             self.orchestrator.tone_engine.set_default_tone(tone)
+            if hasattr(self, "current_default_tone_lbl"):
+                self.current_default_tone_lbl.setText(f"Current default: {get_tone_display_name(tone)}")
+            self._update_tone_statistics()
             QMessageBox.information(self, "Default Tone Updated", f"Default tone changed to {get_tone_display_name(tone)}")
 
     def _toggle_auto_tone(self):
@@ -1723,6 +1735,7 @@ This token will let your desktop app send and receive messages as you, including
             self.auto_tone_status.setStyleSheet(f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['accent'] if new_state else tokens['muted_text']}; border: none;")
             if hasattr(self, "auto_tone_toggle_btn"):
                 self.auto_tone_toggle_btn.setText(f"{'Disable' if new_state else 'Enable'} Auto-Tone")
+            self._update_tone_statistics()
             QMessageBox.information(self, "Auto-Tone Updated", f"Auto-tone suggestions {'enabled' if new_state else 'disabled'}")
 
     def _reset_learning_data(self):
@@ -1865,6 +1878,15 @@ This token will let your desktop app send and receive messages as you, including
             tokens,
         )
         policy_layout.addWidget(auto_row)
+
+        def _on_dnd_toggled(checked):
+            self.auto_reply_enabled_checkbox.setEnabled(checked)
+            if not checked:
+                self.auto_reply_enabled_checkbox.setChecked(False)
+
+        self.dnd_enabled_checkbox.toggled.connect(_on_dnd_toggled)
+        _on_dnd_toggled(self.dnd_enabled_checkbox.isChecked())
+
 
         confirm_row, self.require_user_confirm_plain_reply_checkbox = self._create_automation_toggle_row(
             "Require user confirmation for Plain Reply",

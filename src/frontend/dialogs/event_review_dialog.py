@@ -312,7 +312,7 @@ class EventReviewDialog(QDialog):
     def _ask_conflict_decision(self, ev: EventCandidate, conflicts: List[dict]) -> str:
         """Ask user how to handle a conflicting suggestion."""
         dialog = QDialog(self)
-        dialog.setWindowTitle("⚠️ Calendar Conflict Detected")
+        dialog.setWindowTitle("Calendar Conflict Detected")
         dialog.resize(760, 440)
         dialog.setMinimumSize(680, 360)
 
@@ -352,7 +352,7 @@ class EventReviewDialog(QDialog):
             table.selectRow(0)
         layout.addWidget(table)
 
-        conflict_reply_btn = QPushButton("✉️ Compose 'I'm Busy' Reply")
+        conflict_reply_btn = QPushButton("Compose 'I'm Busy' Reply")
         conflict_reply_btn.setObjectName("btnPrimary")
         conflict_reply_btn.setStyleSheet("""
             QPushButton {

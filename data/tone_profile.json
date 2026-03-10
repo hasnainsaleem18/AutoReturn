@@ -1,9 +1,34 @@
 {
   "default_tone": "formal",
-  "sender_preferences": {},
-  "domain_preferences": {},
+  "sender_preferences": {
+    "p229123": "informal"
+  },
+  "domain_preferences": {
+    "unknown": "informal"
+  },
   "auto_tone_enabled": true,
-  "manual_override_history": [],
+  "manual_override_history": [
+    {
+      "timestamp": "2026-03-10T16:05:45.557209",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "p229123",
+        "subject": "DM from p229123",
+        "priority": "High",
+        "source": "slack"
+      }
+    },
+    {
+      "timestamp": "2026-03-10T16:05:45.557899",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "p229123",
+        "subject": "DM from p229123",
+        "priority": "High",
+        "source": "slack"
+      }
+    }
+  ],
   "tone_effectiveness_scores": {
     "formal": 0.5,
     "informal": 0.5

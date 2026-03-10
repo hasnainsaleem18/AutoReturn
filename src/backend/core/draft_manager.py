@@ -17,11 +17,19 @@ from src.backend.models.tone_models import ToneType
 class DraftManager:
     """Enhanced AI component for managing and generating message drafts with tone awareness."""
     
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self, ai_service: OllamaService, tone_engine=None, tone_manager=None):
         self.ai_service = ai_service
         # Prefer tone_engine naming; keep tone_manager for backward compatibility.
         self.tone_engine = tone_engine if tone_engine is not None else tone_manager
     
+    # -------------------------
+    # GENERATE DRAFT
+    # Creates and returns draft.
+    # -------------------------
     async def generate_draft(self, message_context: str, tone: Optional[ToneType] = None) -> str:
         """
         Generate draft with optional tone specification.
@@ -40,6 +48,10 @@ class DraftManager:
             # Legacy draft generation
             return await self._generate_basic_draft(message_context)
     
+    # -------------------------
+    # GENERATE TONE AWARE DRAFT
+    # Creates and returns tone aware draft.
+    # -------------------------
     async def _generate_tone_aware_draft(self, message_context: str, tone: ToneType) -> str:
         """
         Generate draft with specific tone using tone preference engine.
@@ -64,6 +76,10 @@ class DraftManager:
             print(f"Error in tone-aware draft generation: {e}")
             return await self._generate_basic_draft(message_context)
     
+    # -------------------------
+    # GENERATE BASIC DRAFT
+    # Creates and returns basic draft.
+    # -------------------------
     async def _generate_basic_draft(self, message_context: str, message_data: dict = None) -> str:
         """
         Context-aware draft generation using actual message content.
@@ -127,6 +143,10 @@ Reply:"""
             print(f"Error in draft generation: {e}")
             return "Thank you for your message. I'll review it and get back to you shortly."
 
+    # -------------------------
+    # GENERATE CONFLICT REPLY
+    # Creates and returns conflict reply.
+    # -------------------------
     async def generate_conflict_reply(self, message_data: dict, conflicting_event_title: str,
                                        conflicting_start: str, conflicting_end: str) -> str:
         """
@@ -181,6 +201,10 @@ Reply:"""
             )
 
     
+    # -------------------------
+    # PROCESS REPLY DRAFT
+    # Executes processing logic for reply draft.
+    # -------------------------
     async def process_reply_draft(self, original_message: Dict[str, Any], 
                                user_draft: str = "",
                                manual_tone: Optional[ToneType] = None) -> Dict[str, Any]:

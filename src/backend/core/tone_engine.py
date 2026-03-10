@@ -42,6 +42,10 @@ class ToneDetectionResult:
 class ToneDetector:
     """Embedded deterministic tone detector used by ToneEngine."""
 
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self):
         self.nlp = spacy.load("en_core_web_md")
         self.rules = self._load_detection_rules()
@@ -60,6 +64,10 @@ class ToneDetector:
         self.pos_centroid, self.neg_centroid = self._compute_centroids()
         self.tone_weights = self._load_tone_weights(self.rules.get("feature_weights", {}))
 
+    # -------------------------
+    # ANALYZE MESSAGE
+    # Handles analyze functionality for message.
+    # -------------------------
     def analyze_message(self, text: str) -> ToneDetectionResult:
         doc = self.nlp(text)
         lemmas = [t.lemma_.lower() for t in doc if t.is_alpha]
@@ -89,6 +97,10 @@ class ToneDetector:
             tone_scores=tone_scores,
         )
 
+    # -------------------------
+    # SCORE TOKEN
+    # Handles score functionality for token.
+    # -------------------------
     def _score_token(self, lemma: str, index: int, lemmas: List[str]) -> float:
         score = self.lexicon.get(lemma, 0.0)
         if score == 0.0 and self.nlp.vocab.has_vector(lemma):
@@ -100,6 +112,10 @@ class ToneDetector:
             score *= self.intensifiers[lemmas[index - 1]]
         return score
 
+    # -------------------------
+    # EMBEDDING FALLBACK
+    # Handles embedding functionality for fallback.
+    # -------------------------
     def _embedding_fallback(self, lemma: str) -> float:
         vec = self.nlp.vocab.get_vector(lemma)
         sim_pos = self._cosine(vec, self.pos_centroid)
@@ -111,6 +127,10 @@ class ToneDetector:
             return -sim_neg * 2.0
         return 0.0
 
+    # -------------------------
+    # EXTRACT FEATURES
+    # Handles extract functionality for features.
+    # -------------------------
     def _extract_features(self, doc, lemmas, scores) -> Dict[str, float]:
         total = len(lemmas)
         pos_ratio = sum(1 for s in scores if s > 0) / total
@@ -144,6 +164,10 @@ class ToneDetector:
             "informal_regex_score": informal_regex_score,
         }
 
+    # -------------------------
+    # CALCULATE TONE SCORES
+    # Handles calculate functionality for tone scores.
+    # -------------------------
     def _calculate_tone_scores(self, features: Dict[str, float]) -> Dict[ToneType, float]:
         scores: Dict[ToneType, float] = {}
         for tone, weights in self.tone_weights.items():
@@ -153,6 +177,10 @@ class ToneDetector:
             scores[tone] = max(0.0, score)
         return scores
 
+    # -------------------------
+    # CALCULATE CONFIDENCE
+    # Handles calculate functionality for confidence.
+    # -------------------------
     def _calculate_confidence(self, tone_scores: Dict[ToneType, float]) -> float:
         positives = [v for v in tone_scores.values() if v > 0]
         if not positives:
@@ -167,11 +195,19 @@ class ToneDetector:
             separation = 0.5
         return max(0.0, min(1.0, (0.7 * base) + (0.3 * separation)))
 
+    # -------------------------
+    # SELECT BEST TONE
+    # Handles select functionality for best tone.
+    # -------------------------
     def _select_best_tone(self, scores: Dict[ToneType, float], confidence: float) -> ToneType:
         if not scores or all(v <= 0 for v in scores.values()):
             return ToneType.FORMAL
         return max(scores.items(), key=lambda x: x[1])[0]
 
+    # -------------------------
+    # DERIVE TONE SIGNAL
+    # Handles derive functionality for tone signal.
+    # -------------------------
     def _derive_tone_signal(self, scores: Dict[ToneType, float]) -> str:
         formal_score = scores.get(ToneType.FORMAL, 0.0)
         informal_score = scores.get(ToneType.INFORMAL, 0.0)
@@ -182,6 +218,10 @@ class ToneDetector:
             return "formal_leaning"
         return "neutral"
 
+    # -------------------------
+    # CLASSIFY TONE SIGNAL
+    # Handles classify functionality for tone signal.
+    # -------------------------
     def _classify_tone_signal(self, score: float) -> str:
         if score > 0.3:
             return "informal_leaning"
@@ -189,6 +229,10 @@ class ToneDetector:
             return "formal_leaning"
         return "neutral"
 
+    # -------------------------
+    # LOAD DETECTION RULES
+    # Loads data into detection rules.
+    # -------------------------
     def _load_detection_rules(self) -> Dict[str, Any]:
         rules_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "..", "config", "tone_detection_rules.json"
@@ -207,6 +251,10 @@ class ToneDetector:
             print(f"Could not load tone detection rules: {e}")
         return default_rules
 
+    # -------------------------
+    # DEFAULT DETECTION RULES
+    # Handles default functionality for detection rules.
+    # -------------------------
     def _default_detection_rules(self) -> Dict[str, Any]:
         return {
             "lexicon": {
@@ -266,6 +314,10 @@ class ToneDetector:
             },
         }
 
+    # -------------------------
+    # COMPILE REGEX PATTERNS
+    # Handles compile functionality for regex patterns.
+    # -------------------------
     def _compile_regex_patterns(self, regex_rules: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
         compiled: Dict[str, List[Dict[str, Any]]] = {"formal": [], "informal": []}
         for tone_key in ("formal", "informal"):
@@ -282,6 +334,10 @@ class ToneDetector:
                     continue
         return compiled
 
+    # -------------------------
+    # LOAD TONE WEIGHTS
+    # Loads data into tone weights.
+    # -------------------------
     def _load_tone_weights(self, raw_weights: Dict[str, Any]) -> Dict[ToneType, Dict[str, float]]:
         formal = raw_weights.get("formal", {})
         informal = raw_weights.get("informal", {})
@@ -290,9 +346,17 @@ class ToneDetector:
             ToneType.INFORMAL: {k: float(v) for k, v in informal.items()},
         }
 
+    # -------------------------
+    # GET WORD SET
+    # Retrieves word set.
+    # -------------------------
     def _get_word_set(self, key: str) -> set:
         return {str(w).lower() for w in self.word_sets.get(key, [])}
 
+    # -------------------------
+    # REGEX SCORE
+    # Handles regex functionality for score.
+    # -------------------------
     def _regex_score(self, text: str, tone_key: str) -> float:
         if not text.strip():
             return 0.0
@@ -303,6 +367,10 @@ class ToneDetector:
                 score += item["weight"] * min(match_count, 2)
         return min(score / 2.0, 1.0)
 
+    # -------------------------
+    # COMPUTE CENTROIDS
+    # Handles compute functionality for centroids.
+    # -------------------------
     def _compute_centroids(self):
         pos_words = ["excellent", "amazing", "great", "good", "love"]
         neg_words = ["terrible", "awful", "bad", "worst", "angry"]
@@ -310,13 +378,25 @@ class ToneDetector:
         neg_vecs = [self.nlp.vocab.get_vector(w) for w in neg_words if self.nlp.vocab.has_vector(w)]
         return np.mean(pos_vecs, axis=0), np.mean(neg_vecs, axis=0)
 
+    # -------------------------
+    # COSINE
+    # Handles cosine functionality for the operation.
+    # -------------------------
     def _cosine(self, v1, v2) -> float:
         denom = np.linalg.norm(v1) * np.linalg.norm(v2)
         return float(np.dot(v1, v2) / denom) if denom != 0 else 0.0
 
+    # -------------------------
+    # RATIO
+    # Handles ratio functionality for the operation.
+    # -------------------------
     def _ratio(self, words, wordset) -> float:
         return sum(1 for w in words if w in wordset) / len(words)
 
+    # -------------------------
+    # EMPTY RESULT
+    # Handles empty functionality for result.
+    # -------------------------
     def _empty_result(self) -> ToneDetectionResult:
         return ToneDetectionResult(
             detected_tone=ToneType.FORMAL,
@@ -333,6 +413,10 @@ class ToneDetector:
 class ToneEngine:
     """Tone engine combines tone preference logic and embedded tone detection."""
     
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self, ai_service: OllamaService):
         self.ai_service = ai_service
         self.tone_detector = ToneDetector()
@@ -345,11 +429,19 @@ class ToneEngine:
         print(f"Tone Engine initialized with embedded tone detection")
         print(f"   Default tone: {self.user_profile.default_tone}")
 
+    # -------------------------
+    # ANALYZE MESSAGE THREADSAFE
+    # Handles analyze functionality for message threadsafe.
+    # -------------------------
     def _analyze_message_threadsafe(self, text: str) -> ToneDetectionResult:
         """Serialize tone detector access to avoid cross-thread spaCy crashes."""
         with self._detector_lock:
             return self.tone_detector.analyze_message(text)
     
+    # -------------------------
+    # LOAD USER PROFILE
+    # Loads data into user profile.
+    # -------------------------
     def _load_user_profile(self) -> ToneProfile:
         """Load user tone profile from configuration"""
         try:
@@ -371,6 +463,10 @@ class ToneEngine:
         
         return ToneProfile()
     
+    # -------------------------
+    # SAVE USER PROFILE
+    # Saves the current state of user profile.
+    # -------------------------
     def _save_user_profile(self):
         """Save user tone profile to configuration"""
         try:
@@ -382,6 +478,10 @@ class ToneEngine:
         except Exception as e:
             print(f"Could not save tone profile: {e}")
     
+    # -------------------------
+    # ANALYZE INCOMING TONE
+    # Handles analyze functionality for incoming tone.
+    # -------------------------
     def analyze_incoming_tone(self, message_text: str) -> Dict[str, Any]:
         """
         Deterministic tone detection 
@@ -402,6 +502,10 @@ class ToneEngine:
             print(f"Tone detection error: {e}")
             return {'tone_signal': 'neutral', 'detected_tone': ToneType.FORMAL.value, 'confidence': 0.5}
     
+    # -------------------------
+    # ANALYZE MESSAGE CONTEXT
+    # Handles analyze functionality for message context.
+    # -------------------------
     async def analyze_message_context(self, message_data: Dict[str, Any]) -> Optional[ToneRecommendation]:
         """Analyze message to recommend appropriate tone using deterministic analysis"""
         
@@ -440,6 +544,10 @@ class ToneEngine:
         
         return recommendation
     
+    # -------------------------
+    # GET EFFECTIVE TONE
+    # Retrieves effective tone.
+    # -------------------------
     async def get_effective_tone(self, message_data: Dict[str, Any], 
                                 manual_tone: Optional[ToneType] = None) -> ToneType:
         """Get effective tone using deterministic analysis and orchestration logic"""
@@ -470,6 +578,10 @@ class ToneEngine:
         # Use user's default tone
         return self.user_profile.default_tone
     
+    # -------------------------
+    # ORCHESTRATE TONE DECISION
+    # Handles orchestrate functionality for tone decision.
+    # -------------------------
     def _orchestrate_tone_decision(self, analysis_result: ToneDetectionResult, 
                                  message_data: Dict[str, Any]) -> ToneType:
         """
@@ -503,6 +615,10 @@ class ToneEngine:
         # Default fallback
         return ToneType.FORMAL
     
+    # -------------------------
+    # ADJUST MESSAGE TONE
+    # Handles adjust functionality for message tone.
+    # -------------------------
     async def adjust_message_tone(self, original_text: str, target_tone: ToneType,
                                 message_context: Dict[str, Any] = None) -> ToneAdjustmentResponse:
         """Adjust message tone using existing AI service (LLM only for stylistic rewriting)"""
@@ -513,6 +629,10 @@ class ToneEngine:
             message_context=message_context or {}
         )
     
+    # -------------------------
+    # PROCESS OUTGOING MESSAGE
+    # Executes processing logic for outgoing message.
+    # -------------------------
     async def process_outgoing_message(self, original_message: Dict[str, Any],
                                    draft_text: str = "",
                                    manual_tone: Optional[ToneType] = None) -> Dict[str, Any]:
@@ -572,6 +692,10 @@ class ToneEngine:
                 'tone_detection': None
             }
     
+    # -------------------------
+    # GENERATE DRAFT WITH TONE
+    # Creates and returns draft with tone.
+    # -------------------------
     async def _generate_draft_with_tone(self, original_message: Dict[str, Any], target_tone: ToneType) -> str:
         """Generate draft with tone using existing AI service (LLM only for generation)"""
         
@@ -633,6 +757,10 @@ class ToneEngine:
             )
             return self._build_specific_fallback_draft(sender, subject, str(content or ""), target_tone)
 
+    # -------------------------
+    # BUILD SPECIFIC FALLBACK DRAFT
+    # Handles build functionality for specific fallback draft.
+    # -------------------------
     def _build_specific_fallback_draft(self, sender: str, subject: str, content: str, target_tone: ToneType) -> str:
         """Build a message-specific fallback draft when model generation is unavailable."""
         subject_clean = (subject or "your message").strip()
@@ -669,6 +797,10 @@ class ToneEngine:
 
         return body
     
+    # -------------------------
+    # UPDATE USER PREFERENCES
+    # Refreshes or updates user preferences.
+    # -------------------------
     def update_user_preferences(self, tone_selection: ToneType, 
                                 message_context: Dict[str, Any]):
         """Learn from user's manual tone selections"""
@@ -703,22 +835,38 @@ class ToneEngine:
         # Save preferences
         self._save_user_profile()
     
+    # -------------------------
+    # SET DEFAULT TONE
+    # Assigns values for default tone.
+    # -------------------------
     def set_default_tone(self, tone: ToneType):
         """Set user's default tone"""
         self.user_profile.default_tone = tone
         self._save_user_profile()
         print(f"🎨 Default tone updated to: {tone.value}")
     
+    # -------------------------
+    # SET AUTO TONE ENABLED
+    # Assigns values for auto tone enabled.
+    # -------------------------
     def set_auto_tone_enabled(self, enabled: bool):
         """Enable/disable auto-tone recommendations"""
         self.user_profile.auto_tone_enabled = enabled
         self._save_user_profile()
         print(f"🎨 Auto-tone {'enabled' if enabled else 'disabled'}")
     
+    # -------------------------
+    # GET SENDER PREFERENCES
+    # Retrieves sender preferences.
+    # -------------------------
     def get_sender_preferences(self, sender: str) -> Optional[ToneType]:
         """Get preferred tone for a specific sender"""
         return self.user_profile.sender_preferences.get(sender)
     
+    # -------------------------
+    # GET TONE STATISTICS
+    # Retrieves tone statistics.
+    # -------------------------
     def get_tone_statistics(self) -> Dict[str, Any]:
         """Get tone usage statistics"""
         stats = {
@@ -741,19 +889,31 @@ class ToneEngine:
         current_score = self.user_profile.tone_effectiveness_scores.get(selected_tone, 0.5)
         self.user_profile.tone_effectiveness_scores[selected_tone] = min(1.0, current_score + 0.1)
 
+    # -------------------------
+    # NORMALIZE LEGACY TONE
+    # Handles normalize functionality for legacy tone.
+    # -------------------------
     def _normalize_legacy_tone(self, tone_value: Any) -> str:
         """Map historical tone values to the 2-tone model."""
         text = str(tone_value or "").lower()
-        if text in {"formal"}:
-            return ToneType.FORMAL.value
+        if text in {"informal"}:
+            return ToneType.INFORMAL.value
         return ToneType.FORMAL.value
     
+    # -------------------------
+    # EXTRACT DOMAIN
+    # Handles extract functionality for domain.
+    # -------------------------
     def _extract_domain(self, sender: str) -> str:
         """Extract domain from email address"""
         if '@' in sender:
             return sender.split('@')[1].lower()
         return 'unknown'
     
+    # -------------------------
+    # GET MOST USED TONES
+    # Retrieves most used tones.
+    # -------------------------
     def _get_most_used_tones(self) -> Dict[str, int]:
         """Get most used tones from history"""
         tone_counts = {}

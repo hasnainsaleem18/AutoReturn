@@ -31,6 +31,10 @@ class CalendarService:
     Service for Google Calendar insertion, conflict detection, and ICS export.
     """
 
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self, data_dir: str):
         self.data_dir = data_dir
         os.makedirs(self.data_dir, exist_ok=True)
@@ -42,6 +46,10 @@ class CalendarService:
         self.service = None
         self.is_connected = False
 
+    # -------------------------
+    # CONNECT
+    # Establishes connections for the operation.
+    # -------------------------
     def connect(self, allow_flow: bool = True) -> Tuple[bool, str]:
         """Initialize OAuth credentials and Calendar API client."""
         if not os.path.exists(self.client_secret_path):
@@ -64,6 +72,10 @@ class CalendarService:
         except Exception as exc:
             return False, f"Calendar connection failed: {exc}"
 
+    # -------------------------
+    # CREATE EVENTS
+    # Instantiates and creates events.
+    # -------------------------
     def create_events(self, events: List[EventCandidate], calendar_id: str = "primary") -> Tuple[int, List[str]]:
         """Insert events into Google Calendar.
 
@@ -88,6 +100,10 @@ class CalendarService:
 
         return created, errors
 
+    # -------------------------
+    # FIND CONFLICTS
+    # Handles find functionality for conflicts.
+    # -------------------------
     def find_conflicts(self, ev: EventCandidate, calendar_id: str = "primary") -> List[Dict[str, Any]]:
         """Find existing Google Calendar events overlapping with a candidate event."""
         if not self.is_connected or not self.service:
@@ -134,6 +150,10 @@ class CalendarService:
 
         return conflicts
 
+    # -------------------------
+    # EXPORT ICS
+    # Handles export functionality for ics.
+    # -------------------------
     def export_ics(self, events: List[EventCandidate], output_dir: str) -> Tuple[str, int]:
         """Export events to an ICS file and return the file path."""
         os.makedirs(output_dir, exist_ok=True)
@@ -156,6 +176,10 @@ class CalendarService:
 
         return file_path, len(events)
 
+    # -------------------------
+    # TO ICS EVENT LINES
+    # Handles to functionality for ics event lines.
+    # -------------------------
     def _to_ics_event_lines(self, ev: EventCandidate) -> str:
         """Convert one event candidate to a VEVENT block string."""
         ev.ensure_end()
@@ -199,6 +223,10 @@ class CalendarService:
         lines.append("END:VEVENT")
         return "\r\n".join(lines)
 
+    # -------------------------
+    # ICS ESCAPE
+    # Handles ics functionality for escape.
+    # -------------------------
     @staticmethod
     def _ics_escape(value: str) -> str:
         """Escape text according to ICS content line rules."""
@@ -210,6 +238,10 @@ class CalendarService:
             .replace(";", "\\;")
         )
 
+    # -------------------------
+    # EVENT TO PAYLOAD
+    # Handles event functionality for to payload.
+    # -------------------------
     def _event_to_payload(self, ev: EventCandidate) -> dict:
         """Map an internal event candidate to Google Calendar API payload format."""
         ev.ensure_end()
@@ -258,6 +290,10 @@ class CalendarService:
 
         return payload
 
+    # -------------------------
+    # EVENT TIME BOUNDS
+    # Handles event functionality for time bounds.
+    # -------------------------
     def _event_time_bounds(self, ev: EventCandidate) -> Tuple[datetime, datetime, str]:
         """Return timezone-aware start/end bounds for conflict checking."""
         ev.ensure_end()
@@ -278,6 +314,10 @@ class CalendarService:
 
         return start_dt, end_dt, tz_name
 
+    # -------------------------
+    # GOOGLE EVENT BOUNDS
+    # Handles google functionality for event bounds.
+    # -------------------------
     def _google_event_bounds(self, item: Dict[str, Any], fallback_tz: str) -> Tuple[Optional[datetime], Optional[datetime]]:
         """Parse Google Calendar event start/end payload into datetimes."""
         start_data = item.get("start", {}) or {}
@@ -287,6 +327,10 @@ class CalendarService:
         end = self._parse_google_dt(end_data, fallback_tz)
         return start, end
 
+    # -------------------------
+    # PARSE GOOGLE DT
+    # Extracts and parses google dt.
+    # -------------------------
     @staticmethod
     def _parse_google_dt(value: Dict[str, Any], fallback_tz: str) -> Optional[datetime]:
         date_time = value.get("dateTime")

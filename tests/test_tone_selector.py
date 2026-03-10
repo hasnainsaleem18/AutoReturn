@@ -30,7 +30,7 @@ class TestWindow(QMainWindow):
         # Initialize orchestrator
         try:
             self.orchestrator = Orchestrator()
-            print("✅ Orchestrator initialized successfully")
+            print("Orchestrator initialized successfully")
         except Exception as e:
             print(f"❌ Orchestrator initialization failed: {e}")
             self.orchestrator = None
@@ -126,7 +126,7 @@ class TestWindow(QMainWindow):
                 # Update displays
                 self.tone_detection_display.set_message_data(message_data)
                 
-                print(f"✅ Tone analysis: {tone_result.get('tone_signal')} ({tone_result.get('confidence'):.2f})")
+                print(f"Tone analysis: {tone_result.get('tone_signal')} ({tone_result.get('confidence'):.2f})")
         except Exception as e:
             print(f"❌ Tone analysis error: {e}")
     

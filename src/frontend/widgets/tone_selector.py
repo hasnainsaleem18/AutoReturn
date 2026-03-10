@@ -98,7 +98,10 @@ class ToneSelector(QWidget):
             self.tone_combo.addItem(display_name, tone)
         
         # Set default selection
-        self.set_tone(ToneType.FORMAL)
+        default_tone = ToneType.FORMAL
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            default_tone = self.orchestrator.tone_engine.user_profile.default_tone
+        self.set_tone(default_tone)
     
     def connect_signals(self):
         """Connect widget signals"""
@@ -108,10 +111,15 @@ class ToneSelector(QWidget):
     def on_tone_changed(self, index: int):
         """Handle tone selection change"""
         if index >= 0:
-            tone = self.tone_combo.itemData(index)
-            if tone and isinstance(tone, ToneType) and tone != self.current_tone:
-                self.current_tone = tone
-                self.tone_changed.emit(tone)
+            tone_val = self.tone_combo.itemData(index)
+            if tone_val:
+                try:
+                    tone = ToneType(tone_val)
+                    if tone != self.current_tone:
+                        self.current_tone = tone
+                        self.tone_changed.emit(tone)
+                except ValueError:
+                    pass
                 
                 # Learn from user selection
                 if self.orchestrator and self.message_data:
@@ -157,7 +165,7 @@ class ToneSelector(QWidget):
         finally:
             # Reset button state
             self.auto_suggest_in_progress = False
-            self.auto_btn.setText("🤖 Auto")
+            self.auto_btn.setText("Auto")
             self.auto_btn.setEnabled(True)
     
     def set_tone(self, tone: ToneType):
@@ -179,10 +187,13 @@ class ToneSelector(QWidget):
     
     def reset(self):
         """Reset widget to default state"""
-        self.set_tone(ToneType.FORMAL)
+        default_tone = ToneType.FORMAL
+        if hasattr(self, 'orchestrator') and self.orchestrator:
+            default_tone = self.orchestrator.tone_engine.user_profile.default_tone
+        self.set_tone(default_tone)
         self.confidence_label.setVisible(False)
         self.auto_suggest_in_progress = False
-        self.auto_btn.setText("🤖 Auto")
+        self.auto_btn.setText("Auto")
         self.auto_btn.setEnabled(True)
 
     def _apply_theme_styles(self):

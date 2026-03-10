@@ -56,6 +56,10 @@ class EventExtractor:
         re.IGNORECASE,
     )
 
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self, ai_service: Optional[OllamaService] = None,
                  enable_llm_fallback: bool = True,
                  timezone: Optional[str] = None,
@@ -67,6 +71,10 @@ class EventExtractor:
         tz = normalize_timezone(timezone or get_local_timezone_name())
         self.settings = ExtractionSettings(timezone=tz)
 
+    # -------------------------
+    # EXTRACT FROM MESSAGE
+    # Handles extract functionality for from message.
+    # -------------------------
     async def extract_from_message(self, message: Dict[str, Any]) -> List[EventCandidate]:
         """Extract event/task candidates from a message dictionary."""
         subject = message.get("subject", "")
@@ -104,10 +112,18 @@ class EventExtractor:
 
         return []
 
+    # -------------------------
+    # NORMALIZE TEXT
+    # Handles normalize functionality for text.
+    # -------------------------
     def _normalize_text(self, subject: str, content: str) -> str:
         combined = f"{subject}\n{content}".strip()
         return combined[: self.settings.max_text_len]
 
+    # -------------------------
+    # CONTAINS RELEVANT KEYWORDS
+    # Handles contains functionality for relevant keywords.
+    # -------------------------
     def _contains_relevant_keywords(self, text: str) -> bool:
         lower = text.lower()
         for kw in self.EVENT_KEYWORDS.union(self.TASK_KEYWORDS):
@@ -125,6 +141,10 @@ class EventExtractor:
             return True
         return False
 
+    # -------------------------
+    # DETERMINISTIC EXTRACT
+    # Handles deterministic functionality for extract.
+    # -------------------------
     def _deterministic_extract(self, text: str, subject: str,
                                source: str, source_id: str,
                                reference_dt: Optional[datetime] = None) -> List[EventCandidate]:
@@ -199,6 +219,10 @@ class EventExtractor:
 
         return self._dedupe_candidates(candidates)
 
+    # -------------------------
+    # SCORE CONFIDENCE
+    # Handles score functionality for confidence.
+    # -------------------------
     def _score_confidence(self, match_text: str, full_text: str, has_time: bool, is_task: bool = False) -> float:
         score = 0.5
         lower = full_text.lower()
@@ -222,6 +246,10 @@ class EventExtractor:
 
         return max(0.1, min(0.95, score))
 
+    # -------------------------
+    # DERIVE TITLE
+    # Handles derive functionality for title.
+    # -------------------------
     def _derive_title(self, subject: str, match_text: str, full_text: str, is_task: bool) -> str:
         if subject:
             base = subject.strip()
@@ -235,11 +263,19 @@ class EventExtractor:
             return f"To-do: {base}"
         return base
 
+    # -------------------------
+    # DEFAULT END
+    # Handles default functionality for end.
+    # -------------------------
     def _default_end(self, start: datetime, all_day: bool) -> datetime:
         if all_day:
             return start + timedelta(days=1)
         return start + timedelta(hours=1)
 
+    # -------------------------
+    # EXTRACT LOCATION
+    # Handles extract functionality for location.
+    # -------------------------
     def _extract_location(self, text: str) -> Optional[str]:
         # Simple heuristic: look for "at <location>" or "in <location>"
         match = re.search(r"\b(?:at|in)\s+([A-Za-z0-9\s\-_,]{3,50})", text)
@@ -247,6 +283,10 @@ class EventExtractor:
             return match.group(1).strip()
         return None
 
+    # -------------------------
+    # IS TASK CONTEXT
+    # Evaluates whether task context.
+    # -------------------------
     def _is_task_context(self, text: str, match_text: str = "") -> bool:
         lower = text.lower()
         if match_text:
@@ -257,6 +297,10 @@ class EventExtractor:
                 lower = lower[start:end]
         return any(kw in lower for kw in self.TASK_KEYWORDS)
 
+    # -------------------------
+    # IS EVENT CONTEXT
+    # Evaluates whether event context.
+    # -------------------------
     def _is_event_context(self, text: str, match_text: str, subject: str) -> bool:
         combined = f"{subject}\n{text}".lower()
         if any(kw in combined for kw in self.EVENT_KEYWORDS):
@@ -265,6 +309,10 @@ class EventExtractor:
             return True
         return False
 
+    # -------------------------
+    # BUILD DESCRIPTION
+    # Handles build functionality for description.
+    # -------------------------
     def _build_description(self, subject: str, text: str) -> str:
         snippet = text.strip().replace("\n", " ")
         snippet = re.sub(r"\s+", " ", snippet)
@@ -274,6 +322,10 @@ class EventExtractor:
             return f"Subject: {subject}\n\nMessage snippet:\n{snippet}"
         return f"Message snippet:\n{snippet}"
 
+    # -------------------------
+    # EXTRACT COMBINED DAY TIME
+    # Handles extract functionality for combined day time.
+    # -------------------------
     def _extract_combined_day_time(self, text: str, settings: Dict[str, Any]) -> List[Tuple[str, datetime]]:
         """Extract phrases like 'tomorrow at 7pm' to avoid date/time split matches."""
         results: List[Tuple[str, datetime]] = []
@@ -284,6 +336,10 @@ class EventExtractor:
                 results.append((phrase, dt))
         return results
 
+    # -------------------------
+    # DEDUPE CANDIDATES
+    # Handles dedupe functionality for candidates.
+    # -------------------------
     def _dedupe_candidates(self, candidates: List[EventCandidate]) -> List[EventCandidate]:
         if not candidates:
             return []
@@ -341,6 +397,10 @@ class EventExtractor:
         final.sort(key=lambda x: x.start_dt)
         return final
 
+    # -------------------------
+    # LLM EXTRACT
+    # Handles llm functionality for extract.
+    # -------------------------
     async def _llm_extract(self, text: str, subject: str,
                            source: str, source_id: str) -> List[EventCandidate]:
         prompt = f"""

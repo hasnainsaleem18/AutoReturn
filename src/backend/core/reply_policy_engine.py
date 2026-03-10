@@ -12,6 +12,10 @@ from src.backend.models.automation_models import (
 class ReplyPolicyEngine:
     """Applies automation settings to a message and returns a policy decision."""
 
+    # -------------------------
+    # EVALUATE
+    # Handles evaluate functionality for the operation.
+    # -------------------------
     def evaluate(self, message: dict, settings: AutomationSettings) -> PolicyDecision:
         sender_identity = self._extract_sender_identity(message)
         sender_allowed = self._is_sender_allowed(sender_identity, settings)
@@ -39,6 +43,10 @@ class ReplyPolicyEngine:
             sender_allowed=sender_allowed,
         )
 
+    # -------------------------
+    # EXTRACT SENDER IDENTITY
+    # Handles extract functionality for sender identity.
+    # -------------------------
     def _extract_sender_identity(self, message: dict) -> str:
         source = str(message.get("source", "")).lower()
 
@@ -59,6 +67,10 @@ class ReplyPolicyEngine:
             return sender_email
         return str(message.get("sender", "")).strip().lower()
 
+    # -------------------------
+    # IS SENDER ALLOWED
+    # Evaluates whether sender allowed.
+    # -------------------------
     def _is_sender_allowed(self, sender_identity: str, settings: AutomationSettings) -> bool:
         if not sender_identity:
             return False

@@ -72,7 +72,7 @@ class SendGmailReplyDialog(QDialog):
         # Add tone display and selector if orchestrator available
         self.tone_detection_display = None
         if self.orchestrator and self.original_message:
-            info_label = QLabel("📊 Analyze incoming message mood, then select tone for your reply:")
+            info_label = QLabel("Analyze incoming message mood, then select tone for your reply:")
             info_label.setStyleSheet("font-size: 12px; color: #024950; margin-bottom: 8px;")
             layout.addWidget(info_label)
 

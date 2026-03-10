@@ -44,6 +44,10 @@ def validate_user_token(token: str) -> tuple:
     return True, ""
 
 
+# -------------------------
+# FORMAT MESSAGE TIME
+# Formats output for message time.
+# -------------------------
 def format_message_time(msg_datetime) -> str:
     """Format message timestamp as a relative time string.
     Args:
@@ -84,6 +88,10 @@ def format_message_time(msg_datetime) -> str:
 class SlackMessage:
     """Represents a Slack message with formatted data for UI display."""
     
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self, message_data: dict, channel_info: dict, user_cache: dict):
         self.raw_data = message_data
         self.user_id = message_data.get('user', '')
@@ -118,12 +126,20 @@ class SlackMessage:
         
         self.datetime = self._parse_timestamp(self.timestamp)
     
+    # -------------------------
+    # PARSE TIMESTAMP
+    # Extracts and parses timestamp.
+    # -------------------------
     def _parse_timestamp(self, ts: str) -> datetime:
         try:
             return datetime.fromtimestamp(float(ts))
         except:
             return datetime.now()
     
+    # -------------------------
+    # TO DICT
+    # Handles to functionality for dict.
+    # -------------------------
     def to_dict(self) -> dict:
         if self.is_dm:
             subject = f"DM from {self.dm_partner_name}"
@@ -160,12 +176,20 @@ class SlackMessage:
             'ai_insights': None
         }
     
+    # -------------------------
+    # GENERATE SUMMARY
+    # Creates and returns summary.
+    # -------------------------
     def _generate_summary(self) -> str:
         words = self.text.split()
         if len(words) <= 15:
             return self.text
         return ' '.join(words[:15]) + '...'
     
+    # -------------------------
+    # DETECT PRIORITY
+    # Handles detect functionality for priority.
+    # -------------------------
     def _detect_priority(self) -> str:
         text_lower = self.text.lower()
         urgent_keywords = ['urgent', 'asap', 'emergency', 'critical', 'immediately']
@@ -188,6 +212,10 @@ class SlackService(QObject):
     users_loaded = Signal(list)
     error_occurred = Signal(str)
     
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self):
         super().__init__()
         self.client = None
@@ -200,6 +228,10 @@ class SlackService(QObject):
         self.dm_channels_cache = {}
         self.processed_messages = set()
     
+    # -------------------------
+    # CONNECT
+    # Establishes connections for the operation.
+    # -------------------------
     def connect(self, user_token: str) -> bool:
         try:
             self.user_token = user_token
@@ -225,6 +257,10 @@ class SlackService(QObject):
             self.connection_status.emit(False, error_msg)
             return False
     
+    # -------------------------
+    # DISCONNECT
+    # Terminates connections for the operation.
+    # -------------------------
     def disconnect(self):
         self.client = None
         self.is_connected = False
@@ -233,6 +269,10 @@ class SlackService(QObject):
         self.processed_messages.clear()
         self.connection_status.emit(False, "Disconnected from Slack")
     
+    # -------------------------
+    # LOAD USERS
+    # Loads data into users.
+    # -------------------------
     def _load_users(self):
         if not self.is_connected:
             return
@@ -263,6 +303,10 @@ class SlackService(QObject):
         except SlackApiError as e:
             self.error_occurred.emit(f"Failed to load users: {e.response.get('error', str(e))}")
 
+    # -------------------------
+    # FETCH ALL MESSAGES
+    # Pulls data for all messages.
+    # -------------------------
     def fetch_all_messages(self, limit: int = 200) -> List[dict]:
         if not self.is_connected:
             return []
@@ -328,6 +372,10 @@ class SlackService(QObject):
             self.error_occurred.emit(f"Failed to fetch messages: {e.response.get('error', str(e))}")
             return []
     
+    # -------------------------
+    # SYNC ALL MESSAGES
+    # Handles sync functionality for all messages.
+    # -------------------------
     def sync_all_messages(self, limit: int = 200) -> List[dict]:
         if not self.is_connected:
             return []
@@ -335,6 +383,10 @@ class SlackService(QObject):
         self.processed_messages.clear()
         return self.fetch_all_messages(limit)
     
+    # -------------------------
+    # SEND DM BY ID
+    # Handles send functionality for dm by id.
+    # -------------------------
     def send_dm_by_id(self, user_id: str, message_text: str, attachments: Optional[List[str]] = None) -> bool:
         if not self.is_connected:
             self.error_occurred.emit("Not connected to Slack")
@@ -376,7 +428,7 @@ class SlackService(QObject):
             user_info = self.users_cache.get(user_id, {})
             user_name = user_info.get('real_name', user_id)
             
-            self.message_sent.emit(True, f"✅ Message sent to {user_name}")
+            self.message_sent.emit(True, f"Message sent to {user_name}")
             return True
             
         except SlackApiError as e:
@@ -385,6 +437,10 @@ class SlackService(QObject):
             self.message_sent.emit(False, error_msg)
             return False
     
+    # -------------------------
+    # GET ALL USERS
+    # Retrieves all users.
+    # -------------------------
     def get_all_users(self) -> List[dict]:
         return [
             user for user_id, user in self.users_cache.items()
@@ -399,12 +455,20 @@ class SlackMessageListener(QThread):
     new_messages = Signal(list)
     error_occurred = Signal(str)
     
+    # -------------------------
+    # INIT
+    # Initializes the class instance and sets up default routing or UI states.
+    # -------------------------
     def __init__(self, slack_service: SlackService, poll_interval: int = 10):
         super().__init__()
         self.slack_service = slack_service
         self.poll_interval = poll_interval
         self.is_running = False
     
+    # -------------------------
+    # RUN
+    # Handles run functionality for the operation.
+    # -------------------------
     def run(self):
         self.is_running = True
         print(f"Started Slack listener (polling every {self.poll_interval}s)")
@@ -429,6 +493,10 @@ class SlackMessageListener(QThread):
                 self.error_occurred.emit(error_msg)
                 time.sleep(self.poll_interval)
     
+    # -------------------------
+    # STOP
+    # Terminates the process for the operation.
+    # -------------------------
     def stop(self):
         """Stop monitoring"""
         self.is_running = False

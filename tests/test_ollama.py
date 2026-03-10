@@ -22,7 +22,7 @@ def test_ollama():
         print("❌ Ollama is not running or not accessible")
         return False
     
-    print("✅ Ollama is running")
+    print("Ollama is running")
     
     # Test summary generation
     print("\nTesting summary generation...")
@@ -40,7 +40,7 @@ def test_ollama():
     )
     
     if summary:
-        print(f"✅ Summary generated successfully:")
+        print(f"Summary generated successfully:")
         print(f"   {summary}")
         return True
     else:
