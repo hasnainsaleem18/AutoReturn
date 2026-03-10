@@ -154,7 +154,9 @@ class AutoReturnApp(QMainWindow):
         self._connect_gmail_signals()
         
         # Summary generation queue
-        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=5)
+        # Reduced max_concurrent from 5 to 1 to prevent Ollama from exhausting RAM/VRAM
+        # and crashing the entire server with Exit Code 137 when processing large bursts.
+        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=1)
         self.queue_summary_generator.summary_generated.connect(self.on_summary_generated)
         self.queue_summary_generator.progress_update.connect(self.on_summary_progress)
         self.queue_summary_generator.batch_complete.connect(self.on_batch_summary_complete)

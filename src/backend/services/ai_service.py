@@ -98,15 +98,21 @@ Message: {message_text}"""
                 "model":   self.model_name,
                 "prompt":  prompt,
                 "stream":  False,
-                "options": {"temperature": 0.3, "top_p": 0.9, "max_tokens": 100}
+                "keep_alive": "0m", # Instantly free RAM after summary to prevent Exit Code 137
+                "options": {"temperature": 0.3, "top_p": 0.9, "num_predict": 100} # Use num_predict instead of max_tokens for Ollama
             }
-            response = requests.post(self.api_url, json=payload, timeout=60)
+            # Increase timeout slightly to handle parallel load without thread timeouts
+            response = requests.post(self.api_url, json=payload, timeout=120)
 
             if response.status_code == 200:
                 result  = response.json()
                 summary = result.get('response', '').strip()
+                if not summary:
+                    summary = result.get('thinking', '').strip()
+                    
                 return summary if summary else "Unable to generate summary"
             else:
+                self.error_occurred.emit(f"Ollama returned HTTP {response.status_code}")
                 return None
 
         except requests.exceptions.Timeout:
@@ -130,13 +136,17 @@ Message: {message_text}"""
                 "model":   self.model_name,
                 "prompt":  prompt,
                 "stream":  False,
-                "options": {"temperature": temperature, "top_p": 0.9, "max_tokens": max_tokens},
+                "keep_alive": "0m",
+                "options": {"temperature": temperature, "top_p": 0.9, "num_predict": max_tokens},
             }
-            response = requests.post(self.api_url, json=payload, timeout=60)
+            response = requests.post(self.api_url, json=payload, timeout=120)
             if response.status_code != 200:
                 return None
             result = response.json()
             output = result.get("response", "").strip()
+            if not output:
+                output = result.get("thinking", "").strip()
+                
             return output if output else None
 
         except requests.exceptions.Timeout:
@@ -209,7 +219,7 @@ class QueueSummaryGenerator(QObject):
     # CONSTRUCTOR: INITIALIZE QUEUE STATE
     # Sets up an empty queue and configures the concurrency limit.
     # -------------------------
-    def __init__(self, ollama_service: OllamaService, max_concurrent: int = 5):
+    def __init__(self, ollama_service: OllamaService, max_concurrent: int = 1):
         super().__init__()
         self.ollama_service  = ollama_service
         self.max_concurrent  = max_concurrent   # Max parallel summary threads at one time
