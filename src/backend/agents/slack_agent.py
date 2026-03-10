@@ -89,6 +89,13 @@ class SlackAgent(BaseAgent):
             print(f"Slack Agent: Analyzing priority/tone for {len(messages)} messages...")
 
             async def process_slack_msg_light(msg):
+                msg_id = msg.get('id') or msg.get('ts')
+                
+                # Deduplicate AI analysis
+                if msg_id and hasattr(self, '_ai_processed_cache') and msg_id in self._ai_processed_cache:
+                    msg.update(self._ai_processed_cache[msg_id])
+                    return msg
+                    
                 try:
                     # Run Priority Algorithm (High / Medium / Low)
                     priority_label           = await self._analyze_priority(msg)
@@ -112,6 +119,20 @@ class SlackAgent(BaseAgent):
                     # Leave summary blank so background queue fills it later
                     if not msg.get('summary'):
                         msg['summary'] = ""
+                        
+                    # Save into RAM cache
+                    if msg_id:
+                        if not hasattr(self, '_ai_processed_cache'):
+                            self._ai_processed_cache = {}
+                        self._ai_processed_cache[msg_id] = {
+                            'ai_priority_score': priority_label,
+                            'priority': priority_label,
+                            'ai_tone_signal': msg['ai_tone_signal'],
+                            'ai_tasks': msg['ai_tasks'],
+                            'ai_events': msg.get('ai_events', []),
+                            'ai_events_count': msg.get('ai_events_count', 0),
+                        }
+
                 except Exception as e:
                     print(f"Slack processing error: {e}")
                 return msg

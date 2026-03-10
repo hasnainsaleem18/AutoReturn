@@ -131,7 +131,7 @@ class AutoReturnApp(QMainWindow):
         from src.backend.core.orchestrator import Orchestrator
         
         # Initialize orchestrator (the brain that coordinates everything)
-        self.orchestrator = Orchestrator(ollama_model="kimi-k2.5:cloud")
+        self.orchestrator = Orchestrator(ollama_model="glm-5:cloud")
         
         # Get agents from orchestrator (not direct services)
         self.gmail_agent = self.orchestrator.get_agent("gmail")
@@ -891,8 +891,10 @@ class AutoReturnApp(QMainWindow):
         self.messages.sort(key=lambda x: (p_map.get(self._normalize_priority(x.get('priority', 'Low')), 1), float(x.get('timestamp', 0))), reverse=True)
         self._schedule_table_refresh()
         
-        # Generate AI summaries for new messages
-        self.generate_summaries_for_messages(new_messages)
+        # Generate AI summaries strictly for new messages that don't already have one
+        needs_summary_items = [msg for msg in new_messages if not self._summary_for_table(msg)]
+        if needs_summary_items:
+            self.generate_summaries_for_messages(needs_summary_items)
         
         for msg in new_messages:
             sender = msg.get('sender', 'Unknown')
@@ -1501,6 +1503,11 @@ class AutoReturnApp(QMainWindow):
             else:
                 new_items.append(msg)
                 self.messages.append(msg)
+                
+                # Check if this "new" message (e.g. loaded from on-disk cache) 
+                # already has a summary before throwing it in the queue
+                if not self._summary_for_table(msg):
+                    needs_summary_items.append(msg)
 
         print(f"   - {len(new_items)} are new, {len(messages) - len(new_items)} updated")
         policy_groups = self._apply_automation_policy(new_items)

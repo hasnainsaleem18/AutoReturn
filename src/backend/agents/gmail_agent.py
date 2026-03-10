@@ -108,6 +108,15 @@ class GmailAgent(BaseAgent):
                 print(f"Gmail Agent: analyzing priority and tasks for {len(messages)} messages...")
 
                 async def process_msg_light(msg):
+                    msg_id = msg.get('id')
+                    
+                    # If we've already processed this message, just return the cached AI values
+                    # This prevents the endless loop of re-scoring the same emails
+                    if msg_id and hasattr(self, '_ai_processed_cache') and msg_id in self._ai_processed_cache:
+                        cached = self._ai_processed_cache[msg_id]
+                        msg.update(cached)
+                        return msg
+                        
                     try:
                         # Run Priority Algorithm (High / Medium / Low)
                         priority_label        = await self._analyze_priority(msg)
@@ -123,15 +132,28 @@ class GmailAgent(BaseAgent):
                             msg['ai_events']     = [e.model_dump(mode="json") for e in events] if events else []
                             msg['ai_events_count'] = len(msg['ai_events'])
                             if events:
-                                print(f"Events extracted for {msg.get('id', '')[:8]}: {len(events)}")
+                                print(f"Events extracted for {str(msg_id)[:8]}: {len(events)}")
                         except Exception as e:
-                            print(f"Event extraction error for {msg.get('id')}: {e}")
+                            print(f"Event extraction error for {msg_id}: {e}")
 
                         # Leave summary blank so background queue fills it later
                         if not msg.get('summary'):
                             msg['summary'] = ""
+                            
+                        # Save to cache so we never run the heavy algorithms on this specific message body again
+                        if msg_id:
+                            if not hasattr(self, '_ai_processed_cache'):
+                                self._ai_processed_cache = {}
+                            self._ai_processed_cache[msg_id] = {
+                                'ai_priority_score': priority_label,
+                                'priority': priority_label,
+                                'ai_tasks': msg['ai_tasks'],
+                                'ai_events': msg.get('ai_events', []),
+                                'ai_events_count': msg.get('ai_events_count', 0),
+                                # Don't cache summary here as it's populated downstream
+                            }
                     except Exception as e:
-                        print(f"Error processing message {msg.get('id')}: {e}")
+                        print(f"Error processing message {msg_id}: {e}")
                     return msg
 
                 # Process all messages simultaneously for speed
