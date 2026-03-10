@@ -998,7 +998,7 @@ class AutoReturnApp(QMainWindow):
             users (list): List of user dictionaries
         """
         self.slack_users = users
-        print(f"👥 Loaded {len(users)} Slack users")
+        print(f"Loaded {len(users)} Slack users")
     
     # -------------------------
     # ON SLACK ERROR
