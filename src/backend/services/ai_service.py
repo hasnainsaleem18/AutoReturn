@@ -74,7 +74,7 @@ class OllamaService(QObject):
     def generate_summary(self, message_text: str, sender: str = "", subject: str = "") -> Optional[str]:
         try:
             # Build the prompt that instructs the AI on what format to produce
-            prompt = f"""Analyze the message and provide a Summary and a Task Classification.
+            prompt = f"""You are an email assistant. Analyze the message and provide a Summary and a Task Classification.
 
 Categories for Task Classification:
 1. Smart Draft: Needs a thoughtful, composed reply (e.g., questions, discussions).
@@ -85,7 +85,8 @@ Categories for Task Classification:
 Rules:
 1. Refer to the sender as "The sender". DO NOT use their real name ({sender}).
 2. If it's a channel join message, classify as "Simple Reply".
-3. Format the output EXACTLY as follows:
+3. Provide ONLY the final output format. Do not include your reasoning steps in the final output.
+4. Format the output EXACTLY as follows:
 
 Summary: [1-2 sentence summary]
 
@@ -106,9 +107,20 @@ Message: {message_text}"""
 
             if response.status_code == 200:
                 result  = response.json()
-                summary = result.get('response', '').strip()
-                if not summary:
-                    summary = result.get('thinking', '').strip()
+                
+                # We need to extract just the final summary section so we don't show the user 
+                # the AI's "chain of thought" or reasoning steps, regardless of where it put them.
+                raw_text = result.get('response', '').strip()
+                if not raw_text:
+                    raw_text = result.get('thinking', '').strip()
+                    
+                if "Summary:" in raw_text:
+                    summary = raw_text.split("Summary:", 1)[1].strip()
+                else:
+                    summary = raw_text.strip()
+                    
+                if "Task:" in summary:
+                    summary = summary.split("Task:", 1)[0].strip()
                     
                 return summary if summary else "Unable to generate summary"
             else:
@@ -144,8 +156,14 @@ Message: {message_text}"""
                 return None
             result = response.json()
             output = result.get("response", "").strip()
-            if not output:
-                output = result.get("thinking", "").strip()
+            
+            # If the reasoning model only populated the 'thinking' block
+            if not output and result.get("thinking"):
+                thinking_text = result.get("thinking", "")
+                if "Summary:" in thinking_text:
+                     output = thinking_text.split("Summary:", 1)[1].strip()
+                else:
+                     output = thinking_text.strip()
                 
             return output if output else None
 
