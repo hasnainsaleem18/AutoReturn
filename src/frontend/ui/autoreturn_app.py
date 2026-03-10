@@ -87,14 +87,14 @@ class AgentWorker(QThread):
             response = loop.run_until_complete(self.coro)
             
             # Emit result
-            print(f"✅ AgentWorker: Task complete, emitting result...")
+            print(f"AgentWorker: Task complete, emitting result...")
             self.result_ready.emit(response)
         except Exception as e:
-            print(f"❌ AgentWorker: Task failed: {e}")
+            print(f"AgentWorker: Task failed: {e}")
             self.error_occurred.emit(str(e))
         finally:
             loop.close()
-            print(f"🛑 AgentWorker: Loop closed")
+            print(f"AgentWorker: Loop closed")
 
 
 # -------------------------
@@ -198,9 +198,6 @@ class AutoReturnApp(QMainWindow):
     # SIGNAL CONNECTIONS
     # -------------------------
     # -------------------------
-    # SIGNAL CONNECTIONS
-    # -------------------------
-    # -------------------------
     # SLACK INTEGRATION - SIGNAL HANDLING
     # -------------------------
     def _connect_slack_signals(self):
@@ -211,9 +208,7 @@ class AutoReturnApp(QMainWindow):
         self.slack_service.users_loaded.connect(self.on_slack_users_loaded)
         self.slack_service.error_occurred.connect(self.on_slack_error)
     
-    # -------------------------
-    # SLACK INTEGRATION
-    # -------------------------
+
     # -------------------------
     # SLACK INTEGRATION - CONNECTION MANAGEMENT
     # -------------------------
@@ -228,9 +223,6 @@ class AutoReturnApp(QMainWindow):
         except:
             pass
 
-    # -------------------------
-    # HELPER METHODS
-    # -------------------------
     # -------------------------
     # HELPER METHODS
     # -------------------------
@@ -272,9 +264,6 @@ class AutoReturnApp(QMainWindow):
         self.gmail_service.error_occurred.connect(self.on_gmail_error)
 
     # -------------------------
-    # GMAIL INTEGRATION
-    # -------------------------
-    # -------------------------
     # GMAIL INTEGRATION - CONNECTION MANAGEMENT
     # -------------------------
     def _try_auto_connect_gmail(self):
@@ -309,9 +298,6 @@ class AutoReturnApp(QMainWindow):
         if hasattr(self, 'user_name_label'):
             self.user_name_label.setText(self.user_data.get('name', 'User'))
     
-    # -------------------------
-    # SLACK EVENT HANDLERS
-    # -------------------------
     # -------------------------
     # SLACK EVENT HANDLERS
     # -------------------------
@@ -1039,7 +1025,7 @@ class AutoReturnApp(QMainWindow):
     def on_agent_error(self, error_message: str):
         """Handle errors from agent workers."""
         self._is_syncing_gmail = False
-        print(f"❌ Agent Error: {error_message}")
+        print(f"Agent Error: {error_message}")
         self.show_status_message(f"Error: {error_message}")
         # QMessageBox.warning(self, "Agent Error", error_message)
 
@@ -1191,7 +1177,7 @@ class AutoReturnApp(QMainWindow):
                 QMessageBox.warning(self, "Loading", "Slack users are still loading. Please wait.")
                 return
             
-            # NEW: Use enhanced Slack message dialog with tone features
+            # Use Slack message dialog with tone controls.
             dialog = SendSlackMessageDialog(
                 users=self.slack_users, 
                 parent=self,
@@ -1256,7 +1242,7 @@ class AutoReturnApp(QMainWindow):
                 return
             to_email = message_data.get('email', '')
             subject = message_data.get('subject', '(No Subject)')
-            # NEW: Use enhanced Gmail reply dialog with tone features
+            # Use Gmail reply dialog with tone controls.
             dialog = SendGmailReplyDialog(
                 to_email=to_email, 
                 subject=subject, 
@@ -1306,15 +1292,12 @@ class AutoReturnApp(QMainWindow):
 
                     success, msg = self.gmail_service.reply_to_message(message_data, reply_with_tone, attachments=attachments)
                     
-                    # NEW: Show tone usage feedback
+                    # Show applied tone in send confirmation.
                     QMessageBox.information(self, "Reply Sent", 
                         f"Reply sent with {selected_tone.value if selected_tone else 'Default'} tone!")
         else:
             QMessageBox.warning(self, "Unknown Source", f"Cannot send to: {source}")
 
-    # -------------------------
-    # GMAIL EVENT HANDLERS
-    # -------------------------
     # -------------------------
     # GMAIL EVENT HANDLERS
     # -------------------------
@@ -1337,7 +1320,7 @@ class AutoReturnApp(QMainWindow):
             print("ℹ️ Gmail Handler: Received empty message list")
             return
             
-        print(f"📥 Gmail Handler: Syncing {len(messages)} messages...")
+        print(f"Gmail Handler: Syncing {len(messages)} messages...")
         
         existing_by_id = {msg.get('id'): msg for msg in self.messages if msg.get('id')}
         new_items = []
@@ -1397,7 +1380,7 @@ class AutoReturnApp(QMainWindow):
         if hasattr(self, 'queue_summary_generator'):
             queue_candidates = {m.get('id'): m for m in (new_items + needs_summary_items) if m.get('id')}
             to_queue = list(queue_candidates.values())
-            print(f"🧠 Queueing {len(to_queue)} Gmail messages for background summarization...")
+            print(f"Queueing {len(to_queue)} Gmail messages for background summarization...")
             if to_queue:
                 self.queue_summary_generator.add_to_queue(to_queue)
         # Summaries are now handled by the Agent, so no need to call generate_summaries_for_messages again
@@ -1691,9 +1674,6 @@ class AutoReturnApp(QMainWindow):
             self.show_send_message_dialog(message_data)
     
     # -------------------------
-    # AI SUMMARY GENERATION
-    # -------------------------
-    # -------------------------
     # AI SUMMARY GENERATION - BATCH PROCESSING
     # -------------------------
     def generate_summaries_for_messages(self, messages: list):
@@ -1835,9 +1815,6 @@ class AutoReturnApp(QMainWindow):
     # -------------------------
     # UI SETUP
     # -------------------------
-    # -------------------------
-    # UI SETUP
-    # -------------------------
     def setup_ui(self):
         """Set up the main application UI components."""
         central_widget = QWidget()
@@ -1928,7 +1905,7 @@ class AutoReturnApp(QMainWindow):
         sync_btn.setObjectName("btnSecondary")
         sync_btn.clicked.connect(self.sync_all_messages)
         
-        generate_summaries_btn = QPushButton("🤖 Generate Summaries")
+        generate_summaries_btn = QPushButton("Generate Summaries")
         generate_summaries_btn.setObjectName("btnSecondary")
         generate_summaries_btn.clicked.connect(self.generate_all_summaries)
         generate_summaries_btn.setToolTip("Generate AI summaries for all messages using Ollama")
@@ -2122,7 +2099,7 @@ class AutoReturnApp(QMainWindow):
             ("Slack: 0", "statusItem"),
             ("Urgent: 0", "statusItem"),
             ("Auto Reply: OFF", "autoReplyStatusItem"),
-            # NEW: Add tone status indicator
+            # Tone status indicator.
             ("Tone: Formal", "toneStatusItem")
         ]
         
@@ -3488,7 +3465,7 @@ class AutoReturnApp(QMainWindow):
         self.status_labels.get("Urgent").setText(f"Urgent: {urgent_count}")
         self._update_auto_reply_status_chip()
         
-        # NEW: Update tone status indicator
+        # Update tone status indicator.
         if hasattr(self, 'orchestrator') and self.orchestrator:
             try:
                 default_tone = self.orchestrator.tone_engine.user_profile.default_tone
@@ -3755,15 +3732,12 @@ class AutoReturnApp(QMainWindow):
         dialog.exec()
 
     # -------------------------
-    # SETTINGS
-    # -------------------------
-    # -------------------------
     # SETTINGS DIALOG
     # -------------------------
     def show_settings(self):
         """Show the application settings dialog."""
         gmail_status = self.gmail_service.get_status_snapshot()
-        # NEW: Use enhanced settings dialog with tone features
+        # Open settings dialog with tone and automation controls.
         dialog = SettingsDialog(
             user_data=self.user_data, 
             parent=self, 
@@ -3790,9 +3764,6 @@ class AutoReturnApp(QMainWindow):
         if hasattr(self, 'user_name_label'):
             self.user_name_label.setText(self.user_data.get('name', 'User'))
     
-    # -------------------------
-    # WINDOW EVENTS
-    # -------------------------
     # -------------------------
     # WINDOW EVENTS
     # -------------------------

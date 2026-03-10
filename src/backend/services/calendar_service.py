@@ -20,13 +20,16 @@ from src.backend.models.event_models import EventCandidate
 from src.backend.utils.timezone_utils import normalize_timezone
 
 
+# Calendar write scope is sufficient for insert/read conflict checks.
 CALENDAR_SCOPES = [
     "https://www.googleapis.com/auth/calendar"
 ]
 
 
 class CalendarService:
-    """Service for Google Calendar insertion and ICS export."""
+    """
+    Service for Google Calendar insertion, conflict detection, and ICS export.
+    """
 
     def __init__(self, data_dir: str):
         self.data_dir = data_dir
@@ -40,6 +43,7 @@ class CalendarService:
         self.is_connected = False
 
     def connect(self, allow_flow: bool = True) -> Tuple[bool, str]:
+        """Initialize OAuth credentials and Calendar API client."""
         if not os.path.exists(self.client_secret_path):
             return False, "Upload client_secret.json in Settings before connecting Calendar."
 
@@ -73,6 +77,7 @@ class CalendarService:
 
         for ev in events:
             try:
+                # Convert our internal candidate model to Google event payload.
                 payload = self._event_to_payload(ev)
                 self.service.events().insert(calendarId=calendar_id, body=payload).execute()
                 created += 1
@@ -109,10 +114,12 @@ class CalendarService:
             if item.get("status") == "cancelled":
                 continue
 
+            # Normalize Google event bounds before overlap checks.
             existing_start, existing_end = self._google_event_bounds(item, tz_name)
             if existing_start is None or existing_end is None:
                 continue
 
+            # Two ranges overlap if each starts before the other ends.
             overlaps = (start_dt < existing_end) and (existing_start < end_dt)
             if not overlaps:
                 continue
@@ -138,6 +145,7 @@ class CalendarService:
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
         ]
+        # Append one VEVENT block per candidate event.
         cal_lines.extend(self._to_ics_event_lines(ev) for ev in events)
         cal_lines.append("END:VCALENDAR")
 
@@ -149,6 +157,7 @@ class CalendarService:
         return file_path, len(events)
 
     def _to_ics_event_lines(self, ev: EventCandidate) -> str:
+        """Convert one event candidate to a VEVENT block string."""
         ev.ensure_end()
         tz_name = normalize_timezone(ev.timezone)
 
@@ -202,13 +211,14 @@ class CalendarService:
         )
 
     def _event_to_payload(self, ev: EventCandidate) -> dict:
+        """Map an internal event candidate to Google Calendar API payload format."""
         ev.ensure_end()
         tz_name = normalize_timezone(ev.timezone)
 
         start_dt = ev.start_dt
         end_dt = ev.end_dt or ev.start_dt
 
-        # Ensure timezone-aware datetimes
+        # Ensure timezone-aware datetimes before generating ISO strings.
         if start_dt.tzinfo is None:
             start_dt = start_dt.replace(tzinfo=ZoneInfo(tz_name))
         if end_dt.tzinfo is None:
@@ -224,6 +234,7 @@ class CalendarService:
         }
 
         if ev.all_day:
+            # Google expects date-only values for all-day events.
             start = {"date": ev.start_dt.date().isoformat()}
             end_date = (ev.end_dt or ev.start_dt).date().isoformat()
             end = {"date": end_date}

@@ -1,5 +1,5 @@
 """
-Orchestrator - The Central Brain of AutoCom.
+Orchestrator - The Central Brain of WorkEase.
 Coordinates all agents using Pydantic AI for intent classification.
 """
 import asyncio
@@ -44,7 +44,7 @@ class OrchestratorDeps(BaseModel):
 # -------------------------
 class Orchestrator:
     """
-    The Central Brain of AutoCom that coordinates all agents.
+    The Central Brain of WorkEase that coordinates all agents.
     Uses Pydantic AI for intelligent intent classification.
     """
     
@@ -61,11 +61,11 @@ class Orchestrator:
         # Intelligent Components
         self.draft_manager = DraftManager(self.ai_service, tone_engine=None)  # Will be updated after tone_engine init
         
-        # NEW: Tone Management System
+        # Tone management components.
         self.tone_engine = ToneEngine(ai_service=self.ai_service)
         self.tone_manager = self.tone_engine  # Backward compatibility alias
 
-        # NEW: Automation policy components (DND / auto-reply settings + decisioning)
+        # Automation policy components (DND and auto-reply decisioning).
         self.automation_settings_service = AutomationSettingsService()
         self.reply_policy_engine = ReplyPolicyEngine()
         self.automation_coordinator = AutomationCoordinator(
@@ -84,15 +84,14 @@ class Orchestrator:
         # Pydantic AI Agent for intent classification
         self._setup_pydantic_agent(ollama_model)
         
-        print(f"🧠 Orchestrator initialized with model {ollama_model}")
+        print(f"Orchestrator initialized with model {ollama_model}")
         print(f"   Available agents: {list(self.agents.keys())}")
-        print(f"🎨 Tone Engine initialized")
-        print(f"🤖 Automation Coordinator initialized")
+        print(f"Tone Engine initialized")
+        print(f"Automation Coordinator initialized")
 
     def _setup_pydantic_agent(self, model_name: str):
         """Set up Pydantic AI agent for intent classification."""
-        # TODO: This would use Pydantic AI with Ollama
-        # For now, we'll use simple heuristics until Pydantic AI Ollama integration is confirmed
+        # Heuristic routing is currently active until model-backed intent routing is finalized.
         self.pydantic_agent = None
         print("   Intent classification: Using heuristic routing (Pydantic AI integration pending)")
 

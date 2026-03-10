@@ -262,7 +262,7 @@ class SendGmailReplyDialog(QDialog):
         try:
             content = self.original_message.get('full_content', '') or self.original_message.get('content', '') or self.original_message.get('preview', '')
             if content:
-                # Use tone_engine (from friend's branch) for detection
+                # Use orchestrator tone engine for incoming message tone detection.
                 tone_engine = getattr(self.orchestrator, 'tone_engine', None) or getattr(self.orchestrator, 'tone_manager', None)
                 if tone_engine:
                     tone_result = tone_engine.analyze_incoming_tone(content)

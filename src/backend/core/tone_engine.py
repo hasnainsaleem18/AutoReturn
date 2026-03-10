@@ -1,10 +1,9 @@
 # -------------------------
-# TONE ENGINE (MINIMAL ARCHITECTURE)
+# TONE ENGINE 
 # -------------------------
 """
-Minimal Tone Engine that integrates deterministic tone detection
-with Tone Preference using existing orchestrator patterns.
-Follows existing project architecture.
+Tone Engine integrates deterministic tone 
+detection Algorithm with Tone Preference
 """
 
 # -------------------------
@@ -332,7 +331,7 @@ class ToneDetector:
 # TONE ENGINE CLASS
 # -------------------------
 class ToneEngine:
-    """Tone engine that combines tone preference logic and embedded tone detection."""
+    """Tone engine combines tone preference logic and embedded tone detection."""
     
     def __init__(self, ai_service: OllamaService):
         self.ai_service = ai_service
@@ -343,7 +342,7 @@ class ToneEngine:
         self.user_profile = self._load_user_profile()
         self.tone_cache = {}  # Cache for tone recommendations
         
-        print(f"🎨 Tone Engine initialized with embedded tone detection")
+        print(f"Tone Engine initialized with embedded tone detection")
         print(f"   Default tone: {self.user_profile.default_tone}")
 
     def _analyze_message_threadsafe(self, text: str) -> ToneDetectionResult:
@@ -385,7 +384,7 @@ class ToneEngine:
     
     def analyze_incoming_tone(self, message_text: str) -> Dict[str, Any]:
         """
-        Deterministic tone detection (no LLM calls)
+        Deterministic tone detection 
         Uses feature-engineered pipeline for reliable analysis.
         """
         try:
@@ -474,8 +473,8 @@ class ToneEngine:
     def _orchestrate_tone_decision(self, analysis_result: ToneDetectionResult, 
                                  message_data: Dict[str, Any]) -> ToneType:
         """
-        NEW: Tone orchestration logic using deterministic analysis output
-        Implements decision logic without LLM dependency for suggestions.
+        Tone orchestration logic based on deterministic analysis output.
+        Applies source and priority rules to select the final reply tone.
         """
         tone_signal = analysis_result.tone_signal
         detected_tone = analysis_result.detected_tone

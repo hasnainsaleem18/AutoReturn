@@ -1,7 +1,13 @@
+# -------------------------
+# AUTOMATION MODELS
+# -------------------------
 """
 Data models for automation policy and settings.
 """
 
+# -------------------------
+# IMPORTS
+# -------------------------
 from enum import Enum
 from typing import List
 
@@ -9,7 +15,7 @@ from pydantic import BaseModel, Field
 
 
 class AutomationAction(str, Enum):
-    """High-level action selected by automation policy."""
+    """Action selected by the automation policy engine."""
 
     DRAFT_ONLY = "draft_only"
     PLAIN_REPLY = "plain_reply"
@@ -18,7 +24,7 @@ class AutomationAction(str, Enum):
 
 
 class AutomationSettings(BaseModel):
-    """User-configurable automation settings."""
+    """User-configurable automation settings persisted on disk."""
 
     dnd_enabled: bool = False
     auto_reply_enabled: bool = False
@@ -29,7 +35,7 @@ class AutomationSettings(BaseModel):
 
 
 class PolicyDecision(BaseModel):
-    """Decision output from the policy engine."""
+    """Final policy decision returned to the calling workflow."""
 
     action: AutomationAction
     reason: str

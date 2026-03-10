@@ -155,9 +155,6 @@ class ToggleSwitch(QCheckBox):
 # -------------------------
 # SETTINGS DIALOG CLASS
 # -------------------------
-# -------------------------
-# SETTINGS DIALOG CLASS
-# -------------------------
 class SettingsDialog(QDialog):
     # Signals for communication with parent
     profile_updated = Signal(dict)
@@ -178,7 +175,7 @@ class SettingsDialog(QDialog):
         self.sync_gmail_callback = None
         self.get_gmail_status_callback = None
         
-        # NEW: Add orchestrator for tone features
+        # Orchestrator reference used by tone and automation settings tabs.
         self.orchestrator = orchestrator
         self.automation_settings = self._load_automation_settings()
         
@@ -407,7 +404,7 @@ class SettingsDialog(QDialog):
         tabs.addTab(self._create_priority_rules_tab(), "Priority Rules")
         tabs.addTab(self._create_integrations_tab(), "Integrations")
         
-        # NEW: Add tone settings tab if orchestrator is available
+        # Tone and automation tabs are available when orchestrator is provided.
         if self.orchestrator:
             tabs.addTab(self._create_tone_settings_tab(), "Tone Settings")
             tabs.addTab(self._create_automation_settings_tab(), "Automation")
@@ -1400,7 +1397,7 @@ This token will let your desktop app send and receive messages as you, including
             )
             return
         
-        # TODO: Implement actual OAuth flow
+        # Current behavior shows the Gmail OAuth flow guidance steps.
         QMessageBox.information(
             self,
             "Gmail Connection",
@@ -1485,8 +1482,7 @@ This token will let your desktop app send and receive messages as you, including
     # -------------------------
     def test_gmail_connection(self):
         """Test the Gmail API connection."""
-        """Test Gmail API connection"""
-        # TODO: Implement actual connection test
+        # Displays connection test expectations until a live API probe is wired.
         QMessageBox.information(
             self,
             "Test Gmail Connection",
@@ -1500,8 +1496,7 @@ This token will let your desktop app send and receive messages as you, including
     
     def test_slack_connection(self):
         """Test the Slack API connection."""
-        """Test Slack API connection"""
-        # TODO: Implement actual connection test
+        # Displays connection test expectations until a live API probe is wired.
         QMessageBox.information(
             self,
             "Test Slack Connection",
@@ -2258,7 +2253,3 @@ class EditProfileDialog(QDialog):
         """
         return self.user_data
 
-
-# -------------------------
-# EDIT PROFILE DIALOG CLASS
-# -------------------------
