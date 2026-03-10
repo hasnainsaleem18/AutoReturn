@@ -843,7 +843,7 @@ class ToneEngine:
         """Set user's default tone"""
         self.user_profile.default_tone = tone
         self._save_user_profile()
-        print(f"🎨 Default tone updated to: {tone.value}")
+        print(f"Default tone updated to: {tone.value}")
     
     # -------------------------
     # SET AUTO TONE ENABLED
@@ -853,7 +853,7 @@ class ToneEngine:
         """Enable/disable auto-tone recommendations"""
         self.user_profile.auto_tone_enabled = enabled
         self._save_user_profile()
-        print(f"🎨 Auto-tone {'enabled' if enabled else 'disabled'}")
+        print(f"Auto-tone {'enabled' if enabled else 'disabled'}")
     
     # -------------------------
     # GET SENDER PREFERENCES

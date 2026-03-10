@@ -1,5 +1,5 @@
 # -------------------------
-# DRAFT MANAGER (ENHANCED)
+# DRAFT MANAGER 
 # -------------------------
 """
 Enhanced Draft Manager that integrates with Tone Preference system.

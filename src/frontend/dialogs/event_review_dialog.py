@@ -5,6 +5,9 @@
 Dialog for reviewing extracted events/tasks and adding them to calendar.
 """
 
+# -------------------------
+# IMPORTS
+# -------------------------
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -21,7 +24,17 @@ from PySide6.QtGui import QDesktopServices
 from src.backend.models.event_models import EventCandidate
 
 
+# -------------------------
+# EVENT REVIEW DIALOG CLASS
+# Displays extracted schedule suggestions, lets user refine selections,
+# and pushes approved items to Google Calendar or ICS export.
+# -------------------------
 class EventReviewDialog(QDialog):
+    # -------------------------
+    # INIT
+    # Stores suggestion data, calendar dependencies, and optional
+    # conflict-reply dependencies. Then builds UI and optional auto-add flow.
+    # -------------------------
     def __init__(self, events: List[Dict[str, Any]],
                  calendar_service,
                  auto_select_threshold: float = 0.85,
@@ -48,6 +61,11 @@ class EventReviewDialog(QDialog):
         self._build_ui()
         self._auto_add_high_confidence()
 
+    # -------------------------
+    # BUILD UI
+    # Constructs dialog layout: title/subtitle, editable suggestion table,
+    # and action buttons for calendar insert / ICS export / close.
+    # -------------------------
     def _build_ui(self):
         self.setStyleSheet("""
             QDialog {
@@ -161,6 +179,10 @@ class EventReviewDialog(QDialog):
 
         layout.addLayout(btn_layout)
 
+    # -------------------------
+    # FORMAT DATETIME FOR TABLE
+    # Normalizes datetime-like values into readable "YYYY-MM-DD HH:MM" text.
+    # -------------------------
     def _fmt_dt(self, value) -> str:
         if not value:
             return ""
@@ -172,6 +194,10 @@ class EventReviewDialog(QDialog):
         except Exception:
             return str(value)
 
+    # -------------------------
+    # PARSE DATETIME FROM TABLE INPUT
+    # Accepts ISO format first, then falls back to dateparser.
+    # -------------------------
     def _parse_dt(self, value: str):
         if not value:
             return None
@@ -181,12 +207,20 @@ class EventReviewDialog(QDialog):
             pass
         return dateparser.parse(value)
 
+    # -------------------------
+    # MAKE TABLE ITEM
+    # Utility for creating editable/non-editable table cells.
+    # -------------------------
     def _make_item(self, text: str, editable: bool = True) -> QTableWidgetItem:
         item = QTableWidgetItem(str(text or ""))
         if not editable:
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
         return item
 
+    # -------------------------
+    # CONFIDENCE REASON BUILDER
+    # Generates human-readable rationale string shown in "Why this score".
+    # -------------------------
     def _confidence_reason(self, ev: Dict[str, Any]) -> str:
         reasons = []
         confidence = float(ev.get("confidence", 0.0))
@@ -210,6 +244,11 @@ class EventReviewDialog(QDialog):
             reasons.append("Meeting/event-style language found")
         return " | ".join(reasons)
 
+    # -------------------------
+    # GET SELECTED EVENTS
+    # Reads checked rows, applies any user edits from the table,
+    # normalizes date/category values, and returns typed EventCandidate list.
+    # -------------------------
     def _selected_events(self) -> List[EventCandidate]:
         selected = []
         for row, ev in enumerate(self.events):
@@ -246,6 +285,11 @@ class EventReviewDialog(QDialog):
                     continue
         return selected
 
+    # -------------------------
+    # ADD TO CALENDAR HANDLER
+    # Validates selection/service availability, resolves conflicts,
+    # and creates approved events in Google Calendar.
+    # -------------------------
     def _handle_add_to_calendar(self, auto_only: bool = False, override_events: List[EventCandidate] = None):
         selected = override_events if override_events is not None else self._selected_events()
         if not selected:
@@ -283,6 +327,11 @@ class EventReviewDialog(QDialog):
         else:
             QMessageBox.information(self, "Calendar", f"Added {created} item(s) to Calendar.")
 
+    # -------------------------
+    # RESOLVE CONFLICTS
+    # Checks each candidate against existing calendar entries and decides
+    # keep/skip via interactive prompt (or auto-skip in non-interactive mode).
+    # -------------------------
     def _resolve_conflicts(self, selected: List[EventCandidate], interactive: bool) -> List[EventCandidate]:
         """Resolve overlap conflicts with existing calendar items."""
         approved: List[EventCandidate] = []
@@ -309,6 +358,11 @@ class EventReviewDialog(QDialog):
 
         return approved
 
+    # -------------------------
+    # ASK CONFLICT DECISION
+    # Shows conflict dialog for a single suggestion with actions:
+    # open existing event, skip suggestion, add anyway, or compose conflict reply.
+    # -------------------------
     def _ask_conflict_decision(self, ev: EventCandidate, conflicts: List[dict]) -> str:
         """Ask user how to handle a conflicting suggestion."""
         dialog = QDialog(self)
@@ -380,12 +434,14 @@ class EventReviewDialog(QDialog):
 
         choice = {"value": "skip"}
 
+        # Helper: current selected conflict row from conflict table.
         def _selected_conflict() -> dict:
             row = table.currentRow()
             if row < 0 or row >= len(conflicts):
                 return conflicts[0]
             return conflicts[row]
 
+        # Helper: open selected existing event in browser (Google Calendar link).
         def _open_selected():
             from PySide6.QtCore import QUrl
             from PySide6.QtGui import QDesktopServices
@@ -394,14 +450,17 @@ class EventReviewDialog(QDialog):
             if html_link:
                 QDesktopServices.openUrl(QUrl(html_link))
 
+        # Helper: skip new suggestion.
         def _skip():
             choice["value"] = "skip"
             dialog.accept()
 
+        # Helper: add new suggestion even though overlap exists.
         def _add():
             choice["value"] = "add"
             dialog.accept()
 
+        # Helper: compose polite "busy/conflict" reply to source message sender.
         def _compose_conflict_reply():
             choice["value"] = "skip"
             selected_conflict = _selected_conflict()
@@ -441,6 +500,7 @@ class EventReviewDialog(QDialog):
             else:
                 _open_send_dialog(_fallback_reply(conflict_title, conflict_start))
 
+        # Fallback template when AI-generated conflict reply is unavailable.
         def _fallback_reply(conflict_title, conflict_start):
             sender_name = self.source_message.get('sender', '').split()[0] if self.source_message.get('sender') else 'there'
             return (
@@ -451,6 +511,7 @@ class EventReviewDialog(QDialog):
                 f"Looking forward to connecting.\n\nBest regards,"
             )
 
+        # Opens existing send dialog callback with prefilled conflict-reply draft.
         def _open_send_dialog(reply_text):
             if self.show_send_dialog_callback and self.source_message:
                 msg_data = dict(self.source_message)
@@ -465,6 +526,10 @@ class EventReviewDialog(QDialog):
         dialog.exec()
         return choice["value"]
 
+    # -------------------------
+    # AUTO-ADD HIGH CONFIDENCE
+    # Auto-inserts only selected suggestions whose confidence meets threshold.
+    # -------------------------
     def _auto_add_high_confidence(self):
         if not self.auto_add_high_confidence:
             return
@@ -482,6 +547,10 @@ class EventReviewDialog(QDialog):
         # Auto-add only high-confidence selections
         self._handle_add_to_calendar(auto_only=True, override_events=high_conf)
 
+    # -------------------------
+    # EXPORT ICS HANDLER
+    # Exports selected suggestions as .ics file in configured output directory.
+    # -------------------------
     def _handle_export_ics(self):
         selected = self._selected_events()
         if not selected:

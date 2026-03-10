@@ -1085,7 +1085,7 @@ class AutoReturnApp(QMainWindow):
         """Synchronize all messages from connected services using the Orchestrator."""
         if self._is_syncing_gmail:
             self.show_status_message("A sync is already in progress...")
-            print("⏳ All-Sync skipped: Previous sync still running")
+            print("All-Sync skipped: Previous sync still running")
             return
 
         # Reset filters so new messages are visible
@@ -1594,7 +1594,7 @@ class AutoReturnApp(QMainWindow):
         if self._is_syncing_gmail:
             if not quiet:
                 self.show_status_message("Sync already in progress...")
-            print("⏳ Gmail sync skipped: Previous sync still running")
+            print("Gmail sync skipped: Previous sync still running")
             return
 
         if not quiet:

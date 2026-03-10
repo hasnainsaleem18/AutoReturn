@@ -22,6 +22,10 @@ from src.frontend.widgets.tone_detection_display import ToneDetectionDisplay
 class TestWindow(QMainWindow):
     """Test window for tone selector widget"""
     
+    # -------------------------
+    # INIT
+    # Initializes orchestrator (if available) and builds test harness UI.
+    # -------------------------
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Tone Selector Test - Phase 1")
@@ -32,12 +36,16 @@ class TestWindow(QMainWindow):
             self.orchestrator = Orchestrator()
             print("Orchestrator initialized successfully")
         except Exception as e:
-            print(f"❌ Orchestrator initialization failed: {e}")
+            print(f"Orchestrator initialization failed: {e}")
             self.orchestrator = None
         
         # Setup UI
         self.setup_ui()
     
+    # -------------------------
+    # SETUP UI
+    # Builds selector/display widgets and test action buttons.
+    # -------------------------
     def setup_ui(self):
         """Setup test UI"""
         central_widget = QWidget()
@@ -85,14 +93,22 @@ class TestWindow(QMainWindow):
         # Initial tone analysis
         self.perform_tone_detection(test_message)
     
+    # -------------------------
+    # TEST AUTO-SUGGEST
+    # Triggers selector auto-suggest flow and updates status label.
+    # -------------------------
     def test_auto_suggest(self):
         """Test auto-suggest functionality"""
         if self.orchestrator:
             self.tone_selector.on_auto_suggest()
             self.status_label.setText("Auto-suggest triggered")
         else:
-            self.status_label.setText("❌ No orchestrator available")
+            self.status_label.setText("No orchestrator available")
     
+    # -------------------------
+    # UPDATE MESSAGE DATA
+    # Swaps test payload to a new scenario and refreshes tone widgets.
+    # -------------------------
     def update_message_data(self):
         """Update message data with new content"""
         new_message = {
@@ -110,6 +126,10 @@ class TestWindow(QMainWindow):
         self.perform_tone_detection(new_message)
         self.status_label.setText("Message data updated")
     
+    # -------------------------
+    # PERFORM TONE DETECTION
+    # Runs tone analysis through orchestrator tone engine and updates UI.
+    # -------------------------
     def perform_tone_detection(self, message_data):
         """Perform tone analysis on message"""
         if not self.orchestrator:
@@ -128,8 +148,12 @@ class TestWindow(QMainWindow):
                 
                 print(f"Tone analysis: {tone_result.get('tone_signal')} ({tone_result.get('confidence'):.2f})")
         except Exception as e:
-            print(f"❌ Tone analysis error: {e}")
+            print(f"Tone analysis error: {e}")
     
+    # -------------------------
+    # HANDLE TONE CHANGED SIGNAL
+    # Displays currently selected tone in status label.
+    # -------------------------
     def on_tone_changed(self, tone):
         """Handle tone change"""
         if isinstance(tone, ToneType):
@@ -138,6 +162,10 @@ class TestWindow(QMainWindow):
             self.status_label.setText(f"Tone changed to: {tone}")
 
 
+# -------------------------
+# MAIN TEST ENTRY
+# Launches Qt application and opens interactive tone widget test window.
+# -------------------------
 def main():
     """Main test function"""
     app = QApplication(sys.argv)

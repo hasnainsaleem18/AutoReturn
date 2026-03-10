@@ -14,7 +14,7 @@
 
 ---
 
-## 📖 Project Overview
+## Project Overview
 
 AutoReturn is not just another email client; it is a **Unified AI Intelligence Hub**. It centralizes communication from **Gmail and Slack** into a single, high-speed interface. Rather than relying entirely on slow, expensive cloud AI models, AutoReturn uses a hybrid of **Local LLMs (via Ollama)** and **Custom Deterministic Algorithms** (written in raw Python) to process, rank, classify, and summarize incoming messages instantly.
 
@@ -22,7 +22,7 @@ This project was built from the ground up to solve the problem of *information o
 
 ---
 
-## 🧠 Software Architecture
+## Software Architecture
 
 AutoReturn moved away from traditional monolithic design to a highly optimized **Decoupled Orchestrator-Agent Architecture**.
 
@@ -44,11 +44,11 @@ A revolutionary UI approach where messages are fetched from APIs instantly (<1s)
 
 ---
 
-## ✨ Core Engines & Algorithms
+## Core Engines & Algorithms
 
 AutoReturn’s true power lies in its custom-built backend engines.
 
-### 🏅 The 4-Part Priority Algorithm (`priority_engine.py`)
+### The 4-Part Priority Algorithm (`priority_engine.py`)
 
 A fast, custom-built deterministic algorithm that scores every message from 0.0 to 10.0 and classifies it as **High**, **Medium**, or **Low** urgency. It relies on four sub-systems:
 
@@ -57,25 +57,25 @@ A fast, custom-built deterministic algorithm that scores every message from 0.0 
 3. **Algorithm 03 (Deadline Engine)**: Uses complex Regex matching to extract absolute dates (e.g., `12/25/2026`) and relative deadlines (e.g., `by tomorrow`). If the deadline is within 24 hours, it applies a massive point bonus.
 4. **Algorithm 04 (Sender Engine)**: Checks the sender and CC lists against a user-configurable "Priority List" (e.g., marking emails from your boss as instant 10.0s).
 
-### 🤖 AI Task Classification System
+### AI Task Classification System
 
 Rather than just showing you a message, AutoReturn tells you *what to do with it*. Every message is passed through a keyword heuristic matrix and categorized into one of 5 actionable types:
 
-1. 📎 **File Attachment Required** — Sender is explicitly requesting a document.
-2. ✍️ **Draft Generation** — The email requires a detailed, composed reply.
-3. ⚡ **Auto Reply** — Transactional message requiring a simple acknowledgement.
-4. 💬 **Simple Reply Required** — Quick response or confirmation expected.
-5. ℹ️ **Informational** — No action needed, read-and-archive.
+1. **File Attachment Required** — Sender is explicitly requesting a document.
+2. **Draft Generation** — The email requires a detailed, composed reply.
+3. **Auto Reply** — Transactional message requiring a simple acknowledgement.
+4. **Simple Reply Required** — Quick response or confirmation expected.
+5. ℹ**Informational** — No action needed, read-and-archive.
 
-### 🎭 Advanced Tone Detection (`tone_engine.py`)
+### Advanced Tone Detection (`tone_engine.py`)
 
-A lightning-fast (<5ms) algorithm that analyzes the emotional sentiment of incoming text.
+A lightning-fast (<5ms) algorithm that analyzes the tone of incoming text.
 
 * **Hybrid Approach**: Combines a 60+ word emotional lexicon with `spaCy` embedding similarity.
 * **9-Stage Pipeline**: Handles tokenization, scoring, normalizations, negation checking, and intensifier multiplier scaling.
 * **Accuracy**: Tested at 80% accuracy on real-world corpuses. It classifies messages as `formal`, `informal`, or `neutral` and then uses this data to **suggest the proper tone** for your AI-generated drafts.
 
-### 📅 Event & Calendar Extractor (`event_extractor.py`)
+### Event & Calendar Extractor (`event_extractor.py`)
 
 Scans message bodies for evidence of meetings, appointments, or deadlines.
 
@@ -84,7 +84,7 @@ Scans message bodies for evidence of meetings, appointments, or deadlines.
 
 ---
 
-## ⚡ Automation & Workflow Control
+## Automation & Workflow Control
 
 AutoReturn is a fully autonomous assistant when you are away from your desk.
 
@@ -104,7 +104,7 @@ Controlled via the Settings menu, AutoReturn manages how incoming messages are h
 
 ---
 
-## 🖥️ UI & Frontend Engineering
+##  UI & Frontend Engineering
 
 Built on **PySide6 (Qt for Python)**, the UI is styled entirely with custom CSS.
 
@@ -114,7 +114,7 @@ Built on **PySide6 (Qt for Python)**, the UI is styled entirely with custom CSS.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 The AutoReturn codebase is **fully documented with inline presentation-ready comments detailing every single algorithm and class functionality**. You can open any file in `src/backend/core/` and read exactly how the math works in plain English.
 
@@ -140,7 +140,7 @@ AutoReturn/
 
 ---
 
-## 🛠️ Setup & Installation
+## Setup & Installation
 
 ### 1. Prerequisites
 
@@ -176,7 +176,7 @@ ollama signin
 
 ---
 
-## ⚙️ App Configuration
+## App Configuration
 
 All configuration is handled safely via the **Settings menu** in the UI, which writes to `data/automation_settings.json`.
 
@@ -185,7 +185,7 @@ All configuration is handled safely via the **Settings menu** in the UI, which w
 
 ---
 
-## 📈 Development Roadmap & Status
+## Development Roadmap & Status
 
 * [x] Custom Orchestrator-Agent Architecture
 * [x] Progressive Application Loading / Async Data Fetching

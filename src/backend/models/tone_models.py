@@ -17,7 +17,8 @@ from datetime import datetime
 
 
 # -------------------------
-# TONE ENUMS (2-tone model)
+# TONE ENUMS
+# Canonical 2-tone vocabulary used across backend and frontend.
 # -------------------------
 class ToneType(str, Enum):
     """Available tone types for message adjustment"""
@@ -27,6 +28,7 @@ class ToneType(str, Enum):
 
 # -------------------------
 # TONE RECOMMENDATION
+# Model returned by recommendation logic (deterministic + LLM fallback).
 # -------------------------
 class ToneRecommendation(BaseModel):
     """AI-generated tone recommendation"""
@@ -43,6 +45,7 @@ class ToneRecommendation(BaseModel):
 
 # -------------------------
 # TONE PROFILE
+# Persistent user preference model used for adaptive tone behavior.
 # -------------------------
 class ToneProfile(BaseModel):
     """User's tone preferences and learning patterns"""
@@ -56,6 +59,7 @@ class ToneProfile(BaseModel):
 
 # -------------------------
 # TONE ANALYSIS
+# Full analysis snapshot attached to message/reply workflows.
 # -------------------------
 class ToneAnalysis(BaseModel):
     """Complete tone analysis for a message"""
@@ -70,6 +74,7 @@ class ToneAnalysis(BaseModel):
 
 # -------------------------
 # TONE ADJUSTMENT REQUEST
+# Input contract for "rewrite this text in target tone" operations.
 # -------------------------
 class ToneAdjustmentRequest(BaseModel):
     """Request for tone adjustment"""
@@ -82,6 +87,7 @@ class ToneAdjustmentRequest(BaseModel):
 
 # -------------------------
 # TONE ADJUSTMENT RESPONSE
+# Output contract after a tone rewrite attempt.
 # -------------------------
 class ToneAdjustmentResponse(BaseModel):
     """Response from tone adjustment"""
@@ -97,6 +103,8 @@ class ToneAdjustmentResponse(BaseModel):
 
 # -------------------------
 # EXTENDED AGENT MODELS
+# Tone-aware wrappers that mirror core agent contracts while carrying
+# extra analysis/rewrite fields for tone-enabled workflows.
 # -------------------------
 class ToneAwareAgentRequest(BaseModel):
     """Extension of AgentRequest with tone support"""
@@ -125,8 +133,14 @@ class ToneAwareAgentResponse(BaseModel):
 
 # -------------------------
 # UTILITY FUNCTIONS
+# Small helpers for UI labels/descriptions so presentation code can
+# remain decoupled from enum internals.
 # -------------------------
 
+# -------------------------
+# GET TONE DISPLAY NAME
+# Converts ToneType enum into user-facing short labels.
+# -------------------------
 def get_tone_display_name(tone: ToneType) -> str:
     """Get display name for tone"""
     display_names = {
@@ -136,6 +150,10 @@ def get_tone_display_name(tone: ToneType) -> str:
     return display_names.get(tone, str(tone).title())
 
 
+# -------------------------
+# GET TONE DESCRIPTION
+# Returns longer explanatory text for tooltips/help text.
+# -------------------------
 def get_tone_description(tone: ToneType) -> str:
     """Get description for tone"""
     descriptions = {

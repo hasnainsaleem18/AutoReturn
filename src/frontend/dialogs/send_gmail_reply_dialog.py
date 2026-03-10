@@ -279,7 +279,7 @@ class SendGmailReplyDialog(QDialog):
                 tone_engine = getattr(self.orchestrator, 'tone_engine', None) or getattr(self.orchestrator, 'tone_manager', None)
                 if tone_engine:
                     tone_engine.update_user_preferences(tone, self.original_message)
-                    print(f"🎨 Learned tone preference: {tone.value}")
+                    print(f"Learned tone preference: {tone.value}")
             except Exception as e:
                 print(f"Error learning tone preference: {e}")
 

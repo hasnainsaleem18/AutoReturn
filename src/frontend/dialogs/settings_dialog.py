@@ -36,6 +36,7 @@ from src.backend.models.automation_models import AutomationSettings
 # STYLE CONSTANTS CLASS
 # -------------------------
 class StyleConstants:
+    """Shared visual tokens used across settings-related dialogs."""
     # Colors
     COLOR_PRIMARY = "#0FA4AF"
     COLOR_DARK_PRIMARY = "#024950"
@@ -82,6 +83,7 @@ class StyleConstants:
 # UI CONSTANTS CLASS
 # -------------------------
 class UIConstants:
+    """Layout and sizing constants for settings dialog sections."""
     DIALOG_MIN_WIDTH = 900
     DIALOG_MIN_HEIGHT = 700
     HEADER_HEIGHT = 80
@@ -97,6 +99,10 @@ class UIConstants:
 class ToggleSwitch(QCheckBox):
     """Compact cross-platform switch-style toggle."""
 
+    # -------------------------
+    # INIT
+    # Configures fixed-size switch behavior and keyboard focus support.
+    # -------------------------
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setCursor(Qt.PointingHandCursor)
@@ -105,9 +111,17 @@ class ToggleSwitch(QCheckBox):
         self.setTristate(False)
         self.setFocusPolicy(Qt.StrongFocus)
 
+    # -------------------------
+    # SIZE HINT
+    # Provides stable control dimensions for layouts.
+    # -------------------------
     def sizeHint(self):
         return QSize(52, 28)
 
+    # -------------------------
+    # MOUSE RELEASE HANDLER
+    # Toggles switch on left click when pointer is inside control bounds.
+    # -------------------------
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton and self.rect().contains(event.position().toPoint()):
             self.toggle()
@@ -115,6 +129,10 @@ class ToggleSwitch(QCheckBox):
             return
         super().mouseReleaseEvent(event)
 
+    # -------------------------
+    # KEY PRESS HANDLER
+    # Supports keyboard toggling via Space/Enter for accessibility.
+    # -------------------------
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter):
             self.toggle()
@@ -122,6 +140,10 @@ class ToggleSwitch(QCheckBox):
             return
         super().keyPressEvent(event)
 
+    # -------------------------
+    # PAINT EVENT
+    # Draws custom track + knob using theme-aware colors.
+    # -------------------------
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
@@ -1530,9 +1552,17 @@ This token will let your desktop app send and receive messages as you, including
     # -------------------------
     # TONE SETTINGS TAB
     # -------------------------
+    # -------------------------
+    # TONE UI METRICS
+    # Centralized spacing and control dimensions for tone settings widgets.
+    # -------------------------
     def _tone_ui_metrics(self):
         return {"margin": StyleConstants.SPACING_XLARGE, "spacing": StyleConstants.SPACING_LARGE, "control_h": 34}
 
+    # -------------------------
+    # TONE UI TOKENS
+    # Shared colors and visual tokens for tone settings cards/inputs.
+    # -------------------------
     def _tone_ui_tokens(self):
         return {
             "text": StyleConstants.COLOR_DARKEST,
@@ -1545,6 +1575,10 @@ This token will let your desktop app send and receive messages as you, including
             "accent": StyleConstants.COLOR_DARK_PRIMARY,
         }
 
+    # -------------------------
+    # TONE SECTION FRAME FACTORY
+    # Creates a consistent framed card for tone-related subsections.
+    # -------------------------
     def _tone_section_frame(self):
         from PySide6.QtWidgets import QFrame
         tokens = self._tone_ui_tokens()
@@ -1563,6 +1597,10 @@ This token will let your desktop app send and receive messages as you, including
         """)
         return section
 
+    # -------------------------
+    # CREATE TONE SETTINGS TAB
+    # Assembles default tone, auto-tone, stats, and learning controls.
+    # -------------------------
     def _create_tone_settings_tab(self):
         scroll = self._create_scroll_area()
         tab = QWidget()
@@ -1583,6 +1621,10 @@ This token will let your desktop app send and receive messages as you, including
         scroll.setWidget(tab)
         return scroll
 
+    # -------------------------
+    # CREATE DEFAULT TONE SECTION
+    # Builds controls for selecting the profile's default outgoing tone.
+    # -------------------------
     def _create_default_tone_section(self):
         from PySide6.QtWidgets import QComboBox
         section = self._tone_section_frame()
@@ -1631,6 +1673,10 @@ This token will let your desktop app send and receive messages as you, including
             layout.addWidget(self.default_tone_combo, 0, Qt.AlignLeft)
         return section
 
+    # -------------------------
+    # CREATE AUTO-TONE SECTION
+    # Builds toggle UI for enabling/disabling auto tone suggestions.
+    # -------------------------
     def _create_auto_tone_section(self):
         section = self._tone_section_frame()
         tokens = self._tone_ui_tokens()
@@ -1658,6 +1704,10 @@ This token will let your desktop app send and receive messages as you, including
             layout.addWidget(self.auto_tone_toggle_btn, 0, Qt.AlignLeft)
         return section
 
+    # -------------------------
+    # CREATE TONE STATISTICS SECTION
+    # Displays tone usage/profile statistics from tone engine.
+    # -------------------------
     def _create_tone_statistics_section(self):
         section = self._tone_section_frame()
         tokens = self._tone_ui_tokens()
@@ -1676,6 +1726,10 @@ This token will let your desktop app send and receive messages as you, including
             self._update_tone_statistics()
         return section
 
+    # -------------------------
+    # UPDATE TONE STATISTICS
+    # Refreshes statistics label from current tone engine state.
+    # -------------------------
     def _update_tone_statistics(self):
         if not hasattr(self, "tone_stats_label") or not self.orchestrator:
             return
@@ -1689,6 +1743,10 @@ This token will let your desktop app send and receive messages as you, including
         )
         self.tone_stats_label.setText(stats_text)
 
+    # -------------------------
+    # CREATE LEARNING SECTION
+    # Provides reset controls for learned tone preferences/history.
+    # -------------------------
     def _create_learning_section(self):
         section = self._tone_section_frame()
         tokens = self._tone_ui_tokens()
@@ -1707,6 +1765,10 @@ This token will let your desktop app send and receive messages as you, including
         layout.addWidget(reset_btn, 0, Qt.AlignLeft)
         return section
 
+    # -------------------------
+    # DEFAULT TONE COMBO CHANGED
+    # Converts combo selection to ToneType and applies update.
+    # -------------------------
     def _on_default_tone_combo_changed(self, index):
         if not hasattr(self, "default_tone_combo"):
             return
@@ -1717,6 +1779,10 @@ This token will let your desktop app send and receive messages as you, including
         except ValueError:
             pass
 
+    # -------------------------
+    # APPLY DEFAULT TONE CHANGE
+    # Persists new default tone and updates dependent UI/state.
+    # -------------------------
     def _on_default_tone_changed(self, tone):
         if self.orchestrator:
             self.orchestrator.tone_engine.set_default_tone(tone)
@@ -1725,6 +1791,10 @@ This token will let your desktop app send and receive messages as you, including
             self._update_tone_statistics()
             QMessageBox.information(self, "Default Tone Updated", f"Default tone changed to {get_tone_display_name(tone)}")
 
+    # -------------------------
+    # TOGGLE AUTO-TONE
+    # Flips auto-tone state and refreshes labels/statistics.
+    # -------------------------
     def _toggle_auto_tone(self):
         if self.orchestrator:
             tokens = self._tone_ui_tokens()
@@ -1738,6 +1808,10 @@ This token will let your desktop app send and receive messages as you, including
             self._update_tone_statistics()
             QMessageBox.information(self, "Auto-Tone Updated", f"Auto-tone suggestions {'enabled' if new_state else 'disabled'}")
 
+    # -------------------------
+    # RESET LEARNING DATA
+    # Clears learned tone history/preferences after confirmation.
+    # -------------------------
     def _reset_learning_data(self):
         reply = QMessageBox.question(
             self,
@@ -1759,6 +1833,10 @@ This token will let your desktop app send and receive messages as you, including
 
     # -------------------------
     # AUTOMATION SETTINGS TAB
+    # -------------------------
+    # -------------------------
+    # AUTOMATION UI TOKENS
+    # Palette-aware color map used by automation tab controls.
     # -------------------------
     def _automation_ui_tokens(self):
         palette = self.palette()
@@ -2006,9 +2084,6 @@ This token will let your desktop app send and receive messages as you, including
 # -------------------------
 # EDIT PROFILE DIALOG CLASS
 # -------------------------
-# -------------------------
-# EDIT PROFILE DIALOG CLASS
-# -------------------------
 class EditProfileDialog(QDialog):
     
     # -------------------------
@@ -2029,11 +2104,20 @@ class EditProfileDialog(QDialog):
         # -------------------------
         self._build_ui()
     
+    # -------------------------
+    # SETUP DIALOG
+    # Configures base title and minimum dimensions.
+    # -------------------------
     def _setup_dialog(self):
         """Configure dialog properties"""
         self.setWindowTitle("Edit Profile")
         self.setMinimumSize(450, 350)
     
+    # -------------------------
+    # BUILD UI
+    # Assembles profile fields, optional password section,
+    # and action buttons for save/cancel.
+    # -------------------------
     def _build_ui(self):
         """Build the dialog UI"""
         layout = QVBoxLayout(self)
@@ -2110,6 +2194,10 @@ class EditProfileDialog(QDialog):
         
         return widget
     
+    # -------------------------
+    # CREATE EMAIL DISPLAY
+    # Shows current email as read-only account identity field.
+    # -------------------------
     def _create_email_display(self):
         """Create the email display field."""
         widget = QWidget()
@@ -2144,6 +2232,10 @@ class EditProfileDialog(QDialog):
         
         return widget
     
+    # -------------------------
+    # CREATE PASSWORD SECTION
+    # Provides password-management CTA for email-auth accounts.
+    # -------------------------
     def _create_password_section(self):
         """Create the password change section."""
         widget = QWidget()
@@ -2274,4 +2366,3 @@ class EditProfileDialog(QDialog):
             dict: Updated user data
         """
         return self.user_data
-

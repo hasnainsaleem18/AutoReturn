@@ -1,3 +1,14 @@
+# -------------------------
+# SEND SLACK MESSAGE DIALOG
+# -------------------------
+"""
+Dialog for composing and sending Slack direct messages.
+Supports tone detection/recommendation and optional file attachments.
+"""
+
+# -------------------------
+# IMPORTS
+# -------------------------
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QComboBox, QTextEdit, QFileDialog
@@ -10,8 +21,16 @@ from src.frontend.widgets.tone_selector import ToneSelector
 from src.frontend.widgets.tone_detection_display import ToneDetectionDisplay
 
 
+# -------------------------
+# SEND SLACK MESSAGE DIALOG CLASS
+# Compose UI for Slack DM replies with optional tone assistance.
+# -------------------------
 class SendSlackMessageDialog(QDialog):
     
+    # -------------------------
+    # INIT
+    # Stores user list/context and builds dialog UI with project theme styling.
+    # -------------------------
     def __init__(self, users: list, parent=None, orchestrator=None, original_message=None):
         super().__init__(parent)
         
@@ -28,6 +47,11 @@ class SendSlackMessageDialog(QDialog):
         self._apply_theme_styles()
         self._build_ui()
     
+    # -------------------------
+    # BUILD UI
+    # Creates recipient picker, message editor, tone widgets,
+    # attachment controls, and send/cancel actions.
+    # -------------------------
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 24, 24, 24)
@@ -192,20 +216,36 @@ class SendSlackMessageDialog(QDialog):
         
         self._update_send_button_state()
     
+    # -------------------------
+    # UPDATE CHARACTER COUNT
+    # Refreshes live message length indicator and send button state.
+    # -------------------------
     def _update_char_count(self):
         count = len(self.message_text.toPlainText())
         self.char_count_label.setText(f"{count} characters")
         self._update_send_button_state()
     
+    # -------------------------
+    # UPDATE SEND BUTTON STATE
+    # Enables send if message text exists or at least one attachment is selected.
+    # -------------------------
     def _update_send_button_state(self):
         text = self.message_text.toPlainText().strip()
         has_attachments = bool(self.attachments)
         self.send_btn.setEnabled(len(text) > 0 or has_attachments)
     
+    # -------------------------
+    # HANDLE SEND ACTION
+    # Accepts dialog only when content or attachments are present.
+    # -------------------------
     def _handle_send(self):
         if self.get_message_text() or self.attachments:
             self.accept()
 
+    # -------------------------
+    # SELECT ATTACHMENTS
+    # Opens file picker, appends selected files, and updates attachment status UI.
+    # -------------------------
     def _select_attachments(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Attachments")
         if files:
@@ -215,19 +255,39 @@ class SendSlackMessageDialog(QDialog):
             self.attachments_label.setStyleSheet("font-size: 12px; color: #024950;")
             self._update_send_button_state()
     
+    # -------------------------
+    # GET SELECTED USER
+    # Returns Slack user object currently selected in recipient combo.
+    # -------------------------
     def get_selected_user(self) -> dict:
         return self.user_combo.currentData()
     
+    # -------------------------
+    # GET MESSAGE TEXT
+    # Returns trimmed outgoing message body from editor.
+    # -------------------------
     def get_message_text(self) -> str:
         return self.message_text.toPlainText().strip()
 
+    # -------------------------
+    # SET MESSAGE TEXT
+    # Prefills editor body and refreshes counters/state.
+    # -------------------------
     def set_message_text(self, text: str):
         self.message_text.setPlainText(text or "")
         self._update_char_count()
 
+    # -------------------------
+    # GET ATTACHMENTS
+    # Returns a copy of selected attachment paths.
+    # -------------------------
     def get_attachments(self):
         return list(self.attachments)
 
+    # -------------------------
+    # SET ATTACHMENTS
+    # Preloads and de-duplicates attachment list (used by automation flows).
+    # -------------------------
     def set_attachments(self, files: list):
         """Preload attachments in the dialog (used by automation draft flow)."""
         normalized = []
@@ -254,11 +314,19 @@ class SendSlackMessageDialog(QDialog):
             self.attachments_label.setStyleSheet("font-size: 12px; color: #024950;")
         self._update_send_button_state()
     
+    # -------------------------
+    # GET SELECTED TONE
+    # Returns manually selected tone (if tone selector is enabled).
+    # -------------------------
     def get_selected_tone(self):
         return self.selected_tone if self.tone_selector else None
     
     # -------------------------
     # TONE METHODS
+    # -------------------------
+    # -------------------------
+    # PERFORM TONE DETECTION
+    # Runs incoming-message tone analysis and updates tone display widget.
     # -------------------------
     def _perform_tone_detection(self):
         """Perform tone analysis on the original message."""
@@ -276,6 +344,10 @@ class SendSlackMessageDialog(QDialog):
         except Exception as e:
             print(f"Tone analysis error: {e}")
     
+    # -------------------------
+    # HANDLE TONE CHANGE
+    # Persists user tone selection back into tone preference learning layer.
+    # -------------------------
     def _on_tone_changed(self, tone):
         self.selected_tone = tone
         if self.orchestrator and self.original_message:
@@ -283,10 +355,14 @@ class SendSlackMessageDialog(QDialog):
                 tone_engine = getattr(self.orchestrator, 'tone_engine', None) or getattr(self.orchestrator, 'tone_manager', None)
                 if tone_engine:
                     tone_engine.update_user_preferences(tone, self.original_message)
-                    print(f"🎨 Learned tone preference: {tone.value}")
+                    print(f"Learned tone preference: {tone.value}")
             except Exception as e:
                 print(f"Error learning tone preference: {e}")
 
+    # -------------------------
+    # APPLY THEME STYLES
+    # Provides a light consistent baseline palette for dialog controls.
+    # -------------------------
     def _apply_theme_styles(self):
         self.setStyleSheet("""
             QDialog { background-color: #ffffff; }

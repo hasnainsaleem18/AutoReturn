@@ -27,10 +27,22 @@ from src.backend.services.ai_service import OllamaService
 class ToneService:
     """AI service for tone-related operations with deterministic + LLM fallback."""
 
+    # -------------------------
+    # INIT
+    # Stores AI service + optional deterministic tone detector.
+    # The detector is preferred first; AI fallback is used when confidence is low.
+    # -------------------------
     def __init__(self, ai_service: OllamaService, tone_detector=None):
         self.ai_service = ai_service
         self.tone_detector = tone_detector
 
+    # -------------------------
+    # RECOMMEND TONE
+    # Main recommendation flow:
+    # 1) Run deterministic tone detector.
+    # 2) If confidence is strong, return detector-backed recommendation.
+    # 3) If confidence is weak, trigger LLM fallback for final recommendation.
+    # -------------------------
     async def recommend_tone(
         self,
         message_data: Dict[str, Any],
@@ -90,6 +102,11 @@ class ToneService:
                 fallback_used=False,
             )
 
+    # -------------------------
+    # MAP TONE SIGNAL TO FINAL TONE
+    # Applies lightweight policy rules (urgency/source/style indicators)
+    # to convert detector signal into the final recommended tone.
+    # -------------------------
     def _map_tone_signal_to_tone(
         self,
         tone_signal: str,
@@ -119,6 +136,11 @@ class ToneService:
 
         return ToneType.FORMAL if tone_signal == 'formal_leaning' else ToneType.INFORMAL
 
+    # -------------------------
+    # LLM FALLBACK RECOMMENDATION
+    # Invoked only when deterministic confidence is below threshold.
+    # Uses AI prompt-based reasoning, then normalizes output to ToneType.
+    # -------------------------
     async def _llm_fallback_tone_recommendation(
         self,
         content: str,
@@ -184,6 +206,11 @@ class ToneService:
                 detected_tone=tone_result.detected_tone
             )
 
+    # -------------------------
+    # ADJUST TONE
+    # Rewrites outgoing text into target tone using AI while preserving intent.
+    # Returns structured result with timing, success flag, and reasoning.
+    # -------------------------
     async def adjust_tone(
         self,
         original_text: str,

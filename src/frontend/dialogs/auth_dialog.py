@@ -279,7 +279,7 @@ class AuthDialog(QDialog):
         login_btn.setFixedHeight(42)
         login_btn.setStyleSheet("""
             QPushButton {
-                background-color: #0FA4AF;
+                background-color: #0FA4AF;(2-tone model)
                 color: white;
                 border: none;
                 padding: 12px;
@@ -709,6 +709,11 @@ class AuthDialog(QDialog):
     # -------------------------
     # AUTHENTICATION HANDLERS
     # -------------------------
+    # -------------------------
+    # HANDLE LOGIN
+    # Validates login form fields and emits authenticated user payload
+    # when local checks pass.
+    # -------------------------
     def handle_login(self):
         """Handle login button click.
         
@@ -753,6 +758,11 @@ class AuthDialog(QDialog):
         self.authenticated.emit(user_data)
         self.accept()
     
+    # -------------------------
+    # HANDLE SIGNUP
+    # Validates signup fields, terms acceptance, and password checks
+    # before emitting authenticated user payload.
+    # -------------------------
     def handle_signup(self):
         """Handle signup button click.
         
@@ -823,6 +833,13 @@ class AuthDialog(QDialog):
     
     # -------------------------
     # SOCIAL LOGIN HANDLERS
+    # -------------------------
+    # -------------------------
+    # HANDLE SOCIAL LOGIN
+    # Handles provider-based authentication. Currently supports Google OAuth:
+    # - ensure client secret JSON
+    # - load/refresh token or run auth flow
+    # - fetch user profile from Google userinfo endpoint
     # -------------------------
     def handle_social_login(self, provider: str):
         """Handle social login (Google, etc.)
@@ -921,18 +938,35 @@ class AuthDialog(QDialog):
                 f"Authentication failed:\n{exc}"
             )
 
+    # -------------------------
+    # GET PROJECT ROOT
+    # Resolves repository root relative to this dialog module path.
+    # -------------------------
     def _project_root(self) -> str:
         """Get project root path from this file location."""
         return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
+    # -------------------------
+    # GET GOOGLE CLIENT SECRET PATH
+    # Returns canonical path where OAuth client secret is stored for app usage.
+    # -------------------------
     def _google_client_secret_path(self) -> str:
         """Path for Google OAuth client secret JSON used by app."""
         return os.path.join(self._project_root(), "data", "gmail_data", "client_secret.json")
 
+    # -------------------------
+    # GET GOOGLE LOGIN TOKEN PATH
+    # Returns canonical location for persisted Google login token.
+    # -------------------------
     def _google_login_token_path(self) -> str:
         """Path for storing Google login token."""
         return os.path.join(self._project_root(), "data", "auth", "google_login_token.json")
 
+    # -------------------------
+    # ENSURE GOOGLE CLIENT SECRET
+    # Ensures OAuth client JSON exists and is valid. If missing/invalid,
+    # prompts user to select a file and copies it into the project data path.
+    # -------------------------
     def _ensure_google_client_secret(self) -> Optional[str]:
         """Ensure client secret exists; optionally prompt user to select JSON."""
         target_path = self._google_client_secret_path()
@@ -980,6 +1014,10 @@ class AuthDialog(QDialog):
             QMessageBox.warning(self, "Google OAuth Setup", f"Could not copy file:\n{exc}")
             return None
 
+    # -------------------------
+    # VALIDATE GOOGLE CLIENT SECRET
+    # Verifies expected OAuth JSON structure and required keys.
+    # -------------------------
     def _is_valid_google_client_secret(self, file_path: str) -> bool:
         """Validate Google OAuth client secret JSON shape."""
         try:
@@ -997,6 +1035,11 @@ class AuthDialog(QDialog):
         except Exception:
             return False
 
+    # -------------------------
+    # FETCH GOOGLE USER INFO
+    # Calls OpenID userinfo endpoint using access token and returns
+    # profile payload (email/name/sub).
+    # -------------------------
     def _fetch_google_user_info(self, access_token: str) -> dict:
         """Fetch Google profile (email/name) using access token."""
         req = UrlRequest(
@@ -1052,6 +1095,10 @@ class AuthDialog(QDialog):
     # -------------------------
     # HELPER METHODS
     # -------------------------
+    # -------------------------
+    # GET EMAIL INPUT
+    # Shows an input dialog and returns (email, confirmed).
+    # -------------------------
     def get_email_input(self, title: str, message: str) -> Tuple[str, bool]:
         """Display a dialog to get email input from the user.
         
@@ -1072,6 +1119,10 @@ class AuthDialog(QDialog):
         )
         return email, ok
 
+    # -------------------------
+    # VALIDATE EMAIL FORMAT
+    # Performs lightweight structural checks for email-like format.
+    # -------------------------
     def _is_valid_email(self, email: str) -> bool:
         """Validate email address format.
         

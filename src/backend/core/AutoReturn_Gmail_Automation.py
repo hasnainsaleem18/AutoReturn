@@ -54,6 +54,7 @@ SCOPES = [
 # CUSTOM EXCEPTIONS
 # -------------------------
 class GmailServiceError(Exception):
+    """Domain-level exception for Gmail automation service failures."""
     pass
 
 # -------------------------
@@ -134,12 +135,24 @@ class PopupManager:
 # OAUTH MANAGER
 # -------------------------
 class OAuthManager:
+    # -------------------------
+    # INIT
+    # Stores OAuth file paths/scopes and runtime credentials holder.
+    # -------------------------
     def __init__(self, client_secret_path=CLIENT_SECRET_FILE, token_path=TOKEN_PATH, scopes=None):
         self.creds = None
         self.client_secret_path = client_secret_path
         self.token_path = token_path
         self.scopes = scopes or SCOPES
 
+    # -------------------------
+    # LOAD OR GENERATE TOKEN
+    # Authentication flow:
+    # 1) Load existing token if present.
+    # 2) Validate required scopes.
+    # 3) If needed and allowed, run interactive OAuth flow.
+    # 4) Persist token.json for future runs.
+    # -------------------------
     def load_or_generate_token(self, allow_flow=True, force_reauth: bool = False):
         if os.path.exists(self.token_path) and not force_reauth:
             with open(self.token_path, "r") as f:
@@ -184,17 +197,32 @@ class OAuthManager:
 # GMAIL SERVICE
 # -------------------------
 class GmailService:
+    # -------------------------
+    # INIT
+    # Builds authenticated Gmail API client and configures retry/error behavior.
+    # -------------------------
     def __init__(self, creds, propagate_errors: bool = False, max_retries: int = 2):
         self.service = build("gmail", "v1", credentials=creds)
         self.propagate_errors = propagate_errors
         self.max_retries = max(0, max_retries)
 
+    # -------------------------
+    # ERROR HANDLER
+    # Centralized error policy:
+    # - log + fallback in non-strict mode
+    # - raise GmailServiceError in strict mode
+    # -------------------------
     def _handle_error(self, prefix: str, error: Exception, fallback):
         print(f"{prefix}: {error}")
         if self.propagate_errors:
             raise GmailServiceError(str(error)) from error
         return fallback
 
+    # -------------------------
+    # LIST MESSAGES
+    # Queries Gmail for message ids matching a search query.
+    # Returns lightweight message references (not full payloads).
+    # -------------------------
     def list_messages(self, query="", max_results=20):
         try:
             res = (
@@ -208,6 +236,11 @@ class GmailService:
         except Exception as e:
             return self._handle_error("[Error] Failed to list messages", e, [])
 
+    # -------------------------
+    # READ MESSAGE
+    # Fetches full Gmail payload and normalizes it into a UI-friendly dict.
+    # Includes decoded body, snippet, thread metadata, and attachment flag.
+    # -------------------------
     def read_message(self, msg_id):
         try:
             msg = (
@@ -253,6 +286,10 @@ class GmailService:
                 }
             )
 
+    # -------------------------
+    # ATTACHMENT PRESENCE CHECK
+    # Recursively inspects payload parts to detect whether any attachment exists.
+    # -------------------------
     def _has_attachments(self, payload):
         try:
             if not payload:
@@ -275,6 +312,10 @@ class GmailService:
         except Exception:
             return False
 
+    # -------------------------
+    # MARK AS READ
+    # Removes UNREAD label from a specific message.
+    # -------------------------
     def mark_as_read(self, msg_id):
         try:
             (
@@ -287,6 +328,10 @@ class GmailService:
         except Exception as e:
             self._handle_error("[Error] Could not mark as read", e, None)
 
+    # -------------------------
+    # MARK AS UNREAD
+    # Adds UNREAD label back to a specific message.
+    # -------------------------
     def mark_as_unread(self, msg_id):
         try:
             (
@@ -299,6 +344,11 @@ class GmailService:
         except Exception as e:
             self._handle_error("[Error] Could not mark as unread", e, None)
 
+    # -------------------------
+    # BUILD MIME MESSAGE
+    # Creates RFC-compliant MIME payload with optional file attachments,
+    # then returns base64-url encoded raw content for Gmail send API.
+    # -------------------------
     def _build_mime_message(self, to: str, subject: str, message: str, attachments: list = None):
         """Build a MIME message with optional attachments."""
         msg = MIMEMultipart()
@@ -324,6 +374,10 @@ class GmailService:
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         return raw
 
+    # -------------------------
+    # SEND NEW EMAIL
+    # Sends a fresh outbound email (with or without attachments).
+    # -------------------------
     def send_email(self, to, subject, message, attachments: list = None):
         if attachments:
             raw = self._build_mime_message(to, subject, message, attachments)
@@ -343,6 +397,11 @@ class GmailService:
         except Exception as e:
             return self._handle_error("[Error] Failed to send email", e, None)
 
+    # -------------------------
+    # REPLY IN THREAD
+    # Sends an email reply anchored to an existing Gmail thread.
+    # Supports reply headers and optional attachments.
+    # -------------------------
     def reply(
         self,
         thread_id,
@@ -376,6 +435,10 @@ class GmailService:
         except Exception as e:
             return self._handle_error("[Error] Failed to send reply", e, None)
 
+    # -------------------------
+    # DELETE MESSAGE
+    # Permanently removes a message by id from Gmail mailbox.
+    # -------------------------
     def delete_message(self, msg_id):
         try:
             (
@@ -388,7 +451,10 @@ class GmailService:
         except Exception as e:
             self._handle_error("[Error] Could not delete message", e, None)
 
-    # ---------------- Draft feature ----------------
+    # -------------------------
+    # CREATE DRAFT
+    # Creates a Gmail draft and returns the generated draft id.
+    # -------------------------
     def create_draft(self, to, subject, message):
         msg = MIMEText(message)
         msg["to"] = to
@@ -402,6 +468,10 @@ class GmailService:
         print(f"[Info] Draft created with ID: {draft_id}")
         return draft_id
 
+    # -------------------------
+    # LIST DRAFTS
+    # Lists current drafts and prints a compact index with recipient + subject.
+    # -------------------------
     def list_drafts(self):
         try:
             res = self.service.users().drafts().list(userId="me").execute()
@@ -421,6 +491,10 @@ class GmailService:
             print(f"[Error] Failed to list drafts: {e}")
             return []
 
+    # -------------------------
+    # SEND DRAFT
+    # Sends a draft by id and returns API response payload.
+    # -------------------------
     def send_draft(self, draft_id):
         try:
             sent_msg = self.service.users().drafts().send(userId="me", body={"id": draft_id}).execute()
@@ -429,7 +503,11 @@ class GmailService:
         except Exception as e:
             print(f"[Error] Failed to send draft: {e}")
 
-    # ---------------- Schedule via draft ----------------
+    # -------------------------
+    # SCHEDULE EMAIL VIA DRAFT
+    # Drafts immediately, then uses a background daemon thread
+    # to send the draft at the requested future timestamp.
+    # -------------------------
     def schedule_email(self, to, subject, message, send_time: datetime):
         delay = (send_time - datetime.now()).total_seconds()
         if delay <= 0:
@@ -451,6 +529,10 @@ class GmailService:
 class GmailListener:
     """Monitors Gmail for new messages and triggers notifications."""
     
+    # -------------------------
+    # INIT
+    # Stores Gmail and popup services and initializes in-memory dedupe set.
+    # -------------------------
     def __init__(self, gmail_service, popup_manager):
         """Initialize with Gmail service and popup manager.
         
@@ -462,6 +544,10 @@ class GmailListener:
         self.popup = popup_manager
         self.seen_ids = set()
 
+    # -------------------------
+    # START LISTENER LOOP
+    # Polls unread emails continuously and raises desktop popups for new ids.
+    # -------------------------
     def start(self):
         while True:
             messages = self.gmail.list_messages(query="is:unread", max_results=5)
@@ -484,6 +570,7 @@ def menu(gmail_service):
     """
     message_ids = []
 
+    # Main interactive CLI loop for manual Gmail operations.
     while True:
         print("\n==== AutoReturn Gmail Menu ====")
         print("1. List unread messages")
@@ -501,6 +588,8 @@ def menu(gmail_service):
         print("13. Send Draft manually")
         choice = input("Enter your choice: ").strip()
 
+        # LIST/SEARCH FLOW
+        # Fetches message ids first, then resolves sender/subject for display.
         if choice in ["1", "2", "8"]:
             query = ""
             if choice == "1":
@@ -519,6 +608,8 @@ def menu(gmail_service):
                     print(f"{idx}. From: {details['from']}, Subject: {details['subject']}")
                     message_ids.append(msg["id"])
 
+        # READ FLOW
+        # Reads one selected message from the most recently listed ids.
         elif choice == "3":
             if not message_ids:
                 print("No messages to read. Please list messages first.")
@@ -531,6 +622,8 @@ def menu(gmail_service):
             details = gmail_service.read_message(msg_id)
             print(f"From: {details['from']}\nSubject: {details['subject']}\nBody:\n{details['body']}")
 
+        # REPLY FLOW
+        # Replies in-thread to a selected message id.
         elif choice == "4":
             if not message_ids:
                 print("No messages to reply. Please list messages first.")
@@ -545,6 +638,7 @@ def menu(gmail_service):
             gmail_service.reply(details["threadId"], details["from"], reply_text)
             print("[Info] Reply sent.")
 
+        # SEND NEW EMAIL FLOW
         elif choice == "5":
             to = input("Recipient email: ")
             subject = input("Subject: ")
@@ -552,6 +646,7 @@ def menu(gmail_service):
             gmail_service.send_email(to, subject, body)
             print("[Info] Email sent.")
 
+        # DELETE FLOW
         elif choice == "6":
             if not message_ids:
                 print("No messages to delete. Please list messages first.")
@@ -564,6 +659,7 @@ def menu(gmail_service):
             gmail_service.delete_message(msg_id)
             print("[Info] Message deleted.")
 
+        # MARK UNREAD FLOW
         elif choice == "7":
             if not message_ids:
                 print("No messages to mark as unread. Please list messages first.")
@@ -576,12 +672,14 @@ def menu(gmail_service):
             gmail_service.mark_as_unread(msg_id)
             print("[Info] Message marked as unread.")
 
+        # CREATE DRAFT FLOW
         elif choice == "9":
             to = input("Recipient email for draft: ")
             subject = input("Draft subject: ")
             body = input("Draft body: ")
             gmail_service.create_draft(to, subject, body)
 
+        # SCHEDULE FLOW
         elif choice == "10":
             to = input("Recipient email: ")
             subject = input("Subject: ")
@@ -593,9 +691,11 @@ def menu(gmail_service):
             except Exception as e:
                 print(f"[Error] Invalid time format: {e}")
 
+        # LIST DRAFTS FLOW
         elif choice == "12":
             gmail_service.list_drafts()
 
+        # SEND DRAFT FLOW
         elif choice == "13":
             draft_id = input("Enter draft ID to send: ").strip()
             gmail_service.send_draft(draft_id)

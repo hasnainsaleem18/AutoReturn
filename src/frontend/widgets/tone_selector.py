@@ -43,6 +43,10 @@ class ToneSelector(QWidget):
     tone_changed = Signal(ToneType)
     auto_suggest_requested = Signal()
     
+    # -------------------------
+    # INIT
+    # Stores orchestration context and builds tone selection controls.
+    # -------------------------
     def __init__(self, orchestrator, message_data=None, parent=None):
         super().__init__(parent)
         self.orchestrator = orchestrator
@@ -54,6 +58,10 @@ class ToneSelector(QWidget):
         self.populate_tones()
         self.connect_signals()
         
+    # -------------------------
+    # SETUP UI
+    # Builds label, tone dropdown, suggest button, and confidence indicator.
+    # -------------------------
     def setup_ui(self):
         """Setup the user interface"""
         # Main layout
@@ -88,6 +96,10 @@ class ToneSelector(QWidget):
         
         self._apply_theme_styles()
     
+    # -------------------------
+    # POPULATE TONES
+    # Loads supported ToneType values and sets current default tone.
+    # -------------------------
     def populate_tones(self):
         """Populate tone dropdown with all available tones"""
         self.tone_combo.clear()
@@ -103,11 +115,19 @@ class ToneSelector(QWidget):
             default_tone = self.orchestrator.tone_engine.user_profile.default_tone
         self.set_tone(default_tone)
     
+    # -------------------------
+    # CONNECT SIGNALS
+    # Wires dropdown and suggest button interactions to handlers.
+    # -------------------------
     def connect_signals(self):
         """Connect widget signals"""
         self.tone_combo.currentIndexChanged.connect(self.on_tone_changed)
         self.auto_btn.clicked.connect(self.on_auto_suggest)
     
+    # -------------------------
+    # HANDLE TONE CHANGE
+    # Updates current selection, emits signal, and records preference learning.
+    # -------------------------
     def on_tone_changed(self, index: int):
         """Handle tone selection change"""
         if index >= 0:
@@ -125,16 +145,24 @@ class ToneSelector(QWidget):
                 if self.orchestrator and self.message_data:
                     self.orchestrator.tone_engine.update_user_preferences(tone, self.message_data)
     
+    # -------------------------
+    # HANDLE AUTO-SUGGEST CLICK
+    # Starts guarded async suggestion flow and updates button state.
+    # -------------------------
     def on_auto_suggest(self):
         """Handle auto-suggest button click"""
         if not self.auto_suggest_in_progress and self.orchestrator and self.message_data:
             self.auto_suggest_in_progress = True
-            self.auto_btn.setText("⏳ Loading...")
+            self.auto_btn.setText("Loading...")
             self.auto_btn.setEnabled(False)
             
             # Start async tone suggestion
             QTimer.singleShot(100, lambda: self.perform_auto_suggest())
     
+    # -------------------------
+    # PERFORM AUTO-SUGGEST
+    # Runs deterministic tone analysis and applies suggestion if confidence is sufficient.
+    # -------------------------
     def perform_auto_suggest(self):
         """Perform auto-suggest using orchestrator"""
         try:
@@ -168,6 +196,10 @@ class ToneSelector(QWidget):
             self.auto_btn.setText("Auto")
             self.auto_btn.setEnabled(True)
     
+    # -------------------------
+    # SET TONE
+    # Programmatically selects a tone in dropdown and syncs internal state.
+    # -------------------------
     def set_tone(self, tone: ToneType):
         """Set selected tone"""
         index = self.tone_combo.findData(tone)
@@ -175,16 +207,28 @@ class ToneSelector(QWidget):
             self.tone_combo.setCurrentIndex(index)
             self.current_tone = tone
     
+    # -------------------------
+    # GET TONE
+    # Returns currently selected tone value.
+    # -------------------------
     def get_tone(self) -> ToneType:
         """Get current selected tone"""
         return self.current_tone
     
+    # -------------------------
+    # SET MESSAGE DATA
+    # Updates source message context used by auto-suggest pipeline.
+    # -------------------------
     def set_message_data(self, message_data: dict):
         """Update message data for auto-suggest"""
         self.message_data = message_data
         # Reset confidence display when message changes
         self.confidence_label.setVisible(False)
     
+    # -------------------------
+    # RESET WIDGET
+    # Restores default tone and clears transient suggest state.
+    # -------------------------
     def reset(self):
         """Reset widget to default state"""
         default_tone = ToneType.FORMAL
@@ -196,6 +240,10 @@ class ToneSelector(QWidget):
         self.auto_btn.setText("Auto")
         self.auto_btn.setEnabled(True)
 
+    # -------------------------
+    # APPLY THEME STYLES
+    # Applies high-contrast neutral control styling for readability.
+    # -------------------------
     def _apply_theme_styles(self):
         """Use high-contrast styling with white text surfaces for dark-mode visibility."""
         palette = self.palette()

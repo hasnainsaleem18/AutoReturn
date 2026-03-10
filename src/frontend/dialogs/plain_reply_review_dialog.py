@@ -1,7 +1,13 @@
+# -------------------------
+# PLAIN REPLY REVIEW DIALOG
+# -------------------------
 """
 Pre-send review dialog for plain reply flow.
 """
 
+# -------------------------
+# IMPORTS
+# -------------------------
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -13,9 +19,19 @@ from PySide6.QtWidgets import (
 )
 
 
+# -------------------------
+# PLAIN REPLY REVIEW DIALOG CLASS
+# Final confirmation modal shown before sending plain replies.
+# Gives user three outcomes: edit, cancel, or send.
+# -------------------------
 class PlainReplyReviewDialog(QDialog):
     """Confirm plain reply content and attachments before sending."""
 
+    # -------------------------
+    # INIT
+    # Builds a read-only review screen with message metadata, body,
+    # attachments, optional note, and final action buttons.
+    # -------------------------
     def __init__(
         self,
         source: str,
@@ -107,14 +123,26 @@ class PlainReplyReviewDialog(QDialog):
 
         layout.addLayout(btn_row)
 
+    # -------------------------
+    # EDIT ACTION
+    # User wants to return to composer and modify message before send.
+    # -------------------------
     def _on_edit(self):
         self.decision = "edit"
         self.reject()
 
+    # -------------------------
+    # CANCEL ACTION
+    # User aborts send operation from review dialog.
+    # -------------------------
     def _on_cancel(self):
         self.decision = "cancel"
         self.reject()
 
+    # -------------------------
+    # SEND ACTION
+    # User confirms message and attachments are ready to be sent.
+    # -------------------------
     def _on_send(self):
         self.decision = "send"
         self.accept()
