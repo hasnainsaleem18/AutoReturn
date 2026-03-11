@@ -131,7 +131,7 @@ class AutoReturnApp(QMainWindow):
         from src.backend.core.orchestrator import Orchestrator
         
         # Initialize orchestrator (the brain that coordinates everything)
-        self.orchestrator = Orchestrator(ollama_model="qwen2.5:1.5b")
+        self.orchestrator = Orchestrator(ollama_model="gpt-oss:120b-cloud")
         
         # Get agents from orchestrator (not direct services)
         self.gmail_agent = self.orchestrator.get_agent("gmail")
