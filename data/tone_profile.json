@@ -1,12 +1,13 @@
 {
   "default_tone": "formal",
   "sender_preferences": {
-    "p229123": "informal"
+    "p229123": "informal",
+    "22P9112 Alishba Tariq": "informal"
   },
   "domain_preferences": {
     "unknown": "informal"
   },
-  "auto_tone_enabled": true,
+  "auto_tone_enabled": false,
   "manual_override_history": [
     {
       "timestamp": "2026-03-10T16:05:45.557209",
@@ -26,6 +27,386 @@
         "subject": "DM from p229123",
         "priority": "High",
         "source": "slack"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:50:50.375563",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:50:50.379452",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:50:54.974671",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:50:54.975513",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:51:02.675485",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:51:02.676842",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:51:05.276860",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:51:05.278453",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:20.658900",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:20.660341",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:23.042856",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:23.044152",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:28.759875",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:28.761299",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:30.844166",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:30.845517",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:32.377234",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:32.378700",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:33.960982",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:33.962688",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:54.199466",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:54.201751",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:57.599627",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:55:57.601807",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:56:53.928051",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:56:53.930152",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:56:56.061790",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:56:56.063206",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:46.955439",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:46.958013",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:50.204107",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:50.205930",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:55.072475",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:55.074013",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:56.378370",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:57:56.379956",
+      "selected_tone": "formal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:58:06.642932",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
+      }
+    },
+    {
+      "timestamp": "2026-03-11T02:58:06.645734",
+      "selected_tone": "informal",
+      "message_context": {
+        "sender": "22P9112 Alishba Tariq",
+        "subject": "Re: file needed from our Project",
+        "priority": "High",
+        "source": "gmail"
       }
     }
   ],

@@ -15,6 +15,10 @@ from src.backend.models.event_models import CalendarItemType, EventCandidate
 class _FakeGmailBackend:
     is_connected = True
 
+    # -------------------------
+    # FUNCTION: fetch_messages
+    # Purpose: Execute fetch messages logic for this module.
+    # -------------------------
     def fetch_messages(self, max_results=25, query="in:inbox"):
         return [
             {
@@ -28,6 +32,10 @@ class _FakeGmailBackend:
 
 
 class _FakeSlackBackend:
+    # -------------------------
+    # FUNCTION: sync_all_messages
+    # Purpose: Execute sync all messages logic for this module.
+    # -------------------------
     def sync_all_messages(self, limit=200):
         return [
             {
@@ -41,6 +49,10 @@ class _FakeSlackBackend:
 
 
 class _FakeEventExtractor:
+    # -------------------------
+    # FUNCTION: extract_from_message
+    # Purpose: Execute extract from message logic for this module.
+    # -------------------------
     async def extract_from_message(self, _msg):
         return [
             EventCandidate(
@@ -58,15 +70,27 @@ class _FakeEventExtractor:
 
 
 class TestAgentsFetchIntegrationFormal(unittest.IsolatedAsyncioTestCase):
+    # -------------------------
+    # FUNCTION: test_gmail_agent_handle_fetch_with_ai
+    # Purpose: Validate the gmail agent handle fetch with ai scenario.
+    # -------------------------
     async def test_gmail_agent_handle_fetch_with_ai(self):
         agent = GmailAgent.__new__(GmailAgent)
         agent.name = "gmail_agent"
         agent.backend = _FakeGmailBackend()
         agent.event_extractor = _FakeEventExtractor()
 
+        # -------------------------
+        # FUNCTION: _priority
+        # Purpose: Execute  priority logic for this module.
+        # -------------------------
         async def _priority(_msg):
             return "Medium"
 
+        # -------------------------
+        # FUNCTION: _tasks
+        # Purpose: Execute  tasks logic for this module.
+        # -------------------------
         async def _tasks(_msg):
             return ["Simple Reply Required"]
 
@@ -82,15 +106,27 @@ class TestAgentsFetchIntegrationFormal(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(msg["priority"], "Medium")
         self.assertEqual(msg["ai_events_count"], 1)
 
+    # -------------------------
+    # FUNCTION: test_slack_agent_handle_fetch_with_ai
+    # Purpose: Validate the slack agent handle fetch with ai scenario.
+    # -------------------------
     async def test_slack_agent_handle_fetch_with_ai(self):
         agent = SlackAgent.__new__(SlackAgent)
         agent.name = "slack_agent"
         agent.backend = _FakeSlackBackend()
         agent.event_extractor = _FakeEventExtractor()
 
+        # -------------------------
+        # FUNCTION: _priority
+        # Purpose: Execute  priority logic for this module.
+        # -------------------------
         async def _priority(_msg):
             return "Low"
 
+        # -------------------------
+        # FUNCTION: _tone
+        # Purpose: Execute  tone logic for this module.
+        # -------------------------
         async def _tone(_msg):
             return "neutral"
 

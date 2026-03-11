@@ -11,6 +11,10 @@ from PySide6.QtWidgets import QApplication
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
+# -------------------------
+# FUNCTION: get_qapp
+# Purpose: Execute get qapp logic for this module.
+# -------------------------
 def get_qapp() -> QApplication:
     app = QApplication.instance()
     if app is None:

@@ -25,12 +25,20 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
+# -------------------------
+# FUNCTION: _target_files
+# Purpose: Execute  target files logic for this module.
+# -------------------------
 def _target_files() -> list[Path]:
     targets = [ROOT / "main.py"]
     targets.extend(sorted((ROOT / "src").rglob("*.py")))
     return [p for p in targets if p.exists()]
 
 
+# -------------------------
+# FUNCTION: _statement_lines
+# Purpose: Execute  statement lines logic for this module.
+# -------------------------
 def _statement_lines(path: Path) -> Set[int]:
     try:
         source = path.read_text(encoding="utf-8")
@@ -45,6 +53,10 @@ def _statement_lines(path: Path) -> Set[int]:
     return lines
 
 
+# -------------------------
+# FUNCTION: _collect_coverage
+# Purpose: Execute  collect coverage logic for this module.
+# -------------------------
 def _collect_coverage(counts: Dict[tuple, int], files: Iterable[Path]) -> tuple[list[dict], dict]:
     by_file = []
     total_statements = 0
@@ -86,6 +98,10 @@ def _collect_coverage(counts: Dict[tuple, int], files: Iterable[Path]) -> tuple[
     return by_file, overall
 
 
+# -------------------------
+# FUNCTION: _write_reports
+# Purpose: Execute  write reports logic for this module.
+# -------------------------
 def _write_reports(run_id: str, summary: dict, file_rows: list[dict]) -> tuple[Path, Path]:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -110,6 +126,10 @@ def _write_reports(run_id: str, summary: dict, file_rows: list[dict]) -> tuple[P
     return json_path, csv_path
 
 
+# -------------------------
+# FUNCTION: main
+# Purpose: Execute main logic for this module.
+# -------------------------
 def main() -> int:
     start = time.perf_counter()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")

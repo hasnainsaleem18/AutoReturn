@@ -131,7 +131,7 @@ class AutoReturnApp(QMainWindow):
         from src.backend.core.orchestrator import Orchestrator
         
         # Initialize orchestrator (the brain that coordinates everything)
-        self.orchestrator = Orchestrator(ollama_model="kimi-k2.5:cloud")
+        self.orchestrator = Orchestrator(ollama_model="qwen2.5:1.5b")
         
         # Get agents from orchestrator (not direct services)
         self.gmail_agent = self.orchestrator.get_agent("gmail")
@@ -154,7 +154,8 @@ class AutoReturnApp(QMainWindow):
         self._connect_gmail_signals()
         
         # Summary generation queue
-        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=5)
+        # Keep concurrency low for local CPU inference stability.
+        self.queue_summary_generator = QueueSummaryGenerator(self.ollama_service, max_concurrent=2)
         self.queue_summary_generator.summary_generated.connect(self.on_summary_generated)
         self.queue_summary_generator.progress_update.connect(self.on_summary_progress)
         self.queue_summary_generator.batch_complete.connect(self.on_batch_summary_complete)
@@ -3060,7 +3061,7 @@ class AutoReturnApp(QMainWindow):
                 'Low': ('#2E7D32', '#E8F5E9'),
             }
             fg, bg = priority_colors.get(priority, ('#555', '#eee'))
-            priority_badge = QLabel(f"  ⚡ {priority.upper()} Priority  ")
+            priority_badge = QLabel(f"{priority.upper()} Priority  ")
             priority_badge.setStyleSheet(f"""
                 background-color: {bg}; color: {fg};
                 padding: 4px 12px; border-radius: 10px;
@@ -3116,7 +3117,7 @@ class AutoReturnApp(QMainWindow):
             layout.addWidget(action_label)
 
         # --- Summary Section ---
-        summary_header = QLabel("📝 AI Summary")
+        summary_header = QLabel("AI Summary")
         summary_header.setObjectName("sectionHeader")
         layout.addWidget(summary_header)
 
@@ -3303,7 +3304,7 @@ class AutoReturnApp(QMainWindow):
             'Low': ('#2E7D32', '#E8F5E9'),
         }
         fg, bg = priority_colors.get(priority, ('#555', '#eee'))
-        priority_badge = QLabel(f"  ⚡ {priority.upper()} Priority  ")
+        priority_badge = QLabel(f"{priority.upper()} Priority  ")
         priority_badge.setStyleSheet(f"""
             background-color: {bg}; color: {fg};
             padding: 4px 12px; border-radius: 10px;
@@ -3494,7 +3495,7 @@ class AutoReturnApp(QMainWindow):
             layout.addWidget(review_schedule_btn, alignment=Qt.AlignLeft)
 
         # --- Message Content ---
-        body_title = QLabel("📄 Message Content")
+        body_title = QLabel("Message Content")
         body_title.setObjectName("sectionHeader")
         layout.addWidget(body_title)
 
@@ -3525,33 +3526,33 @@ class AutoReturnApp(QMainWindow):
         sender = msg.get('sender', 'the sender')
         actions = {
             'File Attachment Required': (
-                f"📎 {sender} is requesting a file or document.\n"
+                f"{sender} is requesting a file or document.\n"
                 "→ Locate the requested file and attach it in your reply.\n"
                 "→ If the file isn't ready, send an acknowledgement with an ETA."
             ),
             'Draft Generation': (
-                f"✍This message from {sender} requires a detailed, composed reply.\n"
+                f"This message from {sender} requires a detailed, composed reply.\n"
                 "→ Use the 'Smart Draft' feature to generate a starting draft.\n"
                 "→ Review and personalize the draft before sending."
             ),
             'Auto Reply': (
-                "⚡ This appears to be an automated or transactional message.\n"
+                "This appears to be an automated or transactional message.\n"
                 "→ A simple acknowledgement (e.g., 'Noted', 'Thank you') is sufficient.\n"
                 "→ Consider using Auto-Reply to respond instantly."
             ),
             'Simple Reply Required': (
-                f"💬 {sender} is expecting a quick response or confirmation.\n"
+                f"{sender} is expecting a quick response or confirmation.\n"
                 "→ Reply with a brief, direct answer.\n"
                 "→ Keep your response concise and actionable."
             ),
             'Informational': (
-                "ℹThis message is informational — no action is strictly required.\n"
+                "This message is informational — no action is strictly required.\n"
                 "→ Read and archive, or flag for later reference if relevant."
             ),
         }
         base = actions.get(task_label, actions['Informational'])
         if priority == 'High':
-            base = "🔴 HIGH PRIORITY — Respond as soon as possible.\n\n" + base
+            base = "HIGH PRIORITY — Respond as soon as possible.\n\n" + base
         return base
 
     # -------------------------

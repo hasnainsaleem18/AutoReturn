@@ -279,7 +279,7 @@ class AuthDialog(QDialog):
         login_btn.setFixedHeight(42)
         login_btn.setStyleSheet("""
             QPushButton {
-                background-color: #0FA4AF;(2-tone model)
+                background-color: #0FA4AF;
                 color: white;
                 border: none;
                 padding: 12px;
@@ -327,7 +327,7 @@ class AuthDialog(QDialog):
         layout.addSpacing(12)
         
         # Social login buttons
-        google_btn = QPushButton("🔐 Continue with Google")
+        google_btn = QPushButton("Continue with Google")
         google_btn.setCursor(Qt.PointingHandCursor)
         google_btn.setFixedHeight(42)
         google_btn.setStyleSheet("""

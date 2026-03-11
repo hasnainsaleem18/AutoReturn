@@ -13,6 +13,10 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 class TestProjectWideStaticFormal(unittest.TestCase):
+    # -------------------------
+    # FUNCTION: test_all_python_files_compile
+    # Purpose: Validate the all python files compile scenario.
+    # -------------------------
     def test_all_python_files_compile(self):
         failures = []
         for path in ROOT.rglob("*.py"):
@@ -26,6 +30,10 @@ class TestProjectWideStaticFormal(unittest.TestCase):
 
         self.assertEqual(failures, [], "Compile failures:\n" + "\n".join(failures))
 
+    # -------------------------
+    # FUNCTION: test_src_modules_importable
+    # Purpose: Validate the src modules importable scenario.
+    # -------------------------
     def test_src_modules_importable(self):
         failures = []
 

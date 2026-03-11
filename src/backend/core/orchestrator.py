@@ -62,7 +62,7 @@ class Orchestrator:
     # Starts the AI service, registers all agents, sets up Tone Engine,
     # Draft Manager, and Automation Coordinator. Injects Tone Engine into agents.
     # -------------------------
-    def __init__(self, ollama_model: str = "kimi-k2.5:cloud", ollama_base_url: str = "http://localhost:11434"):
+    def __init__(self, ollama_model: str = "qwen2.5:1.5b", ollama_base_url: str = "http://localhost:11434"):
         # Start the AI service that connects to the local Ollama model
         self.ai_service = OllamaService(model_name=ollama_model, base_url=ollama_base_url)
 

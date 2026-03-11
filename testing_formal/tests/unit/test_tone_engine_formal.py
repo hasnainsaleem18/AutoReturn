@@ -9,14 +9,26 @@ from src.backend.models.tone_models import ToneType
 
 
 class _FakeAIService:
+    # -------------------------
+    # FUNCTION: generate_text_async
+    # Purpose: Execute generate text async logic for this module.
+    # -------------------------
     async def generate_text_async(self, prompt: str, temperature: float = 0.55, max_tokens: int = 280):
         return "AI generated draft"
 
+    # -------------------------
+    # FUNCTION: generate_summary_async
+    # Purpose: Execute generate summary async logic for this module.
+    # -------------------------
     async def generate_summary_async(self, prompt: str, sender: str = "", subject: str = ""):
         return "Rewritten reply"
 
 
 class _FakeDetector:
+    # -------------------------
+    # FUNCTION: analyze_message
+    # Purpose: Execute analyze message logic for this module.
+    # -------------------------
     def analyze_message(self, text: str):
         from src.backend.core.tone_engine import ToneDetectionResult
 
@@ -32,6 +44,10 @@ class _FakeDetector:
 
 
 class _LowConfidenceDetector:
+    # -------------------------
+    # FUNCTION: analyze_message
+    # Purpose: Execute analyze message logic for this module.
+    # -------------------------
     def analyze_message(self, _text: str):
         from src.backend.core.tone_engine import ToneDetectionResult
 
@@ -46,6 +62,10 @@ class _LowConfidenceDetector:
 
 class TestToneEngineFormal(unittest.IsolatedAsyncioTestCase):
     @patch("src.backend.core.tone_engine.ToneDetector", return_value=_FakeDetector())
+    # -------------------------
+    # FUNCTION: test_analyze_and_recommend_flow
+    # Purpose: Validate the analyze and recommend flow scenario.
+    # -------------------------
     async def test_analyze_and_recommend_flow(self, _mock_detector):
         from src.backend.core.tone_engine import ToneEngine
 
@@ -63,6 +83,10 @@ class TestToneEngineFormal(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(rec2.recommended_tone, ToneType.FORMAL)
 
     @patch("src.backend.core.tone_engine.ToneDetector", return_value=_LowConfidenceDetector())
+    # -------------------------
+    # FUNCTION: test_effective_tone_manual_and_default_paths
+    # Purpose: Validate the effective tone manual and default paths scenario.
+    # -------------------------
     async def test_effective_tone_manual_and_default_paths(self, _mock_detector):
         from src.backend.core.tone_engine import ToneEngine
 
@@ -78,6 +102,10 @@ class TestToneEngineFormal(unittest.IsolatedAsyncioTestCase):
             self.assertIn("default_tone", stats)
 
     @patch("src.backend.core.tone_engine.ToneDetector", return_value=_FakeDetector())
+    # -------------------------
+    # FUNCTION: test_process_outgoing_and_fallback_draft
+    # Purpose: Validate the process outgoing and fallback draft scenario.
+    # -------------------------
     async def test_process_outgoing_and_fallback_draft(self, _mock_detector):
         from src.backend.core.tone_engine import ToneEngine
 
@@ -96,6 +124,10 @@ class TestToneEngineFormal(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Thanks", fb)
 
     @patch("src.backend.core.tone_engine.ToneDetector", return_value=_FakeDetector())
+    # -------------------------
+    # FUNCTION: test_update_user_preferences
+    # Purpose: Validate the update user preferences scenario.
+    # -------------------------
     async def test_update_user_preferences(self, _mock_detector):
         from src.backend.core.tone_engine import ToneEngine
 

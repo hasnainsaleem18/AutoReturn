@@ -10,7 +10,6 @@ Connects to the local Ollama model and handles:
 """
 
 import requests
-import json
 import asyncio
 from typing import Optional
 from PySide6.QtCore import QThread, Signal, QObject
@@ -31,11 +30,14 @@ class OllamaService(QObject):
     # CONSTRUCTOR: STORE SERVER CONFIG
     # Saves the AI model name and server address for all future requests.
     # -------------------------
-    def __init__(self, model_name: str = "kimi-k2.5:cloud", base_url: str = "http://localhost:11434"):
+    def __init__(self, model_name: str = "qwen2.5:1.5b", base_url: str = "http://localhost:11434"):
         super().__init__()
         self.model_name = model_name
         self.base_url   = base_url
         self.api_url    = f"{base_url}/api/generate"   # Endpoint for text generation
+        # Local models on CPU can exceed 60s on longer prompts.
+        self.summary_timeout_seconds = 180
+        self.text_timeout_seconds = 120
 
     # -------------------------
     # CHECK IF OLLAMA IS RUNNING
@@ -100,17 +102,29 @@ Message: {message_text}"""
                 "stream":  False,
                 "options": {"temperature": 0.3, "top_p": 0.9, "max_tokens": 100}
             }
-            response = requests.post(self.api_url, json=payload, timeout=60)
+            response = requests.post(
+                self.api_url,
+                json=payload,
+                timeout=self.summary_timeout_seconds
+            )
 
             if response.status_code == 200:
                 result  = response.json()
                 summary = result.get('response', '').strip()
                 return summary if summary else "Unable to generate summary"
             else:
+                error_body = (response.text or "").strip().replace("\n", " ")
+                if len(error_body) > 240:
+                    error_body = error_body[:240] + "..."
+                self.error_occurred.emit(
+                    f"Ollama summary request failed (HTTP {response.status_code}): {error_body}"
+                )
                 return None
 
         except requests.exceptions.Timeout:
-            self.error_occurred.emit("Ollama request timed out")
+            self.error_occurred.emit(
+                f"Ollama summary request timed out after {self.summary_timeout_seconds}s"
+            )
             return None
         except requests.exceptions.ConnectionError:
             self.error_occurred.emit("Cannot connect to Ollama. Is it running?")
@@ -132,15 +146,27 @@ Message: {message_text}"""
                 "stream":  False,
                 "options": {"temperature": temperature, "top_p": 0.9, "max_tokens": max_tokens},
             }
-            response = requests.post(self.api_url, json=payload, timeout=60)
+            response = requests.post(
+                self.api_url,
+                json=payload,
+                timeout=self.text_timeout_seconds
+            )
             if response.status_code != 200:
+                error_body = (response.text or "").strip().replace("\n", " ")
+                if len(error_body) > 240:
+                    error_body = error_body[:240] + "..."
+                self.error_occurred.emit(
+                    f"Ollama text request failed (HTTP {response.status_code}): {error_body}"
+                )
                 return None
             result = response.json()
             output = result.get("response", "").strip()
             return output if output else None
 
         except requests.exceptions.Timeout:
-            self.error_occurred.emit("Ollama request timed out")
+            self.error_occurred.emit(
+                f"Ollama text request timed out after {self.text_timeout_seconds}s"
+            )
             return None
         except requests.exceptions.ConnectionError:
             self.error_occurred.emit("Cannot connect to Ollama. Is it running?")

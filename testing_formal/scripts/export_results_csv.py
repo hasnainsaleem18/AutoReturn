@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 
 
+# -------------------------
+# FUNCTION: main
+# Purpose: Execute main logic for this module.
+# -------------------------
 def main() -> int:
     if len(sys.argv) < 2:
         print("Usage: python testing_formal/scripts/export_results_csv.py <preliminary_report.json>")

@@ -13,15 +13,27 @@ from testing_formal.tests.qt_utils import get_qapp
 
 class TestSettingsDialogFormal(unittest.TestCase):
     @classmethod
+    # -------------------------
+    # FUNCTION: setUpClass
+    # Purpose: Execute setUpClass logic for this module.
+    # -------------------------
     def setUpClass(cls):
         cls.app = get_qapp()
 
+    # -------------------------
+    # FUNCTION: test_toggle_switch_size_hint
+    # Purpose: Validate the toggle switch size hint scenario.
+    # -------------------------
     def test_toggle_switch_size_hint(self):
         t = ToggleSwitch()
         size = t.sizeHint()
         self.assertEqual(size.width(), 52)
         self.assertEqual(size.height(), 28)
 
+    # -------------------------
+    # FUNCTION: test_settings_dialog_initializes_user_defaults
+    # Purpose: Validate the settings dialog initializes user defaults scenario.
+    # -------------------------
     def test_settings_dialog_initializes_user_defaults(self):
         dialog = SettingsDialog(user_data={"email": "x@y.com"})
         self.assertEqual(dialog.user_data.get("email"), "x@y.com")
@@ -29,6 +41,10 @@ class TestSettingsDialogFormal(unittest.TestCase):
 
 
 class TestMainEntrypointFormal(unittest.TestCase):
+    # -------------------------
+    # FUNCTION: test_main_exits_when_auth_cancelled
+    # Purpose: Validate the main exits when auth cancelled scenario.
+    # -------------------------
     def test_main_exits_when_auth_cancelled(self):
         import main as app_main
 

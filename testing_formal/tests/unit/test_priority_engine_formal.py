@@ -11,6 +11,10 @@ from src.backend.core.priority_engine import PriorityEngine
 
 
 class TestPriorityEngineFormal(unittest.TestCase):
+    # -------------------------
+    # FUNCTION: setUp
+    # Purpose: Execute setUp logic for this module.
+    # -------------------------
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -41,16 +45,28 @@ class TestPriorityEngineFormal(unittest.TestCase):
 
         self.engine = PriorityEngine(dataset_path=dataset_path)
 
+    # -------------------------
+    # FUNCTION: test_keyword_score
+    # Purpose: Validate the keyword score scenario.
+    # -------------------------
     def test_keyword_score(self):
         msg = {"subject": "Urgent", "full_content": "Please respond today"}
         score = self.engine.keyword_score(msg)
         self.assertGreater(score, 0)
 
+    # -------------------------
+    # FUNCTION: test_deadline_score_relative_and_bonus
+    # Purpose: Validate the deadline score relative and bonus scenario.
+    # -------------------------
     def test_deadline_score_relative_and_bonus(self):
         msg = {"subject": "Reminder", "full_content": "Need this today, asap"}
         score = self.engine.deadline_score(msg)
         self.assertGreaterEqual(score, 5)
 
+    # -------------------------
+    # FUNCTION: test_sender_score
+    # Purpose: Validate the sender score scenario.
+    # -------------------------
     def test_sender_score(self):
         msg = {
             "sender": "The Boss",
@@ -60,6 +76,10 @@ class TestPriorityEngineFormal(unittest.TestCase):
         score = self.engine.sender_score(msg)
         self.assertGreater(score, 0)
 
+    # -------------------------
+    # FUNCTION: test_calculate_priority_high
+    # Purpose: Validate the calculate priority high scenario.
+    # -------------------------
     def test_calculate_priority_high(self):
         msg = {
             "subject": "Urgent",
@@ -70,6 +90,10 @@ class TestPriorityEngineFormal(unittest.TestCase):
         label = self.engine.calculate_priority(msg)
         self.assertIn(label, {"High", "Medium", "Low"})
 
+    # -------------------------
+    # FUNCTION: test_set_user_priority_list
+    # Purpose: Validate the set user priority list scenario.
+    # -------------------------
     def test_set_user_priority_list(self):
         self.engine.set_user_priority_list({"vip@example.com": 10})
         self.assertIn("vip@example.com", self.engine.user_priority_list)

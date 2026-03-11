@@ -10,15 +10,27 @@ from src.backend.core.attachment_resolver import AttachmentResolver
 
 
 class TestAttachmentResolverFormal(unittest.TestCase):
+    # -------------------------
+    # FUNCTION: setUp
+    # Purpose: Execute setUp logic for this module.
+    # -------------------------
     def setUp(self):
         self.resolver = AttachmentResolver()
 
+    # -------------------------
+    # FUNCTION: test_no_attachment_request
+    # Purpose: Validate the no attachment request scenario.
+    # -------------------------
     def test_no_attachment_request(self):
         msg = {"subject": "hello", "full_content": "Thanks for the update."}
         result = self.resolver.resolve(msg, allowed_paths=[])
         self.assertFalse(result["requested"])
         self.assertEqual(result["attachments"], [])
 
+    # -------------------------
+    # FUNCTION: test_explicit_filename_match
+    # Purpose: Validate the explicit filename match scenario.
+    # -------------------------
     def test_explicit_filename_match(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = os.path.join(tmp, "monthly_report.pdf")
@@ -33,6 +45,10 @@ class TestAttachmentResolverFormal(unittest.TestCase):
             self.assertTrue(result["requested"])
             self.assertIn(target, result["attachments"])
 
+    # -------------------------
+    # FUNCTION: test_ambiguous_candidates_require_manual_choice
+    # Purpose: Validate the ambiguous candidates require manual choice scenario.
+    # -------------------------
     def test_ambiguous_candidates_require_manual_choice(self):
         with tempfile.TemporaryDirectory() as tmp:
             a = os.path.join(tmp, "report_q1.pdf")
@@ -50,6 +66,10 @@ class TestAttachmentResolverFormal(unittest.TestCase):
             self.assertEqual(result["attachments"], [])
             self.assertGreaterEqual(len(result["candidates"]), 2)
 
+    # -------------------------
+    # FUNCTION: test_respects_max_attachments
+    # Purpose: Validate the respects max attachments scenario.
+    # -------------------------
     def test_respects_max_attachments(self):
         with tempfile.TemporaryDirectory() as tmp:
             files = []

@@ -24,6 +24,10 @@ class CheckResult:
     detail: str
 
 
+# -------------------------
+# FUNCTION: _check_python_version
+# Purpose: Execute  check python version logic for this module.
+# -------------------------
 def _check_python_version() -> CheckResult:
     ok = sys.version_info >= (3, 12)
     return CheckResult(
@@ -33,6 +37,10 @@ def _check_python_version() -> CheckResult:
     )
 
 
+# -------------------------
+# FUNCTION: _check_imports
+# Purpose: Execute  check imports logic for this module.
+# -------------------------
 def _check_imports() -> CheckResult:
     modules = [
         "src.backend.core.event_extractor",
@@ -52,6 +60,10 @@ def _check_imports() -> CheckResult:
     return CheckResult("core_imports", True, f"Imported {len(modules)} modules")
 
 
+# -------------------------
+# FUNCTION: _check_event_extraction_async
+# Purpose: Execute  check event extraction async logic for this module.
+# -------------------------
 async def _check_event_extraction_async() -> CheckResult:
     from src.backend.core.event_extractor import EventExtractor
 
@@ -71,6 +83,10 @@ async def _check_event_extraction_async() -> CheckResult:
     )
 
 
+# -------------------------
+# FUNCTION: _check_ollama_connectivity
+# Purpose: Execute  check ollama connectivity logic for this module.
+# -------------------------
 def _check_ollama_connectivity() -> CheckResult:
     from src.backend.services.ai_service import OllamaService
 
@@ -80,6 +96,10 @@ def _check_ollama_connectivity() -> CheckResult:
     return CheckResult("ollama_connectivity", connected, detail)
 
 
+# -------------------------
+# FUNCTION: _write_report
+# Purpose: Execute  write report logic for this module.
+# -------------------------
 def _write_report(report: dict) -> Path:
     output_dir = ROOT / "testing_formal" / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -90,6 +110,10 @@ def _write_report(report: dict) -> Path:
     return output_file
 
 
+# -------------------------
+# FUNCTION: main
+# Purpose: Execute main logic for this module.
+# -------------------------
 def main() -> int:
     started = datetime.now(timezone.utc)
     run_id = started.strftime("%Y%m%d_%H%M%S")

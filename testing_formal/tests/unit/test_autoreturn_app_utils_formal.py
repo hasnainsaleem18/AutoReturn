@@ -10,6 +10,10 @@ from src.frontend.ui.autoreturn_app import AutoReturnApp
 
 
 class TestAutoReturnAppUtilsFormal(unittest.TestCase):
+    # -------------------------
+    # FUNCTION: setUp
+    # Purpose: Execute setUp logic for this module.
+    # -------------------------
     def setUp(self):
         self.app_obj = AutoReturnApp.__new__(AutoReturnApp)
         self.app_obj.rows_per_page = 15
@@ -20,11 +24,19 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         self.app_obj.current_sort_column = None
 
 
+    # -------------------------
+    # FUNCTION: test_message_key_uses_id_when_present
+    # Purpose: Validate the message key uses id when present scenario.
+    # -------------------------
     def test_message_key_uses_id_when_present(self):
         msg = {"id": "abc123", "source": "gmail"}
         key = AutoReturnApp._message_key(self.app_obj, msg)
         self.assertEqual(key, "abc123")
 
+    # -------------------------
+    # FUNCTION: test_message_key_fallback
+    # Purpose: Validate the message key fallback scenario.
+    # -------------------------
     def test_message_key_fallback(self):
         msg = {
             "source": "gmail",
@@ -36,33 +48,57 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         key = AutoReturnApp._message_key(self.app_obj, msg)
         self.assertIn("gmail", key)
 
+    # -------------------------
+    # FUNCTION: test_summary_for_table_prefers_summary
+    # Purpose: Validate the summary for table prefers summary scenario.
+    # -------------------------
     def test_summary_for_table_prefers_summary(self):
         msg = {"summary": "Short summary", "ai_analysis": "Summary: x\n\nTask:y"}
         out = AutoReturnApp._summary_for_table(self.app_obj, msg)
         self.assertEqual(out, "Short summary")
 
+    # -------------------------
+    # FUNCTION: test_summary_for_table_falls_back_to_ai_analysis
+    # Purpose: Validate the summary for table falls back to ai analysis scenario.
+    # -------------------------
     def test_summary_for_table_falls_back_to_ai_analysis(self):
         msg = {"summary": "", "ai_analysis": "Summary: Something happened\n\nTask: Auto Reply"}
         out = AutoReturnApp._summary_for_table(self.app_obj, msg)
         self.assertEqual(out, "Something happened")
 
+    # -------------------------
+    # FUNCTION: test_paginated_messages
+    # Purpose: Validate the paginated messages scenario.
+    # -------------------------
     def test_paginated_messages(self):
         data = [{"id": str(i)} for i in range(22)]
         page_items, total_pages = AutoReturnApp._get_paginated_messages(self.app_obj, data)
         self.assertEqual(len(page_items), 15)
         self.assertEqual(total_pages, 2)
 
+    # -------------------------
+    # FUNCTION: test_parse_search_query
+    # Purpose: Validate the parse search query scenario.
+    # -------------------------
     def test_parse_search_query(self):
         filters = AutoReturnApp._parse_search_query(self.app_obj, "last week with attachment meeting alice")
         self.assertTrue(filters["require_attachments"])
         self.assertIsNotNone(filters["date_from"])
         self.assertIn("meeting", filters["terms"])
 
+    # -------------------------
+    # FUNCTION: test_parse_time_to_minutes
+    # Purpose: Validate the parse time to minutes scenario.
+    # -------------------------
     def test_parse_time_to_minutes(self):
         self.assertEqual(AutoReturnApp.parse_time_to_minutes(self.app_obj, "2h ago"), 120)
         self.assertEqual(AutoReturnApp.parse_time_to_minutes(self.app_obj, "5m ago"), 5)
         self.assertEqual(AutoReturnApp.parse_time_to_minutes(self.app_obj, "bad"), 999999)
 
+    # -------------------------
+    # FUNCTION: test_filter_message_search_and_source
+    # Purpose: Validate the filter message search and source scenario.
+    # -------------------------
     def test_filter_message_search_and_source(self):
         now = datetime.now()
         self.app_obj.active_filter = "gmail"
@@ -91,6 +127,10 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         msg["has_attachments"] = False
         self.assertFalse(AutoReturnApp.filter_message(self.app_obj, msg))
 
+    # -------------------------
+    # FUNCTION: test_format_schedule_and_sender_stats
+    # Purpose: Validate the format schedule and sender stats scenario.
+    # -------------------------
     def test_format_schedule_and_sender_stats(self):
         now = datetime.now()
         self.app_obj.messages = [
@@ -111,6 +151,10 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         stats = AutoReturnApp.compute_sender_stats(self.app_obj, "Alice", "alice@example.com")
         self.assertGreaterEqual(stats["last_week"], 1)
 
+    # -------------------------
+    # FUNCTION: test_sort_by_column
+    # Purpose: Validate the sort by column scenario.
+    # -------------------------
     def test_sort_by_column(self):
         self.app_obj.messages = [
             {"sender": "Charlie", "subject": "b", "summary": "z", "priority": "Low", "timestamp": 2},
