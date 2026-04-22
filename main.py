@@ -34,6 +34,7 @@ def main():
     
     # Show authentication dialog first
     auth_dialog = AuthDialog()
+    authenticated_user_data = {}
     
     # -------------------------
     # ON AUTHENTICATED
@@ -41,14 +42,9 @@ def main():
     # -------------------------
     def on_authenticated(user_data):
         """Callback when user is authenticated"""
-        global main_window
-        
-        print(f" User authenticated: {user_data.get('email', 'Unknown')}")
-        
-        # Create and show main application window
-        main_window = AutoReturnApp()
-        main_window.set_user_info(user_data)
-        main_window.show()
+        nonlocal authenticated_user_data
+        authenticated_user_data = user_data or {}
+        print(f" User authenticated: {authenticated_user_data.get('email', 'Unknown')}")
     
     # Connect authentication signal
     auth_dialog.authenticated.connect(on_authenticated)
@@ -57,6 +53,12 @@ def main():
     if auth_dialog.exec() != AuthDialog.Accepted:
         print("Authentication cancelled")
         sys.exit(0)
+
+    # Create and show the main application window after the auth dialog has
+    # fully closed so background services start against the main event loop.
+    main_window = AutoReturnApp()
+    main_window.set_user_info(authenticated_user_data)
+    main_window.show()
     
     # Start the application event loop
     sys.exit(app.exec())

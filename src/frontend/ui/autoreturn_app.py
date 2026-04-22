@@ -57,10 +57,12 @@ from src.backend.services.ai_service import (
     SummaryGeneratorThread,
     QueueSummaryGenerator
 )
+from src.backend.services.voice_service import VoiceCommand, VoiceCommandParser, VoiceService
 
 import asyncio
 from src.backend.services.gmail_backend import GmailIntegrationService
 from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
+from src.backend.models.automation_models import VoiceSettings
 from src.backend.core.attachment_resolver import AttachmentResolver
 
 
@@ -185,9 +187,14 @@ class AutoReturnApp(QMainWindow):
         self.expanded_row = None
         self.search_query = ""
         self.search_filters = None
+        self.voice_service = None
+        self.voice_settings = None
+        self._voice_service_init_attempted = False
+        self._voice_button_hint = "Hold CTRL+SHIFT+V to speak a command."
         
         self.setup_ui()
         self.setStyleSheet(get_stylesheet())
+        QTimer.singleShot(0, self._init_voice_service)
         
         self.time_refresh_timer = QTimer()
         self.time_refresh_timer.timeout.connect(self.refresh_message_times)
@@ -2024,7 +2031,164 @@ class AutoReturnApp(QMainWindow):
         unread_count = sum(1 for n in self.notifications if not n.get('read', False))
         if hasattr(self, 'notif_badge'):
             self.notif_badge.setText(str(unread_count))
-    
+
+    # -------------------------
+    # VOICE CONTROL
+    # -------------------------
+    def _load_voice_settings(self):
+        """Load persisted voice settings from the automation coordinator."""
+        try:
+            if self.orchestrator and hasattr(self.orchestrator, "get_automation_coordinator"):
+                return self.orchestrator.get_automation_coordinator().get_settings().voice
+        except Exception as exc:
+            print(f"Error loading voice settings: {exc}")
+        return VoiceSettings()
+
+    def _init_voice_service(self):
+        """Initialize push-to-talk voice service after the UI is built."""
+        if self._voice_service_init_attempted:
+            return
+        self._voice_service_init_attempted = True
+
+        self.voice_settings = self._load_voice_settings()
+        if not getattr(self.voice_settings, "enabled", True):
+            self._update_voice_button_state(
+                "disabled",
+                "Voice control is disabled in Settings. Enable it and restart the app.",
+            )
+            return
+
+        self.voice_service = VoiceService(
+            hotkey=self.voice_settings.hotkey,
+            model_size=self.voice_settings.model_size,
+            language=self.voice_settings.language,
+        )
+        self.voice_service.command_ready.connect(self.on_voice_command)
+        self.voice_service.listening_started.connect(self._on_voice_listening_started)
+        self.voice_service.listening_stopped.connect(self._on_voice_listening_stopped)
+        self.voice_service.transcription_done.connect(self._on_voice_transcription_done)
+        self.voice_service.error_occurred.connect(self._on_voice_error)
+
+        if self.voice_service.start():
+            self._update_voice_button_state(
+                "idle",
+                f"Hold {self.voice_settings.hotkey.upper()} to speak a command.",
+            )
+        else:
+            self._update_voice_button_state(
+                "disabled",
+                self.voice_service.startup_error() or "Voice control is unavailable on this machine.",
+            )
+
+    def _update_voice_button_state(self, state: str, tooltip: str = None):
+        """Refresh mic button styling and help text."""
+        label_map = {
+            "idle": "Mic",
+            "listening": "Rec",
+            "processing": "...",
+            "disabled": "Mic",
+        }
+        if tooltip is not None:
+            self._voice_button_hint = tooltip
+
+        if not hasattr(self, "voice_btn") or self.voice_btn is None:
+            return
+
+        self.voice_btn.setText(label_map.get(state, "Mic"))
+        self.voice_btn.setToolTip(self._voice_button_hint)
+        self.voice_btn.setProperty("voiceState", state)
+        self.voice_btn.style().unpolish(self.voice_btn)
+        self.voice_btn.style().polish(self.voice_btn)
+        self.voice_btn.update()
+
+    def _on_voice_button_clicked(self):
+        """Keep the mic button informational in this push-to-talk MVP."""
+        if self.voice_settings is None:
+            self.show_status_message("Voice settings are unavailable.")
+            return
+
+        if not getattr(self.voice_settings, "enabled", True):
+            self.show_status_message("Voice control is disabled in Settings.")
+            return
+
+        if not self.voice_service or not self.voice_service.is_available():
+            hint = self._voice_button_hint or "Voice control is unavailable."
+            self.show_status_message(hint)
+            return
+
+        self.show_status_message(f"Hold {self.voice_settings.hotkey.upper()} to record a voice command.")
+
+    def _find_message_for_sender(self, sender_name: str):
+        """Return the first visible message matching sender name or email."""
+        target = (sender_name or "").strip().lower()
+        if not target:
+            return None
+
+        for message in getattr(self, "_current_page_messages", []):
+            sender = (message.get("sender") or "").lower()
+            email = (message.get("email") or "").lower()
+            if target in sender or target in email:
+                return message
+        return None
+
+    def on_voice_command(self, text: str):
+        """Receive a transcribed voice command and dispatch it."""
+        command = VoiceCommandParser.parse(text)
+        if command.action == "noop":
+            return
+
+        self.show_status_message(f"Voice: {text}")
+
+        if command.action_type == "ui_action":
+            self._execute_ui_voice_action(command)
+            return
+
+        worker = AgentWorker(self.orchestrator.process_user_command(command.parameters["command"]))
+        worker.result_ready.connect(self.on_all_sync_complete)
+        worker.error_occurred.connect(self.on_agent_error)
+        worker.finished.connect(lambda: self._cleanup_worker(worker))
+        self.active_workers.append(worker)
+        worker.start()
+
+    def _execute_ui_voice_action(self, cmd: VoiceCommand):
+        """Execute UI-local voice commands without using the orchestrator."""
+        action = cmd.action
+        params = cmd.parameters
+
+        if action == "filter":
+            self.apply_filter(params["filter_id"])
+        elif action == "search":
+            if hasattr(self, "search_field"):
+                self.search_field.setText(params["query"])
+        elif action == "open_settings":
+            self.show_settings()
+        elif action == "show_notifications":
+            self.show_notifications()
+        elif action == "next_page":
+            self.change_page(self.current_page + 1)
+        elif action == "prev_page":
+            self.change_page(self.current_page - 1)
+        elif action == "generate_summaries":
+            self.generate_all_summaries()
+        elif action == "reply_to_sender":
+            message = self._find_message_for_sender(params.get("sender_name", ""))
+            if message is None:
+                self.show_status_message(f"No visible message found for {params.get('sender_name', 'that sender')}.")
+                return
+            self.show_send_message_dialog(message)
+        elif action == "open_message_by_index":
+            index = params.get("index", -1)
+            if 0 <= index < len(getattr(self, "_current_page_messages", [])):
+                self.show_full_message_dialog(self._current_page_messages[index])
+            else:
+                self.show_status_message(f"No message at position {index + 1}.")
+        elif action == "draft_for_sender":
+            message = self._find_message_for_sender(params.get("sender_name", ""))
+            if message is None:
+                self.show_status_message(f"No visible message found for {params.get('sender_name', 'that sender')}.")
+                return
+            self.smart_draft_message(message)
+
     # -------------------------
     # UI SETUP
     # -------------------------
@@ -2067,8 +2231,13 @@ class AutoReturnApp(QMainWindow):
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         
-        voice_btn = QPushButton("Voice")
-        voice_btn.setObjectName("btnVoice")
+        self.voice_btn = QPushButton("Mic")
+        self.voice_btn.setObjectName("btnVoice")
+        self.voice_btn.setProperty("voiceState", "disabled")
+        self.voice_btn.setFixedHeight(40)
+        self.voice_btn.setMinimumWidth(72)
+        self.voice_btn.clicked.connect(self._on_voice_button_clicked)
+        self.voice_btn.setToolTip(self._voice_button_hint)
         
         notif_btn = QPushButton("🔔")
         notif_btn.setObjectName("iconBtn")
@@ -2092,7 +2261,7 @@ class AutoReturnApp(QMainWindow):
         layout.addWidget(spacer)
         layout.addWidget(self.search_field)
         layout.addWidget(spacer)
-        layout.addWidget(voice_btn)
+        layout.addWidget(self.voice_btn)
         layout.addWidget(notif_btn)
         layout.addWidget(self.user_name_label)
         layout.addWidget(settings_btn)
@@ -3836,6 +4005,48 @@ class AutoReturnApp(QMainWindow):
         label.update()
 
     # -------------------------
+    # VOICE UI STATE
+    # -------------------------
+    def _on_voice_listening_started(self):
+        """Reflect that the microphone is actively recording."""
+        hotkey = getattr(self.voice_settings, "hotkey", "ctrl+shift+v").upper()
+        self._update_voice_button_state(
+            "listening",
+            f"Listening... release {hotkey} when you're done speaking.",
+        )
+        self.show_status_message("Listening for a voice command...")
+
+    def _on_voice_listening_stopped(self):
+        """Reflect that the recording phase has ended."""
+        self._update_voice_button_state("processing", "Transcribing voice command...")
+        self.show_status_message("Transcribing voice command...")
+
+    def _on_voice_transcription_done(self):
+        """Restore the idle voice state after transcription completes."""
+        if not getattr(self.voice_settings, "enabled", False):
+            self._update_voice_button_state(
+                "disabled",
+                "Voice control is disabled in Settings. Enable it and restart the app.",
+            )
+            return
+
+        if self.voice_service and self.voice_service.is_available():
+            self._update_voice_button_state(
+                "idle",
+                f"Hold {self.voice_settings.hotkey.upper()} to speak a command.",
+            )
+        else:
+            hint = self._voice_button_hint or "Voice control is unavailable on this machine."
+            self._update_voice_button_state("disabled", hint)
+
+    def _on_voice_error(self, error: str):
+        """Surface voice errors without interrupting the rest of the app."""
+        self.show_status_message(f"Voice error: {error}")
+        if not self.voice_service or not self.voice_service.is_available():
+            hint = self.voice_service.startup_error() if self.voice_service else error
+            self._update_voice_button_state("disabled", hint or error)
+
+    # -------------------------
     # SHOW STATUS MESSAGE
     # Displays the UI for status message.
     # -------------------------
@@ -4172,6 +4383,9 @@ class AutoReturnApp(QMainWindow):
         # Disconnect services
         if self.slack_service.is_connected:
             self.slack_service.disconnect()
+
+        if self.voice_service is not None:
+            self.voice_service.stop()
         
         event.accept()
         print("Shutdown complete")

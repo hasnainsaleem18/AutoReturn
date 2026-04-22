@@ -35,6 +35,13 @@ spacy>=3.7.0
 # Scientific Computing (Used in tone detection for vector operations)
 numpy>=1.24.0
 
+# Voice control
+openai-whisper>=20231117
+sounddevice>=0.4.6
+keyboard>=0.13.5
+pyobjc-framework-Quartz>=11.0; platform_system == "Darwin"
+scipy>=1.11.0
+
 # Data Processing (Used for tone detection data structures)
 pandas>=2.0.0
 

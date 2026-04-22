@@ -8,7 +8,12 @@ from datetime import datetime, timezone
 from pydantic import ValidationError
 
 from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
-from src.backend.models.automation_models import AutomationAction, AutomationSettings, PolicyDecision
+from src.backend.models.automation_models import (
+    AutomationAction,
+    AutomationSettings,
+    PolicyDecision,
+    VoiceSettings,
+)
 from src.backend.models.event_models import CalendarItemType, EventCandidate
 from src.backend.models.tone_models import ToneType, get_tone_description, get_tone_display_name
 
@@ -23,6 +28,17 @@ class TestModelsFormal(unittest.TestCase):
         self.assertFalse(settings.dnd_enabled)
         self.assertEqual(settings.max_auto_attachments, 3)
         self.assertTrue(settings.require_user_confirm_plain_reply)
+        self.assertTrue(settings.voice.enabled)
+        self.assertEqual(settings.voice.hotkey, "ctrl+shift+v")
+
+    # -------------------------
+    # FUNCTION: test_voice_settings_model
+    # Purpose: Validate the voice settings model scenario.
+    # -------------------------
+    def test_voice_settings_model(self):
+        settings = VoiceSettings(model_size="small", language="en")
+        self.assertEqual(settings.model_size, "small")
+        self.assertEqual(settings.language, "en")
 
     # -------------------------
     # FUNCTION: test_automation_settings_bounds

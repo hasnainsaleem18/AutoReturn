@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 from src.frontend.ui.autoreturn_app import AutoReturnApp
+from src.backend.services.voice_service import VoiceCommand
 
 
 class TestAutoReturnAppUtilsFormal(unittest.TestCase):
@@ -22,6 +23,7 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         self.app_obj.search_filters = {}
         self.app_obj.messages = []
         self.app_obj.current_sort_column = None
+        self.app_obj._current_page_messages = []
 
 
     # -------------------------
@@ -166,6 +168,64 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         AutoReturnApp.sort_by_column(self.app_obj, 2)
         self.assertEqual(self.app_obj.messages[0]["sender"], "Alice")
         self.app_obj.populate_table.assert_called()
+
+    # -------------------------
+    # FUNCTION: test_execute_ui_voice_action_search_updates_field
+    # Purpose: Validate the voice search action scenario.
+    # -------------------------
+    def test_execute_ui_voice_action_search_updates_field(self):
+        self.app_obj.search_field = MagicMock()
+        cmd = VoiceCommand(
+            action_type="ui_action",
+            action="search",
+            parameters={"query": "invoice"},
+            raw_text="search for invoice",
+        )
+
+        AutoReturnApp._execute_ui_voice_action(self.app_obj, cmd)
+        self.app_obj.search_field.setText.assert_called_once_with("invoice")
+
+    # -------------------------
+    # FUNCTION: test_execute_ui_voice_action_reply_uses_first_visible_sender_match
+    # Purpose: Validate sender-matched voice reply scenario.
+    # -------------------------
+    def test_execute_ui_voice_action_reply_uses_first_visible_sender_match(self):
+        self.app_obj._current_page_messages = [
+            {"sender": "John Doe", "email": "john@example.com"},
+            {"sender": "Jane Doe", "email": "jane@example.com"},
+        ]
+        self.app_obj.show_send_message_dialog = MagicMock()
+        self.app_obj.show_status_message = MagicMock()
+
+        cmd = VoiceCommand(
+            action_type="ui_action",
+            action="reply_to_sender",
+            parameters={"sender_name": "John"},
+            raw_text="reply to John",
+        )
+
+        AutoReturnApp._execute_ui_voice_action(self.app_obj, cmd)
+        self.app_obj.show_send_message_dialog.assert_called_once_with(self.app_obj._current_page_messages[0])
+
+    # -------------------------
+    # FUNCTION: test_execute_ui_voice_action_invalid_index_shows_status
+    # Purpose: Validate invalid message index voice scenario.
+    # -------------------------
+    def test_execute_ui_voice_action_invalid_index_shows_status(self):
+        self.app_obj._current_page_messages = [{"sender": "John Doe", "email": "john@example.com"}]
+        self.app_obj.show_full_message_dialog = MagicMock()
+        self.app_obj.show_status_message = MagicMock()
+
+        cmd = VoiceCommand(
+            action_type="ui_action",
+            action="open_message_by_index",
+            parameters={"index": 3},
+            raw_text="open message 4",
+        )
+
+        AutoReturnApp._execute_ui_voice_action(self.app_obj, cmd)
+        self.app_obj.show_full_message_dialog.assert_not_called()
+        self.app_obj.show_status_message.assert_called_once()
 
 
 if __name__ == "__main__":
