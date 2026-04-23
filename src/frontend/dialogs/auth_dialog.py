@@ -28,6 +28,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 
+from src.backend.services.supabase_auth_service import SupabaseAuthService
+
 
 # -------------------------
 # AUTH DIALOG CLASS
@@ -57,6 +59,7 @@ class AuthDialog(QDialog):
         self.setWindowTitle("AutoReturn - Welcome")
         self.setFixedSize(520, 720)
         self.setModal(True)
+        self.supabase_auth_service = SupabaseAuthService()
         
         # Main layout
         layout = QVBoxLayout(self)
@@ -747,14 +750,28 @@ class AuthDialog(QDialog):
             )
             return
         
-        # TODO: Implement actual authentication logic here
-        # For now, we'll simulate successful login
+        try:
+            auth_result = self.supabase_auth_service.sign_in(email, password)
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Login Failed",
+                str(exc)
+            )
+            return
+
+        user_email = auth_result.get("email") or email
+        user_name = auth_result.get("full_name") or self._display_name_from_email(user_email)
+
         user_data = {
-            "email": email,
-            "name": "Ajwad Ahmed",  # This would come from your backend
-            "auth_method": "email"
+            "email": user_email,
+            "name": user_name,
+            "auth_method": "email",
+            "user_id": auth_result.get("user_id", ""),
+            "access_token": auth_result.get("access_token", ""),
+            "refresh_token": auth_result.get("refresh_token", ""),
         }
-        
+
         self.authenticated.emit(user_data)
         self.accept()
     
@@ -814,22 +831,47 @@ class AuthDialog(QDialog):
             )
             return
         
-        # TODO: Implement actual registration logic here
-        # For now, we'll simulate successful signup
+        try:
+            auth_result = self.supabase_auth_service.sign_up(email, password, full_name=name)
+        except Exception as exc:
+            QMessageBox.warning(
+                self,
+                "Signup Failed",
+                str(exc)
+            )
+            return
+
         user_data = {
-            "email": email,
-            "name": name,
-            "auth_method": "email"
+            "email": auth_result.get("email") or email,
+            "name": auth_result.get("full_name") or name,
+            "auth_method": "email",
+            "user_id": auth_result.get("user_id", ""),
+            "access_token": auth_result.get("access_token", ""),
+            "refresh_token": auth_result.get("refresh_token", ""),
         }
-        
-        QMessageBox.information(
-            self,
-            "Success",
-            f"Welcome to WorkEase, {name}!"
-        )
-        
-        self.authenticated.emit(user_data)
-        self.accept()
+
+        if auth_result.get("session") is None and not auth_result.get("email_confirmed"):
+            QMessageBox.information(
+                self,
+                "Check Your Email",
+                (
+                    "Your account was created successfully.\n\n"
+                    "Please check your email and confirm your address before signing in."
+                )
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "Account Created",
+                (
+                    "Your account was created successfully.\n\n"
+                    "Please sign in with your new email and password."
+                )
+            )
+
+        self.login_email.setText(email)
+        self.login_password.clear()
+        self.stacked_widget.setCurrentWidget(self.login_page)
     
     # -------------------------
     # SOCIAL LOGIN HANDLERS
@@ -1139,3 +1181,13 @@ class AuthDialog(QDialog):
         if not local or not domain or "." not in domain:
             return False
         return True
+
+    # -------------------------
+    # DISPLAY NAME FROM EMAIL
+    # Creates a simple friendly fallback name from an email address.
+    # -------------------------
+    def _display_name_from_email(self, email: str) -> str:
+        email = (email or "").strip()
+        if "@" not in email:
+            return "User"
+        return email.split("@", 1)[0].replace(".", " ").replace("_", " ").title() or "User"

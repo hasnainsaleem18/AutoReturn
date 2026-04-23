@@ -14,6 +14,7 @@ import os
 import sys
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union, Tuple
 
@@ -58,6 +59,7 @@ from src.backend.services.ai_service import (
     QueueSummaryGenerator
 )
 from src.backend.services.voice_service import VoiceCommand, VoiceCommandParser, VoiceService
+from src.backend.services.supabase_auth_service import SupabaseAuthService
 
 import asyncio
 from src.backend.services.gmail_backend import GmailIntegrationService
@@ -156,6 +158,8 @@ class AutoReturnApp(QMainWindow):
         self.ollama_service = self.orchestrator.ai_service
         self.calendar_service = CalendarService(self._get_gmail_data_dir())
         self.ics_output_dir = self._get_ics_output_dir()
+        self.supabase_auth_service = SupabaseAuthService()
+        self.connected_accounts_map = {}
         
         # Slack listener
         self.slack_listener = None
@@ -239,9 +243,11 @@ class AutoReturnApp(QMainWindow):
     # -------------------------
     def _try_auto_connect_slack(self):
         """Attempt to automatically connect to Slack using stored credentials."""
+        if not self._is_provider_enabled_for_current_user("slack"):
+            return
         try:
             import keyring
-            token = keyring.get_password("autoreturn", "slack_token")
+            token = keyring.get_password("autoreturn", self._slack_keyring_key())
             if token:
                 print("Auto-connecting to Slack...")
                 self.connect_slack(token)
@@ -274,7 +280,11 @@ class AutoReturnApp(QMainWindow):
         """
         # Use the data directory at the project root
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-        base_dir = os.path.join(project_root, "data", "gmail_data")
+        user_id = self._current_user_storage_key()
+        if user_id:
+            base_dir = os.path.join(project_root, "data", "users", user_id, "gmail")
+        else:
+            base_dir = os.path.join(project_root, "data", "gmail_data")
         try:
             os.makedirs(base_dir, exist_ok=True)
         except Exception as exc:
@@ -309,6 +319,8 @@ class AutoReturnApp(QMainWindow):
     # -------------------------
     def _try_auto_connect_gmail(self):
         """Attempt to automatically connect to Gmail using stored credentials."""
+        if not self._is_provider_enabled_for_current_user("gmail"):
+            return
         if self.gmail_service.has_token():
             success, message = self.gmail_service.connect(allow_flow=False)
             print(f"Gmail: {message}")
@@ -341,12 +353,27 @@ class AutoReturnApp(QMainWindow):
         Args:
             user_data (dict): Dictionary containing user information
         """
-        self.user_data = user_data
+        self.user_data = dict(user_data or {})
+        try:
+            self.supabase_auth_service.set_session_tokens(
+                self.user_data.get("access_token", ""),
+                self.user_data.get("refresh_token", ""),
+            )
+        except Exception as exc:
+            print(f"Could not restore Supabase session in app: {exc}")
+        self.connected_accounts_map = self._load_connected_accounts_for_user()
+        self.gmail_service.set_data_dir(self._get_gmail_data_dir())
         if 'connected_accounts' not in self.user_data:
             self.user_data['connected_accounts'] = {
                 'gmail': False,
                 'slack': False
             }
+
+        for provider in ('gmail', 'slack'):
+            if provider in self.connected_accounts_map:
+                self.user_data['connected_accounts'][provider] = bool(
+                    self.connected_accounts_map[provider].get('connected', False)
+                )
 
         if self.slack_service.is_connected:
             self.user_data['connected_accounts']['slack'] = True
@@ -373,6 +400,11 @@ class AutoReturnApp(QMainWindow):
                 if 'connected_accounts' not in self.user_data:
                     self.user_data['connected_accounts'] = {}
                 self.user_data['connected_accounts']['slack'] = True
+            self._save_connected_account_state(
+                provider="slack",
+                provider_account_id=self.slack_service.my_user_id or "",
+                provider_display_name=self.slack_service.my_user_name or "",
+            )
             
             self.start_slack_listener()
             self._start_initial_slack_sync(limit=self.STARTUP_SLACK_INITIAL_FETCH_LIMIT)
@@ -1126,9 +1158,14 @@ class AutoReturnApp(QMainWindow):
         if success:
             try:
                 import keyring
-                keyring.set_password("autoreturn", "slack_token", user_token)
+                keyring.set_password("autoreturn", self._slack_keyring_key(), user_token)
             except:
                 pass
+            self._save_connected_account_state(
+                provider="slack",
+                provider_account_id=self.slack_service.my_user_id or "",
+                provider_display_name=self.slack_service.my_user_name or "",
+            )
         
         return success
     
@@ -1146,9 +1183,10 @@ class AutoReturnApp(QMainWindow):
         
         try:
             import keyring
-            keyring.delete_password("autoreturn", "slack_token")
+            keyring.delete_password("autoreturn", self._slack_keyring_key())
         except:
             pass
+        self._mark_connected_account_disconnected("slack")
     
     # -------------------------
     # SYNC ALL MESSAGES
@@ -1656,6 +1694,11 @@ class AutoReturnApp(QMainWindow):
         """Initiate the Gmail OAuth authorization flow."""
         success, message = self.gmail_service.connect(allow_flow=True)
         if success:
+            self._save_connected_account_state(
+                provider="gmail",
+                provider_account_email=self.user_data.get("email", "") if self.user_data else "",
+                provider_display_name=self.user_data.get("name", "") if self.user_data else "",
+            )
             self.handle_gmail_sync(quiet=True, max_results=self.STARTUP_GMAIL_INITIAL_FETCH_LIMIT)
         return success, message
 
@@ -4424,6 +4467,112 @@ class AutoReturnApp(QMainWindow):
         self.user_data = updated_user
         if hasattr(self, 'user_name_label'):
             self.user_name_label.setText(self.user_data.get('name', 'User'))
+
+    # -------------------------
+    # USER STORAGE KEY
+    # Returns a stable per-user key for local integration storage.
+    # -------------------------
+    def _current_user_storage_key(self) -> str:
+        if self.user_data:
+            user_id = (self.user_data.get("user_id") or "").strip()
+            if user_id:
+                return user_id
+            email = (self.user_data.get("email") or "").strip().lower()
+            if email:
+                return re.sub(r"[^a-z0-9._-]+", "_", email)
+        return ""
+
+    # -------------------------
+    # SLACK KEYRING KEY
+    # Returns the per-user keyring slot for Slack token persistence.
+    # -------------------------
+    def _slack_keyring_key(self) -> str:
+        storage_key = self._current_user_storage_key() or "global"
+        return f"{storage_key}:slack_token"
+
+    # -------------------------
+    # LOAD CONNECTED ACCOUNTS
+    # Fetches integration mapping rows for the current authenticated user.
+    # -------------------------
+    def _load_connected_accounts_for_user(self) -> dict:
+        user_id = (self.user_data or {}).get("user_id", "")
+        if not user_id or not self.supabase_auth_service.is_configured():
+            return {}
+        try:
+            rows = self.supabase_auth_service.get_connected_accounts(user_id)
+        except Exception as exc:
+            print(f"Could not load connected accounts: {exc}")
+            return {}
+        return {row.get("provider"): row for row in rows if row.get("provider")}
+
+    # -------------------------
+    # PROVIDER ENABLED CHECK
+    # Returns whether the current user has this provider mapped as connected.
+    # -------------------------
+    def _is_provider_enabled_for_current_user(self, provider: str) -> bool:
+        if not self.user_data:
+            return False
+        user_id = (self.user_data.get("user_id") or "").strip()
+        if not user_id:
+            return True
+        row = self.connected_accounts_map.get(provider)
+        return bool(row and row.get("connected"))
+
+    # -------------------------
+    # SAVE CONNECTED ACCOUNT STATE
+    # Upserts provider ownership state for the current authenticated user.
+    # -------------------------
+    def _save_connected_account_state(
+        self,
+        provider: str,
+        provider_account_id: str = "",
+        provider_account_email: str = "",
+        provider_display_name: str = "",
+    ):
+        if not self.user_data:
+            return
+        user_id = (self.user_data.get("user_id") or "").strip()
+        if not user_id:
+            return
+        try:
+            self.supabase_auth_service.upsert_connected_account(
+                user_id=user_id,
+                provider=provider,
+                provider_account_id=provider_account_id,
+                provider_account_email=provider_account_email,
+                provider_display_name=provider_display_name,
+                connected=True,
+            )
+            self.connected_accounts_map[provider] = {
+                "provider": provider,
+                "connected": True,
+                "provider_account_id": provider_account_id,
+                "provider_account_email": provider_account_email,
+                "provider_display_name": provider_display_name,
+            }
+            self.user_data.setdefault("connected_accounts", {})[provider] = True
+        except Exception as exc:
+            print(f"Could not save connected account state for {provider}: {exc}")
+
+    # -------------------------
+    # MARK CONNECTED ACCOUNT DISCONNECTED
+    # Updates Supabase mapping state when a provider is disconnected locally.
+    # -------------------------
+    def _mark_connected_account_disconnected(self, provider: str):
+        if not self.user_data:
+            return
+        user_id = (self.user_data.get("user_id") or "").strip()
+        if not user_id:
+            return
+        try:
+            self.supabase_auth_service.disconnect_connected_account(user_id, provider)
+            self.connected_accounts_map[provider] = {
+                **self.connected_accounts_map.get(provider, {"provider": provider}),
+                "connected": False,
+            }
+            self.user_data.setdefault("connected_accounts", {})[provider] = False
+        except Exception as exc:
+            print(f"Could not mark {provider} disconnected: {exc}")
     
     # -------------------------
     # WINDOW EVENTS

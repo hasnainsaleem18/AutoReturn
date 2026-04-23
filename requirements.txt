@@ -15,9 +15,14 @@ google-auth-oauthlib>=1.1.0
 google-auth>=2.23.0
 
 # AI and ML (Used for tone detection and learning system)
-pydantic-ai>=0.0.13
+# pydantic-ai>=0.0.13  # Full install may pull in heavier GPU-oriented dependencies on some setups
+pydantic-ai-slim>=0.0.13  # Lighter option for CPU-only environments
 pydantic>=2.0.0      # Used for tone models and learning data structures
 ollama>=0.1.0
+
+# CPU-focused note:
+# Prefer pydantic-ai-slim on laptops without GPU acceleration needs.
+# If you ever need the full stack later, install it manually outside this file.
 
 # Desktop Notifications
 plyer>=2.1.0
@@ -28,6 +33,7 @@ keyring>=24.0.0
 # Utilities
 python-dotenv>=1.0.0
 aiosqlite>=0.19.0      # Used for local data storage, also supports JSON-based learning system
+supabase>=2.5.0
 
 # Core NLP Processing (MUST use medium model for vectors)
 spacy>=3.7.0
@@ -41,6 +47,9 @@ sounddevice>=0.4.6
 keyboard>=0.13.5
 pyobjc-framework-Quartz>=11.0; platform_system == "Darwin"
 scipy>=1.11.0
+
+#Linux System Dependencies for sounddevice and audio input/output functionality
+# sudo apt-get install libportaudio2 libportaudiocpp0 portaudio19-dev python3-pyaudio
 
 # Data Processing (Used for tone detection data structures)
 pandas>=2.0.0

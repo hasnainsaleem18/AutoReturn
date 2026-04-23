@@ -63,6 +63,17 @@ class GmailIntegrationService(QObject):
         self._api_lock = threading.Lock()
 
     # -------------------------
+    # SET DATA DIR
+    # Switches local Gmail credential storage to a new directory.
+    # -------------------------
+    def set_data_dir(self, data_dir: str):
+        self.disconnect()
+        self.data_dir = data_dir
+        os.makedirs(self.data_dir, exist_ok=True)
+        self.client_secret_path = os.path.join(self.data_dir, "client_secret.json")
+        self.token_path = os.path.join(self.data_dir, "token.json")
+
+    # -------------------------
     # AUTHENTICATION METHODS
     # -------------------------
     def configure_client_secret(self, source_path: str) -> str:

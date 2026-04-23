@@ -164,6 +164,11 @@ pip install -r requirements.txt
 # Install the spaCy model used for Semantic NLP Context Analysis
 python -m spacy download en_core_web_md
 
+# Create a local environment file for Supabase email/password auth
+# Required variables:
+# SUPABASE_URL=https://your-project-id.supabase.co
+# SUPABASE_ANON_KEY=your-publishable-key
+
 # Pull the primary AI model used by the orchestrator
 ollama pull kimi-k2.5:cloud
 
@@ -180,7 +185,24 @@ ollama signin
 
 All configuration is handled safely via the **Settings menu** in the UI, which writes to `data/automation_settings.json`.
 
-* **Gmail Authorization**: Requires a valid Google Cloud `client_secret.json` to be placed in the project root. The app will launch an OAuth browser flow on first run.
+### Authentication
+
+AutoReturn now uses **Supabase Auth** for email/password authentication.
+
+* **Email/Password Login & Signup**: Backed by Supabase Auth. Create a Supabase project, enable the Email provider, and add the following environment variables in a local `.env` file at the project root:
+
+```env
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your-publishable-key
+```
+
+* **Google Login**: The existing Google OAuth login flow remains supported and works independently of Supabase email/password authentication.
+
+### Integrations
+
+* **Per-User Integration Ownership**: Gmail and Slack integrations are now scoped to the authenticated AutoReturn user. New users will not inherit previously connected Gmail or Slack accounts and must connect their own integrations once.
+* **Supabase Usage**: Supabase stores authentication identity plus integration ownership/state via the `connected_accounts` table. Raw Gmail/Slack OAuth tokens are intentionally **not** stored in Supabase in the current design.
+* **Gmail Authorization**: Requires a valid Google Cloud `client_secret.json`. The app launches a Google OAuth browser flow when the user connects Gmail.
 * **Slack Authorization**: Requires a valid Slack App User Token (`xoxp-...`) with `history` and `read` scopes, pasted into the Settings menu.
 
 ---

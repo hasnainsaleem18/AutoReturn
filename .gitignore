@@ -37,6 +37,7 @@ env/
 # Application specific
 data/gmail_data/*.json
 data/auth/*.json
+data/users/**/*.json
 logs/*.log
 
 # Keep directory structure
