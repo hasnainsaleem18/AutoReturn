@@ -9,7 +9,12 @@ import unittest
 
 from src.backend.core.automation_coordinator import AutomationCoordinator
 from src.backend.core.reply_policy_engine import ReplyPolicyEngine
-from src.backend.models.automation_models import AutomationAction, AutomationSettings, VoiceSettings
+from src.backend.models.automation_models import (
+    AutomationAction,
+    AutomationSettings,
+    VoiceActivationMode,
+    VoiceSettings,
+)
 from src.backend.services.automation_settings_service import AutomationSettingsService
 
 
@@ -88,7 +93,7 @@ class TestAutomationSettingsServiceFormal(unittest.TestCase):
             settings = AutomationSettings(
                 dnd_enabled=True,
                 auto_reply_allowlist=["boss@example.com"],
-                voice=VoiceSettings(enabled=False, model_size="tiny"),
+                voice=VoiceSettings(enabled=False, activation_mode=VoiceActivationMode.WAKE_WORD),
             )
             ok = svc.save_settings(settings)
             self.assertTrue(ok)
@@ -97,7 +102,7 @@ class TestAutomationSettingsServiceFormal(unittest.TestCase):
             self.assertTrue(loaded.dnd_enabled)
             self.assertEqual(loaded.auto_reply_allowlist, ["boss@example.com"])
             self.assertFalse(loaded.voice.enabled)
-            self.assertEqual(loaded.voice.model_size, "tiny")
+            self.assertEqual(loaded.voice.activation_mode, VoiceActivationMode.WAKE_WORD)
 
     # -------------------------
     # FUNCTION: test_load_legacy_file_adds_default_voice_settings
@@ -124,6 +129,7 @@ class TestAutomationSettingsServiceFormal(unittest.TestCase):
             self.assertTrue(loaded.dnd_enabled)
             self.assertTrue(loaded.voice.enabled)
             self.assertEqual(loaded.voice.hotkey, "ctrl+shift+v")
+            self.assertEqual(loaded.voice.activation_mode, VoiceActivationMode.MANUAL)
 
     # -------------------------
     # FUNCTION: test_load_invalid_file_falls_back
@@ -180,10 +186,10 @@ class TestAutomationCoordinatorFormal(unittest.TestCase):
         decision = coordinator.evaluate_message({"source": "gmail", "email": "x@y.com"})
         self.assertEqual(decision.action, AutomationAction.PLAIN_REPLY)
 
-        updated = AutomationSettings(dnd_enabled=True, voice=VoiceSettings(model_size="small"))
+        updated = AutomationSettings(dnd_enabled=True, voice=VoiceSettings(enabled=False))
         self.assertTrue(coordinator.update_settings(updated))
         self.assertTrue(svc.saved.dnd_enabled)
-        self.assertEqual(svc.saved.voice.model_size, "small")
+        self.assertFalse(svc.saved.voice.enabled)
 
 
 if __name__ == "__main__":

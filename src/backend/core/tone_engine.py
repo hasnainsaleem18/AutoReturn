@@ -42,12 +42,16 @@ class ToneDetectionResult:
 class ToneDetector:
     """Embedded deterministic tone detector used by ToneEngine."""
 
+    _shared_nlp = None
+    _shared_nlp_failed = False
+    _shared_nlp_model_name = "en_core_web_md"
+
     # -------------------------
     # INIT
     # Initializes the class instance and sets up default routing or UI states.
     # -------------------------
     def __init__(self):
-        self.nlp = spacy.load("en_core_web_md")
+        self.nlp = self._load_shared_nlp()
         self.rules = self._load_detection_rules()
         self.lexicon = self.rules.get("lexicon", {})
         self.word_sets = self.rules.get("word_sets", {})
@@ -63,6 +67,20 @@ class ToneDetector:
         }
         self.pos_centroid, self.neg_centroid = self._compute_centroids()
         self.tone_weights = self._load_tone_weights(self.rules.get("feature_weights", {}))
+
+    @classmethod
+    def _load_shared_nlp(cls):
+        if cls._shared_nlp is not None:
+            return cls._shared_nlp
+        if cls._shared_nlp_failed:
+            raise RuntimeError("Shared spaCy model is unavailable")
+
+        try:
+            cls._shared_nlp = spacy.load(cls._shared_nlp_model_name)
+            return cls._shared_nlp
+        except Exception:
+            cls._shared_nlp_failed = True
+            raise
 
     # -------------------------
     # ANALYZE MESSAGE

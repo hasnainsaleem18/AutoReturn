@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import numpy as np
 
+from src.backend.models.automation_models import VoiceActivationMode
 from src.backend.services.voice_service import (
     AudioCapture,
     AudioRecorderThread,
@@ -56,9 +57,12 @@ class _FakeTranscriber:
 
 
 class _FakeWarmupThread:
-    def __init__(self, model_size: str = "base", preferred_device=None):
+    def __init__(self, model_size: str = "base", preferred_device=None, language: str = "en"):
         self.model_size = model_size
         self.preferred_device = preferred_device
+        self.language = language
+        self.resolved_device = preferred_device or "cpu"
+        self.last_error = ""
         self.warmup_complete = _FakeSignal()
         self.warmup_failed = _FakeSignal()
         self.finished = _FakeSignal()
@@ -80,10 +84,36 @@ class _FakeWarmupThread:
         return None
 
 
-class _FakeRecorderThread:
+class _FakeWakeListenerThread:
+    instances = []
+
     def __init__(self):
+        self.wake_audio_ready = _FakeSignal()
+        self.listener_error = _FakeSignal()
+        self._running = False
+        self.__class__.instances.append(self)
+
+    def start(self):
+        self._running = True
+
+    def stop(self):
+        self._running = False
+
+    def wait(self, _timeout):
+        return True
+
+    def deleteLater(self):
+        return None
+
+    def isRunning(self):
+        return self._running
+
+
+class _FakeRecorderThread:
+    def __init__(self, stop_on_silence: bool = False):
         self.deleted = False
         self._running = True
+        self.stop_on_silence = stop_on_silence
 
     def isRunning(self):
         return self._running
@@ -153,6 +183,33 @@ class TestVoiceCommandParserFormal(unittest.TestCase):
         self.assertEqual(command.parameters["query"], "invoice report")
 
     # -------------------------
+    # FUNCTION: test_search_query_strips_trailing_punctuation
+    # Purpose: Validate cleanup of Whisper-added punctuation in search text.
+    # -------------------------
+    def test_search_query_strips_trailing_punctuation(self):
+        command = VoiceCommandParser.parse("search for john.")
+        self.assertEqual(command.action, "search")
+        self.assertEqual(command.parameters["query"], "john")
+
+    # -------------------------
+    # FUNCTION: test_wake_word_inline_command_is_stripped_before_parse
+    # Purpose: Validate wake-word-prefixed commands.
+    # -------------------------
+    def test_wake_word_inline_command_is_stripped_before_parse(self):
+        command = VoiceCommandParser.parse("hey autoreturn search for john.")
+        self.assertEqual(command.action, "search")
+        self.assertEqual(command.parameters["query"], "john")
+
+    # -------------------------
+    # FUNCTION: test_fuzzy_ui_command_autocorrects_common_whisper_miss
+    # Purpose: Validate fuzzy correction for slightly wrong command words.
+    # -------------------------
+    def test_fuzzy_ui_command_autocorrects_common_whisper_miss(self):
+        command = VoiceCommandParser.parse("show argent")
+        self.assertEqual(command.action, "filter")
+        self.assertEqual(command.parameters["filter_id"], "urgent")
+
+    # -------------------------
     # FUNCTION: test_sender_extraction_for_reply_and_draft
     # Purpose: Validate sender extraction for targeted commands.
     # -------------------------
@@ -215,30 +272,57 @@ class TestVoiceServiceFormal(unittest.TestCase):
         cls.app = get_qapp()
 
     # -------------------------
-    # FUNCTION: test_start_gracefully_disables_when_dependencies_missing
-    # Purpose: Validate graceful disable when voice deps are missing.
+    # FUNCTION: test_start_gracefully_disables_when_core_dependencies_missing
+    # Purpose: Validate graceful disable when essential voice deps are missing.
     # -------------------------
-    def test_start_gracefully_disables_when_dependencies_missing(self):
+    def test_start_gracefully_disables_when_core_dependencies_missing(self):
+        with patch(
+            "src.backend.services.voice_service._optional_import",
+            side_effect=lambda name: None if name == "whisper" else object(),
+        ):
+            service = VoiceService()
+            self.assertFalse(service.start())
+            self.assertIn("whisper", service.startup_error())
+
+    # -------------------------
+    # FUNCTION: test_start_keeps_button_mode_when_hotkey_backend_missing
+    # Purpose: Validate voice remains available without the global hotkey backend.
+    # -------------------------
+    def test_start_keeps_button_mode_when_hotkey_backend_missing(self):
+        _FakeWakeListenerThread.instances.clear()
         with patch("src.backend.services.voice_service.sys.platform", "linux"), patch(
             "src.backend.services.voice_service._optional_import",
             side_effect=lambda name: None if name == "keyboard" else object(),
+        ), patch("src.backend.services.voice_service.WakeWordListenerThread", _FakeWakeListenerThread), patch(
+            "src.backend.services.voice_service.WhisperWarmupThread", _FakeWarmupThread
         ):
             service = VoiceService()
-            self.assertFalse(service.start())
-            self.assertIn("keyboard", service.startup_error())
+            self.assertTrue(service.start())
+            self.assertTrue(service.is_available())
+            self.assertTrue(service.is_prepared())
+            self.assertIn("click mic", service.usage_hint().lower())
+            self.assertEqual(len(_FakeWakeListenerThread.instances), 0)
+            service.stop()
 
     # -------------------------
-    # FUNCTION: test_start_gracefully_disables_when_quartz_missing_on_macos
-    # Purpose: Validate the macOS dependency path for global hotkeys.
+    # FUNCTION: test_start_keeps_button_mode_when_quartz_missing_on_macos
+    # Purpose: Validate the macOS fallback when Quartz hotkeys are unavailable.
     # -------------------------
-    def test_start_gracefully_disables_when_quartz_missing_on_macos(self):
+    def test_start_keeps_button_mode_when_quartz_missing_on_macos(self):
+        _FakeWakeListenerThread.instances.clear()
         with patch("src.backend.services.voice_service.sys.platform", "darwin"), patch(
             "src.backend.services.voice_service._optional_import",
             side_effect=lambda name: None if name == "Quartz" else object(),
+        ), patch("src.backend.services.voice_service.WakeWordListenerThread", _FakeWakeListenerThread), patch(
+            "src.backend.services.voice_service.WhisperWarmupThread", _FakeWarmupThread
         ):
             service = VoiceService()
-            self.assertFalse(service.start())
-            self.assertIn("Quartz", service.startup_error())
+            self.assertTrue(service.start())
+            self.assertTrue(service.is_available())
+            self.assertTrue(service.is_prepared())
+            self.assertNotIn("hold", service.usage_hint().lower())
+            self.assertEqual(len(_FakeWakeListenerThread.instances), 0)
+            service.stop()
 
     # -------------------------
     # FUNCTION: test_start_uses_quartz_backend_on_macos
@@ -246,16 +330,80 @@ class TestVoiceServiceFormal(unittest.TestCase):
     # -------------------------
     def test_start_uses_quartz_backend_on_macos(self):
         _FakeHotkeyThread.instances.clear()
+        _FakeWakeListenerThread.instances.clear()
         with patch("src.backend.services.voice_service.sys.platform", "darwin"), patch(
             "src.backend.services.voice_service._optional_import",
             side_effect=lambda _name: object(),
         ), patch("src.backend.services.voice_service.HotkeyListenerThread", _FakeHotkeyThread), patch(
+            "src.backend.services.voice_service.WakeWordListenerThread", _FakeWakeListenerThread
+        ), patch(
             "src.backend.services.voice_service.WhisperWarmupThread", _FakeWarmupThread
         ):
             service = VoiceService()
             self.assertTrue(service.start())
             self.assertEqual(_FakeHotkeyThread.instances[-1].backend, "quartz")
+            self.assertTrue(service.is_prepared())
+            self.assertEqual(len(_FakeWakeListenerThread.instances), 0)
             service.stop()
+
+    # -------------------------
+    # FUNCTION: test_start_wake_word_mode_starts_background_listener
+    # Purpose: Validate explicit wake-word mode startup behavior.
+    # -------------------------
+    def test_start_wake_word_mode_starts_background_listener(self):
+        _FakeWakeListenerThread.instances.clear()
+        with patch("src.backend.services.voice_service.sys.platform", "linux"), patch(
+            "src.backend.services.voice_service._optional_import",
+            side_effect=lambda _name: object(),
+        ), patch("src.backend.services.voice_service.HotkeyListenerThread", _FakeHotkeyThread), patch(
+            "src.backend.services.voice_service.WakeWordListenerThread", _FakeWakeListenerThread
+        ), patch("src.backend.services.voice_service.WhisperWarmupThread", _FakeWarmupThread):
+            service = VoiceService(activation_mode=VoiceActivationMode.WAKE_WORD.value)
+            self.assertTrue(service.start())
+            self.assertTrue(service.is_prepared())
+            self.assertIn("hey autoreturn", service.usage_hint().lower())
+            self.assertEqual(len(_FakeWakeListenerThread.instances), 1)
+            self.assertTrue(_FakeWakeListenerThread.instances[0].isRunning())
+            service.stop()
+
+    # -------------------------
+    # FUNCTION: test_cached_model_marks_voice_prepared_immediately
+    # Purpose: Validate prepared state when Whisper is already cached.
+    # -------------------------
+    def test_cached_model_marks_voice_prepared_immediately(self):
+        service = VoiceService()
+        service._enabled = True
+        service._resolved_device = "cpu"
+        with patch(
+            "src.backend.services.voice_service.WhisperTranscriberThread.is_model_cached",
+            return_value=True,
+        ):
+            service._start_model_warmup()
+        self.assertTrue(service.is_prepared())
+
+    # -------------------------
+    # FUNCTION: test_button_capture_starts_auto_stop_recorder
+    # Purpose: Validate Mic button capture path.
+    # -------------------------
+    def test_button_capture_starts_auto_stop_recorder(self):
+        service = VoiceService()
+        starts = []
+
+        class _RecorderForStart(_FakeRecorderThread):
+            def __init__(self, stop_on_silence: bool = False):
+                super().__init__(stop_on_silence=stop_on_silence)
+                self.recording_stopped = _FakeSignal()
+                self.finished = _FakeSignal()
+
+            def start(self):
+                starts.append(self.stop_on_silence)
+
+        service._enabled = True
+        with patch("src.backend.services.voice_service.AudioRecorderThread", _RecorderForStart):
+            self.assertTrue(service.start_button_capture())
+
+        self.assertEqual(starts, [True])
+        self.assertEqual(service.current_activation_source(), "button")
 
     # -------------------------
     # FUNCTION: test_recording_stopped_rejects_empty_or_short_audio
@@ -324,6 +472,36 @@ class TestVoiceServiceFormal(unittest.TestCase):
 
         self.assertEqual(commands, ["sync gmail"])
         self.assertEqual(completions, [True])
+
+    # -------------------------
+    # FUNCTION: test_transcription_cleanup_strips_terminal_punctuation
+    # Purpose: Validate cleanup of terminal punctuation from Whisper output.
+    # -------------------------
+    def test_transcription_cleanup_strips_terminal_punctuation(self):
+        cleaned = VoiceCommandParser._cleanup_transcribed_text(" search for john. ")
+        self.assertEqual(cleaned, "search for john")
+
+    # -------------------------
+    # FUNCTION: test_wake_word_only_starts_followup_recording_after_transcriber_finishes
+    # Purpose: Validate wake-word-only follow-up recording flow.
+    # -------------------------
+    def test_wake_word_only_starts_followup_recording_after_transcriber_finishes(self):
+        service = VoiceService()
+        starts = []
+
+        def _fake_start_recording_session(source, stop_on_silence):
+            starts.append((source, stop_on_silence))
+            return True
+
+        service._enabled = True
+        service._wake_transcriber = _FakeTranscriber(audio_input=None)
+        service._on_wake_transcription_ready("hey autoreturn")
+        self.assertTrue(service._pending_wake_followup)
+
+        with patch.object(service, "_start_recording_session", side_effect=_fake_start_recording_session):
+            service._on_wake_transcriber_finished()
+
+        self.assertEqual(starts, [("wake-word", True)])
 
     # -------------------------
     # FUNCTION: test_prepare_capture_trims_and_normalizes_quiet_speech

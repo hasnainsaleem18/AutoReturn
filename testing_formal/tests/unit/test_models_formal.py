@@ -12,6 +12,7 @@ from src.backend.models.automation_models import (
     AutomationAction,
     AutomationSettings,
     PolicyDecision,
+    VoiceActivationMode,
     VoiceSettings,
 )
 from src.backend.models.event_models import CalendarItemType, EventCandidate
@@ -30,14 +31,17 @@ class TestModelsFormal(unittest.TestCase):
         self.assertTrue(settings.require_user_confirm_plain_reply)
         self.assertTrue(settings.voice.enabled)
         self.assertEqual(settings.voice.hotkey, "ctrl+shift+v")
+        self.assertEqual(settings.voice.activation_mode, VoiceActivationMode.MANUAL)
 
     # -------------------------
     # FUNCTION: test_voice_settings_model
     # Purpose: Validate the voice settings model scenario.
     # -------------------------
     def test_voice_settings_model(self):
-        settings = VoiceSettings(model_size="small", language="en")
-        self.assertEqual(settings.model_size, "small")
+        settings = VoiceSettings(language="en")
+        self.assertTrue(settings.enabled)
+        self.assertEqual(settings.hotkey, "ctrl+shift+v")
+        self.assertEqual(settings.activation_mode, VoiceActivationMode.MANUAL)
         self.assertEqual(settings.language, "en")
 
     # -------------------------

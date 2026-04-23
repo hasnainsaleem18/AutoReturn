@@ -27,7 +27,7 @@ from src.frontend.ui.styles import get_stylesheet
 
 # Local imports for tone features
 from src.backend.models.tone_models import ToneType, get_tone_display_name
-from src.backend.models.automation_models import AutomationSettings, VoiceSettings
+from src.backend.models.automation_models import AutomationSettings, VoiceActivationMode, VoiceSettings
 
 # -------------------------
 # STYLE CONSTANTS
@@ -2028,7 +2028,7 @@ This token will let your desktop app send and receive messages as you, including
         voice_layout.addWidget(self._create_subsection_header("Voice Control"))
         voice_layout.addWidget(
             self._create_description(
-                "Configure push-to-talk voice control. Changes apply on the next app start."
+                "Configure voice control. Manual mode only listens when you click Mic or use the hotkey. Wake Word mode keeps a background listener active so you can say 'Hey AutoReturn'. Changes apply on the next app start."
             )
         )
 
@@ -2051,26 +2051,24 @@ This token will let your desktop app send and receive messages as you, including
         self.voice_hotkey_display.setStyleSheet(input_style)
         voice_layout.addWidget(self.voice_hotkey_display, 0, Qt.AlignLeft)
 
-        model_label = QLabel("Whisper Model Size")
-        model_label.setStyleSheet(
+        activation_label = QLabel("Activation Mode")
+        activation_label.setStyleSheet(
             f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;"
         )
-        voice_layout.addWidget(model_label)
+        voice_layout.addWidget(activation_label)
 
-        self.voice_model_size_combo = QComboBox()
-        self.voice_model_size_combo.setMaximumWidth(240)
-        self.voice_model_size_combo.setStyleSheet(input_style)
-        self.voice_model_size_combo.addItem("Tiny", "tiny")
-        self.voice_model_size_combo.addItem("Base", "base")
-        self.voice_model_size_combo.addItem("Small", "small")
-        voice_index = self.voice_model_size_combo.findData(self.automation_settings.voice.model_size)
-        if voice_index >= 0:
-            self.voice_model_size_combo.setCurrentIndex(voice_index)
-        voice_layout.addWidget(self.voice_model_size_combo, 0, Qt.AlignLeft)
+        self.voice_activation_mode_combo = QComboBox()
+        self.voice_activation_mode_combo.setMaximumWidth(260)
+        self.voice_activation_mode_combo.setStyleSheet(input_style)
+        self.voice_activation_mode_combo.addItem("Manual", VoiceActivationMode.MANUAL.value)
+        self.voice_activation_mode_combo.addItem("Wake Word", VoiceActivationMode.WAKE_WORD.value)
+        activation_index = self.voice_activation_mode_combo.findData(self.automation_settings.voice.activation_mode.value)
+        if activation_index >= 0:
+            self.voice_activation_mode_combo.setCurrentIndex(activation_index)
+        voice_layout.addWidget(self.voice_activation_mode_combo, 0, Qt.AlignLeft)
 
         voice_note = QLabel(
-            "Base = recommended balance. Tiny = fastest on CPU. "
-            "Small = more accurate but best with Apple GPU/CUDA."
+            "Manual mode keeps the mic closed until you trigger it. Wake Word mode behaves more like Siri and needs background microphone access. Voice uses the built-in Whisper Base model for a stable balance of speed and accuracy."
         )
         voice_note.setWordWrap(True)
         voice_note.setStyleSheet(
@@ -2122,7 +2120,7 @@ This token will let your desktop app send and receive messages as you, including
                 voice=VoiceSettings(
                     enabled=self.voice_enabled_checkbox.isChecked(),
                     hotkey=self.automation_settings.voice.hotkey,
-                    model_size=self.voice_model_size_combo.currentData(),
+                    activation_mode=VoiceActivationMode(self.voice_activation_mode_combo.currentData()),
                     language=self.automation_settings.voice.language,
                 ),
             )

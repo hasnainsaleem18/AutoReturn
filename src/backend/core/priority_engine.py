@@ -26,6 +26,11 @@ class PriorityEngine:
     Scores messages 0-10 using keyword, deadline, and sender algorithms.
     """
 
+    _dataset_cache: Dict[str, dict] = {}
+    _nlp_model = None
+    _nlp_model_name = "en_core_web_md"
+    _nlp_load_failed = False
+
     # -------------------------
     # CONSTRUCTOR: LOAD CONFIG
     # Sets up all weights, word lists, and thresholds from the JSON dataset.
@@ -71,14 +76,7 @@ class PriorityEngine:
               f"{len(self.action_call_words)} action words, "
               f"{len(self.user_priority_list)} sender rules")
 
-        try:
-            import spacy
-            print("PriorityEngine: Loading Semantic Analysis model (en_core_web_md)...")
-            self.nlp = spacy.load("en_core_web_md")
-            print("Semantic Analysis ready. Engine will detect negations like 'not urgent'.")
-        except Exception as e:
-            print(f"Semantic Analysis model failed to load: {e}")
-            self.nlp = None
+        self.nlp = self._load_shared_nlp()
 
     # -------------------------
     # LOAD DATASET FROM JSON FILE
@@ -86,9 +84,13 @@ class PriorityEngine:
     # Returns empty dict if file is missing so the engine still runs safely.
     # -------------------------
     def _load_dataset(self, path: str) -> dict:
+        cached = self._dataset_cache.get(path)
+        if cached is not None:
+            return cached
         try:
             with open(path, 'r') as f:
                 data = json.load(f)
+            self._dataset_cache[path] = data
             return data
         except FileNotFoundError:
             print(f"Priority dataset not found at {path}. Using empty defaults.")
@@ -96,6 +98,24 @@ class PriorityEngine:
         except json.JSONDecodeError as e:
             print(f"Priority dataset JSON error: {e}. Using empty defaults.")
             return {}
+
+    @classmethod
+    def _load_shared_nlp(cls):
+        if cls._nlp_model is not None:
+            return cls._nlp_model
+        if cls._nlp_load_failed:
+            return None
+
+        try:
+            import spacy
+            print(f"PriorityEngine: Loading Semantic Analysis model ({cls._nlp_model_name})...")
+            cls._nlp_model = spacy.load(cls._nlp_model_name)
+            print("Semantic Analysis ready. Engine will detect negations like 'not urgent'.")
+            return cls._nlp_model
+        except Exception as e:
+            print(f"Semantic Analysis model failed to load: {e}")
+            cls._nlp_load_failed = True
+            return None
 
     # -------------------------
     # ALGORITHM 01 - MAIN PRIORITY CLASSIFIER

@@ -23,12 +23,19 @@ class AutomationAction(str, Enum):
     IGNORE = "ignore"
 
 
+class VoiceActivationMode(str, Enum):
+    """Voice activation mode for microphone behavior."""
+
+    MANUAL = "manual"
+    WAKE_WORD = "wake_word"
+
+
 class VoiceSettings(BaseModel):
     """Persisted configuration for push-to-talk voice control."""
 
     enabled: bool = True
     hotkey: str = "ctrl+shift+v"
-    model_size: str = "base"
+    activation_mode: VoiceActivationMode = VoiceActivationMode.MANUAL
     language: str = "en"
 
 

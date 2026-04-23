@@ -16,11 +16,15 @@ import importlib
 import os
 import re
 import sys
+from collections import deque
 from dataclasses import dataclass
+from difflib import get_close_matches
 from threading import Lock
 from typing import Any, Dict, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
+
+from src.backend.models.automation_models import VoiceActivationMode
 
 
 def _optional_import(module_name: str):
@@ -54,6 +58,15 @@ class AudioCapture:
 
 class VoiceCommandParser:
     """Fast rule/regex command router for voice control."""
+
+    TRAILING_PUNCTUATION = " \t\r\n.,!?;:"
+    WAKE_WORD_ALIASES = (
+        ("hey", "autoreturn"),
+        ("hi", "autoreturn"),
+        ("hello", "autoreturn"),
+        ("okay", "autoreturn"),
+        ("ok", "autoreturn"),
+    )
 
     UI_ACTIONS = {
         "show all": ("filter", {"filter_id": "all"}),
@@ -114,23 +127,78 @@ class VoiceCommandParser:
         "fifth": 5,
     }
 
+    COMMAND_VOCABULARY = {
+        "all",
+        "analyze",
+        "back",
+        "check",
+        "draft",
+        "email",
+        "everything",
+        "fetch",
+        "find",
+        "for",
+        "generate",
+        "get",
+        "gmail",
+        "go",
+        "high",
+        "look",
+        "mail",
+        "message",
+        "messages",
+        "next",
+        "notification",
+        "notifications",
+        "open",
+        "page",
+        "previous",
+        "priority",
+        "read",
+        "reply",
+        "respond",
+        "search",
+        "send",
+        "settings",
+        "show",
+        "slack",
+        "summaries",
+        "summarize",
+        "summary",
+        "sync",
+        "to",
+        "urgent",
+        "view",
+        "write",
+    }
+
     @classmethod
     def parse(cls, raw_text: str) -> VoiceCommand:
         """Parse a spoken command into a UI action or orchestrator fallback."""
-        text = cls._normalize(raw_text)
+        cleaned_raw = cls._cleanup_transcribed_text(raw_text)
+        wake_command = cls.extract_wake_command(cleaned_raw)
+        if wake_command is not None:
+            if not wake_command:
+                return VoiceCommand("ui_action", "noop", {}, raw_text)
+            cleaned_raw = wake_command
+        text = cls._normalize(cleaned_raw)
         if not text:
             return VoiceCommand("ui_action", "noop", {}, raw_text)
 
-        ui_match = cls._match_ui_action(text)
+        corrected_text = cls._correct_command_tokens(text)
+
+        ui_match = cls._match_ui_action(corrected_text)
+        if ui_match is None:
+            ui_match = cls._match_fuzzy_ui_action(corrected_text)
         if ui_match is not None:
             action, params = ui_match
             return VoiceCommand("ui_action", action, dict(params), raw_text)
 
-        search_query = cls._extract_search_query(raw_text)
+        search_query = cls._extract_search_query(cleaned_raw, corrected_text)
         if search_query:
             return VoiceCommand("ui_action", "search", {"query": search_query}, raw_text)
 
-        reply_target = cls._extract_reply_target(text)
+        reply_target = cls._extract_reply_target(corrected_text)
         if reply_target:
             return VoiceCommand(
                 "ui_action",
@@ -139,7 +207,7 @@ class VoiceCommandParser:
                 raw_text,
             )
 
-        draft_target = cls._extract_draft_target(text)
+        draft_target = cls._extract_draft_target(corrected_text)
         if draft_target:
             return VoiceCommand(
                 "ui_action",
@@ -148,8 +216,8 @@ class VoiceCommandParser:
                 raw_text,
             )
 
-        message_index = cls._extract_message_index(text)
-        if message_index is not None and cls._contains_any(text, ("open", "show", "read", "view")):
+        message_index = cls._extract_message_index(corrected_text)
+        if message_index is not None and cls._contains_any(corrected_text, ("open", "show", "read", "view")):
             return VoiceCommand(
                 "ui_action",
                 "open_message_by_index",
@@ -157,11 +225,11 @@ class VoiceCommandParser:
                 raw_text,
             )
 
-        if cls._contains_any(text, cls.BACKEND_TRIGGERS):
+        if cls._contains_any(corrected_text, cls.BACKEND_TRIGGERS):
             return VoiceCommand(
                 "agent_action",
                 "orchestrator",
-                {"command": raw_text.strip()},
+                {"command": cleaned_raw},
                 raw_text,
             )
 
@@ -171,13 +239,62 @@ class VoiceCommandParser:
         return VoiceCommand(
             "agent_action",
             "orchestrator",
-            {"command": raw_text.strip()},
+            {"command": cleaned_raw},
             raw_text,
         )
 
     @classmethod
     def _normalize(cls, text: str) -> str:
         return re.sub(r"\s+", " ", (text or "").strip()).lower()
+
+    @classmethod
+    def _cleanup_transcribed_text(cls, text: str) -> str:
+        cleaned = re.sub(r"\s+", " ", (text or "").strip())
+        cleaned = cleaned.strip(cls.TRAILING_PUNCTUATION)
+        return cleaned
+
+    @classmethod
+    def extract_wake_command(cls, text: str) -> Optional[str]:
+        normalized = cls._normalize(text)
+        if not normalized:
+            return None
+
+        normalized = normalized.replace("auto return", "autoreturn")
+        normalized = normalized.replace("auto-return", "autoreturn")
+        tokens = normalized.split()
+        if len(tokens) < 2:
+            return None
+
+        wake_matches = cls.WAKE_WORD_ALIASES
+        first = tokens[0]
+        second = cls._closest_token(tokens[1], ("autoreturn",))
+        for intro, expected_name in wake_matches:
+            if first == intro and second == expected_name:
+                remainder = " ".join(tokens[2:]).strip()
+                remainder = re.sub(r"^(please\s+)", "", remainder)
+                return cls._cleanup_transcribed_text(remainder)
+        return None
+
+    @classmethod
+    def _correct_command_tokens(cls, text: str) -> str:
+        corrected_tokens = []
+        for token in text.split():
+            bare = token.strip(cls.TRAILING_PUNCTUATION)
+            if not bare or "@" in bare or any(char.isdigit() for char in bare):
+                corrected_tokens.append(bare or token)
+                continue
+
+            if bare in cls.COMMAND_VOCABULARY or len(bare) < 4:
+                corrected_tokens.append(bare)
+                continue
+
+            corrected_tokens.append(cls._closest_token(bare, tuple(cls.COMMAND_VOCABULARY), cutoff=0.84))
+        return " ".join(corrected_tokens)
+
+    @classmethod
+    def _closest_token(cls, token: str, vocabulary: tuple[str, ...], cutoff: float = 0.84) -> str:
+        match = get_close_matches(token, vocabulary, n=1, cutoff=cutoff)
+        return match[0] if match else token
 
     @classmethod
     def _match_ui_action(cls, text: str) -> Optional[tuple]:
@@ -189,27 +306,54 @@ class VoiceCommandParser:
         return None
 
     @classmethod
-    def _extract_search_query(cls, raw_text: str) -> Optional[str]:
+    def _match_fuzzy_ui_action(cls, text: str) -> Optional[tuple]:
+        match = get_close_matches(text, tuple(cls.UI_ACTIONS.keys()), n=1, cutoff=0.88)
+        if not match:
+            return None
+        return cls.UI_ACTIONS.get(match[0])
+
+    @classmethod
+    def _extract_search_query(cls, raw_text: str, corrected_text: Optional[str] = None) -> Optional[str]:
         for pattern in cls.SEARCH_PATTERNS:
             match = pattern.match(raw_text or "")
             if match:
-                query = re.sub(r"\s+", " ", match.group(1).strip())
+                query = cls._clean_search_query(match.group(1))
+                return query or None
+
+        fallback_text = corrected_text or ""
+        fallback_patterns = (
+            re.compile(r"^\s*search\s+for\s+(.+?)\s*$", re.IGNORECASE),
+            re.compile(r"^\s*search\s+(.+?)\s*$", re.IGNORECASE),
+            re.compile(r"^\s*find\s+(.+?)\s*$", re.IGNORECASE),
+            re.compile(r"^\s*look\s+for\s+(.+?)\s*$", re.IGNORECASE),
+        )
+        for pattern in fallback_patterns:
+            match = pattern.match(fallback_text)
+            if match:
+                query = cls._clean_search_query(match.group(1))
                 return query or None
         return None
 
     @classmethod
+    def _clean_search_query(cls, query: str) -> Optional[str]:
+        cleaned = re.sub(r"\s+", " ", (query or "").strip())
+        cleaned = cleaned.strip("\"'`")
+        cleaned = cleaned.rstrip(".,!?;:")
+        return cleaned or None
+
+    @classmethod
     def _extract_reply_target(cls, text: str) -> Optional[str]:
         patterns = (
-            r"\b(?:reply|respond)\s+to\s+(.+?)\s*$",
-            r"\bsend\s+(?:a\s+)?message\s+to\s+(.+?)\s*$",
+            r"\b(?:reply|respond)\s+(?:to|too)\s+(.+?)\s*$",
+            r"\bsend\s+(?:a\s+)?message\s+(?:to|too)\s+(.+?)\s*$",
         )
         return cls._extract_named_target(text, patterns)
 
     @classmethod
     def _extract_draft_target(cls, text: str) -> Optional[str]:
         patterns = (
-            r"\bdraft(?:\s+(?:a|the))?(?:\s+response)?\s+(?:for|to)\s+(.+?)\s*$",
-            r"\bwrite(?:\s+(?:a|the))?(?:\s+response)?\s+(?:for|to)\s+(.+?)\s*$",
+            r"\bdraft(?:\s+(?:a|the))?(?:\s+response)?\s+(?:for|to|too)\s+(.+?)\s*$",
+            r"\bwrite(?:\s+(?:a|the))?(?:\s+response)?\s+(?:for|to|too)\s+(.+?)\s*$",
         )
         return cls._extract_named_target(text, patterns)
 
@@ -566,13 +710,15 @@ class AudioRecorderThread(QThread):
     TARGET_PEAK = 0.92
     MAX_GAIN = 6.0
     MIN_SIGNAL_PEAK = 0.015
+    AUTO_STOP_SILENCE_SECONDS = 0.95
     EDGE_NOISE_SECONDS = 0.18
     TRIM_PADDING_SECONDS = 0.18
     LOW_FREQUENCY_CUTOFF = 80
 
-    def __init__(self):
+    def __init__(self, stop_on_silence: bool = False):
         super().__init__()
         self._stop_flag = False
+        self.stop_on_silence = stop_on_silence
 
     def run(self):
         np = _optional_import("numpy")
@@ -586,6 +732,8 @@ class AudioRecorderThread(QThread):
         frames = []
         total_frames = 0
         max_frames = self.SAMPLE_RATE * self.MAX_SECONDS
+        silence_seconds = 0.0
+        speech_detected = False
 
         try:
             with sd.InputStream(
@@ -597,8 +745,19 @@ class AudioRecorderThread(QThread):
             ) as stream:
                 while not self._stop_flag and total_frames < max_frames:
                     block, _overflowed = stream.read(self.BLOCK_SIZE)
-                    frames.append(block.copy())
+                    block_copy = block.copy()
+                    frames.append(block_copy)
                     total_frames += len(block)
+
+                    if self.stop_on_silence:
+                        peak = float(np.max(np.abs(block_copy))) if len(block_copy) else 0.0
+                        if peak >= self.MIN_SIGNAL_PEAK * 0.9:
+                            speech_detected = True
+                            silence_seconds = 0.0
+                        elif speech_detected:
+                            silence_seconds += len(block_copy) / float(self.SAMPLE_RATE)
+                            if silence_seconds >= self.AUTO_STOP_SILENCE_SECONDS:
+                                break
         except Exception as exc:
             print(f"[VoiceService] Recording error: {exc}")
             self.recording_stopped.emit(None)
@@ -716,11 +875,120 @@ class AudioRecorderThread(QThread):
         )
 
 
+class WakeWordListenerThread(QThread):
+    """Listen for short wake-word utterances in the background."""
+
+    wake_audio_ready = Signal(object)
+    listener_error = Signal(str)
+
+    SAMPLE_RATE = 16000
+    BLOCK_SIZE = 1024
+    MIN_SIGNAL_PEAK = 0.02
+    MIN_CAPTURE_SECONDS = 0.7
+    MAX_CAPTURE_SECONDS = 4.5
+    SILENCE_SECONDS = 0.8
+    PRE_ROLL_SECONDS = 0.35
+
+    def __init__(self):
+        super().__init__()
+        self._running = False
+
+    def run(self):
+        np = _optional_import("numpy")
+        sd = _optional_import("sounddevice")
+        signal = _optional_import("scipy.signal")
+
+        if np is None or sd is None:
+            self.listener_error.emit("Wake word listener dependencies are unavailable.")
+            return
+
+        self._running = True
+        history = deque(maxlen=max(int(self.PRE_ROLL_SECONDS * self.SAMPLE_RATE / self.BLOCK_SIZE), 1))
+        frames = []
+        segment_seconds = 0.0
+        silence_seconds = 0.0
+        speech_detected = False
+
+        try:
+            with sd.InputStream(
+                samplerate=self.SAMPLE_RATE,
+                channels=1,
+                dtype="float32",
+                blocksize=self.BLOCK_SIZE,
+                latency="low",
+            ) as stream:
+                while self._running:
+                    block, _overflowed = stream.read(self.BLOCK_SIZE)
+                    block_copy = block.copy()
+                    peak = float(np.max(np.abs(block_copy))) if len(block_copy) else 0.0
+                    block_seconds = len(block_copy) / float(self.SAMPLE_RATE)
+
+                    if not speech_detected:
+                        history.append(block_copy)
+                        if peak >= self.MIN_SIGNAL_PEAK:
+                            speech_detected = True
+                            frames = list(history)
+                            history.clear()
+                            segment_seconds = sum(len(frame) for frame in frames) / float(self.SAMPLE_RATE)
+                            silence_seconds = 0.0
+                        continue
+
+                    frames.append(block_copy)
+                    segment_seconds += block_seconds
+
+                    if peak >= self.MIN_SIGNAL_PEAK * 0.8:
+                        silence_seconds = 0.0
+                    else:
+                        silence_seconds += block_seconds
+
+                    if segment_seconds >= self.MAX_CAPTURE_SECONDS or silence_seconds >= self.SILENCE_SECONDS:
+                        self._emit_capture(frames, np, signal)
+                        frames = []
+                        segment_seconds = 0.0
+                        silence_seconds = 0.0
+                        speech_detected = False
+        except Exception as exc:
+            if self._running:
+                self.listener_error.emit(str(exc))
+        finally:
+            self._running = False
+
+    def stop(self):
+        self._running = False
+        self.quit()
+
+    def _emit_capture(self, frames, np_module, signal_module):
+        if not frames:
+            return
+
+        try:
+            audio = np_module.concatenate(frames, axis=0).flatten()
+            capture = AudioRecorderThread.prepare_capture(
+                audio,
+                sample_rate=self.SAMPLE_RATE,
+                np_module=np_module,
+                signal_module=signal_module,
+            )
+        except Exception:
+            capture = None
+
+        if capture is None or capture.duration_seconds < self.MIN_CAPTURE_SECONDS:
+            return
+
+        self.wake_audio_ready.emit(capture)
+
+
 class WhisperTranscriberThread(QThread):
     """Transcribe a prepared audio buffer using local Whisper."""
 
     transcription_ready = Signal(str)
     transcription_failed = Signal(str)
+    DEFAULT_MODEL_SIZE = "base"
+    COMMAND_PROMPT = (
+        "Voice commands for AutoReturn. Keywords include gmail, slack, urgent, "
+        "settings, notifications, search, reply, draft, summarize, sync, "
+        "next page, previous page, message, and the wake phrase 'Hey AutoReturn'."
+    )
 
     _model_cache: Dict[tuple[str, str], Any] = {}
     _cache_lock = Lock()
@@ -729,7 +997,7 @@ class WhisperTranscriberThread(QThread):
     def __init__(
         self,
         audio_input: Any,
-        model_size: str = "base",
+        model_size: str = DEFAULT_MODEL_SIZE,
         language: str = "en",
         preferred_device: Optional[str] = None,
     ):
@@ -752,10 +1020,11 @@ class WhisperTranscriberThread(QThread):
                 fp16=device == "cuda",
                 verbose=False,
                 condition_on_previous_text=False,
+                initial_prompt=self.COMMAND_PROMPT,
                 temperature=0.0,
                 no_speech_threshold=0.45,
             )
-            text = re.sub(r"\s+", " ", (result.get("text") or "").strip())
+            text = VoiceCommandParser._cleanup_transcribed_text(result.get("text") or "")
             if text:
                 self.transcription_ready.emit(text)
             else:
@@ -824,6 +1093,37 @@ class WhisperTranscriberThread(QThread):
         return device
 
     @classmethod
+    def warm_runtime(
+        cls,
+        model_size: str,
+        preferred_device: Optional[str] = None,
+        language: str = "en",
+    ) -> str:
+        """Load the model and run a tiny silent inference to warm the first command path."""
+        model, device = cls.load_cached_model(model_size, preferred_device)
+        np = _optional_import("numpy")
+        if np is None:
+            return device
+
+        try:
+            warmup_audio = np.zeros(16000, dtype=np.float32)
+            model.transcribe(
+                warmup_audio,
+                language=language,
+                task="transcribe",
+                fp16=device == "cuda",
+                verbose=False,
+                condition_on_previous_text=False,
+                initial_prompt=cls.COMMAND_PROMPT,
+                temperature=0.0,
+                no_speech_threshold=0.45,
+            )
+        except Exception:
+            # Runtime warmup is best-effort; loaded model is still useful even if the dry run fails.
+            pass
+        return device
+
+    @classmethod
     def is_model_cached(cls, model_size: str, preferred_device: Optional[str] = None) -> bool:
         device = preferred_device or cls.detect_device()
         return (model_size, device) in cls._model_cache or (model_size, "cpu") in cls._model_cache
@@ -835,16 +1135,30 @@ class WhisperWarmupThread(QThread):
     warmup_complete = Signal(str)
     warmup_failed = Signal(str)
 
-    def __init__(self, model_size: str = "base", preferred_device: Optional[str] = None):
+    def __init__(
+        self,
+        model_size: str = WhisperTranscriberThread.DEFAULT_MODEL_SIZE,
+        preferred_device: Optional[str] = None,
+        language: str = "en",
+    ):
         super().__init__()
         self.model_size = model_size
         self.preferred_device = preferred_device
+        self.language = language
+        self.resolved_device: Optional[str] = None
+        self.last_error: str = ""
 
     def run(self):
         try:
-            device = WhisperTranscriberThread.preload_model(self.model_size, self.preferred_device)
+            device = WhisperTranscriberThread.warm_runtime(
+                self.model_size,
+                self.preferred_device,
+                self.language,
+            )
+            self.resolved_device = device
             self.warmup_complete.emit(device)
         except Exception as exc:
+            self.last_error = str(exc)
             self.warmup_failed.emit(str(exc))
 
 
@@ -858,21 +1172,38 @@ class VoiceService(QObject):
     error_occurred = Signal(str)
 
     MIN_AUDIO_SECONDS = 0.5
+    MODEL_SIZE = WhisperTranscriberThread.DEFAULT_MODEL_SIZE
+    WAKE_WORD_HINT = "Hey AutoReturn"
+    STARTUP_WARMUP_WAIT_MS = 1200
 
-    def __init__(self, hotkey: str = "ctrl+shift+v", model_size: str = "base", language: str = "en"):
+    def __init__(
+        self,
+        hotkey: str = "ctrl+shift+v",
+        model_size: str = MODEL_SIZE,
+        activation_mode: str = VoiceActivationMode.MANUAL.value,
+        language: str = "en",
+    ):
         super().__init__()
         self.hotkey = hotkey
-        self.model_size = model_size
+        self.model_size = model_size or self.MODEL_SIZE
+        self.activation_mode = self._normalize_activation_mode(activation_mode)
         self.language = language
 
         self._enabled = False
         self._is_listening = False
         self._startup_error = ""
         self._hotkey_thread: Optional[HotkeyListenerThread] = None
+        self._wake_listener: Optional[WakeWordListenerThread] = None
         self._recorder: Optional[AudioRecorderThread] = None
         self._transcriber: Optional[WhisperTranscriberThread] = None
+        self._wake_transcriber: Optional[WhisperTranscriberThread] = None
         self._warmup_thread: Optional[WhisperWarmupThread] = None
         self._resolved_device: Optional[str] = None
+        self._activation_source: Optional[str] = None
+        self._hotkey_available = False
+        self._wake_word_available = False
+        self._pending_wake_followup = False
+        self._startup_prepared = False
 
     def start(self) -> bool:
         """Start background voice capture. Returns True when the listener is live."""
@@ -887,35 +1218,17 @@ class VoiceService(QObject):
             print(f"[VoiceService] {self._startup_error}")
             return False
 
-        hotkey_backend = self._select_hotkey_backend()
-        hotkey_dependency = "Quartz" if hotkey_backend == "quartz" else "keyboard"
-        hotkey_module = _optional_import(hotkey_dependency)
-        if hotkey_module is None:
-            self._startup_error = f"Voice unavailable: missing dependencies ({hotkey_dependency})."
-            self._enabled = False
-            print(f"[VoiceService] {self._startup_error}")
-            return False
-
-        if hotkey_backend == "quartz" and not HotkeyListenerThread._macos_access_granted(hotkey_module):
-            self._startup_error = (
-                "Voice hotkey unavailable: allow Terminal or Python in macOS "
-                "Privacy & Security > Accessibility and Input Monitoring, then restart."
-            )
-            self._enabled = False
-            print(f"[VoiceService] {self._startup_error}")
-            return False
-
         try:
-            self._hotkey_thread = HotkeyListenerThread(self.hotkey, backend=hotkey_backend)
-            self._hotkey_thread.hotkey_pressed.connect(self._on_hotkey_pressed)
-            self._hotkey_thread.hotkey_released.connect(self._on_hotkey_released)
-            self._hotkey_thread.listener_error.connect(self._on_listener_error)
-            self._hotkey_thread.start()
             self._enabled = True
             self._startup_error = ""
+            self._startup_prepared = False
             self._resolved_device = WhisperTranscriberThread.detect_device()
             self._start_model_warmup()
-            print(f"[VoiceService] Ready. Hold {self.hotkey.upper()} to speak.")
+            self._start_hotkey_listener()
+            if self.activation_mode == VoiceActivationMode.WAKE_WORD.value:
+                self._start_wake_listener()
+            self._await_initial_warmup()
+            print(f"[VoiceService] Ready. {self.usage_hint()}")
             return True
         except Exception as exc:
             self._enabled = False
@@ -927,12 +1240,12 @@ class VoiceService(QObject):
         """Stop background hotkey listening and any in-flight recording/transcription."""
         self._enabled = False
         self._is_listening = False
+        self._activation_source = None
+        self._pending_wake_followup = False
+        self._startup_prepared = False
 
-        if self._hotkey_thread is not None:
-            self._hotkey_thread.stop()
-            self._hotkey_thread.wait(2000)
-            self._hotkey_thread.deleteLater()
-            self._hotkey_thread = None
+        self._stop_hotkey_listener()
+        self._stop_wake_listener()
 
         if self._recorder is not None:
             if self._recorder.isRunning():
@@ -947,6 +1260,12 @@ class VoiceService(QObject):
             self._transcriber.deleteLater()
             self._transcriber = None
 
+        if self._wake_transcriber is not None:
+            if self._wake_transcriber.isRunning():
+                self._wake_transcriber.wait(2000)
+            self._wake_transcriber.deleteLater()
+            self._wake_transcriber = None
+
         if self._warmup_thread is not None:
             if self._warmup_thread.isRunning():
                 self._warmup_thread.wait(2000)
@@ -954,38 +1273,75 @@ class VoiceService(QObject):
             self._warmup_thread = None
 
     def is_available(self) -> bool:
-        return self._enabled and self._hotkey_thread is not None and self._hotkey_thread.isRunning()
+        return self._enabled
+
+    def is_recording(self) -> bool:
+        return self._is_listening
+
+    def current_activation_source(self) -> str:
+        return self._activation_source or ""
+
+    def usage_hint(self) -> str:
+        triggers = ["click Mic"]
+        if self._hotkey_available:
+            triggers.append(f"hold {self.hotkey.upper()}")
+        if self._wake_word_available:
+            triggers.append(f"say '{self.WAKE_WORD_HINT}'")
+        if len(triggers) == 1:
+            return "Click Mic to start a voice command."
+        if len(triggers) == 2:
+            return f"Use {triggers[0]} or {triggers[1]} to start a voice command."
+        return "Use " + ", ".join(triggers[:-1]) + f", or {triggers[-1]} to start a voice command."
 
     def startup_error(self) -> str:
         return self._startup_error
 
-    def _on_hotkey_pressed(self):
-        if not self._enabled or self._is_listening:
-            return
-        if self._recorder is not None and self._recorder.isRunning():
-            return
+    def is_prepared(self) -> bool:
+        return self._startup_prepared
 
+    def _on_hotkey_pressed(self):
+        self._start_recording_session("hotkey", stop_on_silence=False)
+
+    def _on_hotkey_released(self):
+        if self._activation_source == "hotkey":
+            self.stop_recording()
+
+    def start_button_capture(self) -> bool:
+        return self._start_recording_session("button", stop_on_silence=True)
+
+    def stop_recording(self):
+        if self._recorder is not None and self._recorder.isRunning():
+            self._recorder.stop_recording()
+
+    def _start_recording_session(self, source: str, stop_on_silence: bool) -> bool:
+        if not self._enabled or self._is_listening:
+            return False
+        if self._recorder is not None and self._recorder.isRunning():
+            return False
+        if self._transcriber is not None or self._wake_transcriber is not None:
+            return False
+
+        if self.activation_mode == VoiceActivationMode.WAKE_WORD.value:
+            self._stop_wake_listener()
+        self._activation_source = source
         self._is_listening = True
         self.listening_started.emit()
-        recorder = AudioRecorderThread()
+        recorder = AudioRecorderThread(stop_on_silence=stop_on_silence)
         recorder.recording_stopped.connect(self._on_recording_stopped)
         recorder.finished.connect(lambda: self._on_recorder_finished(recorder))
         self._recorder = recorder
         recorder.start()
-
-    def _on_hotkey_released(self):
-        if not self._is_listening:
-            return
-
-        self._is_listening = False
-        self.listening_stopped.emit()
-        if self._recorder is not None and self._recorder.isRunning():
-            self._recorder.stop_recording()
+        return True
 
     def _on_recording_stopped(self, capture: object):
+        if self._is_listening:
+            self._is_listening = False
+            self.listening_stopped.emit()
+
         if isinstance(capture, AudioCapture):
             if capture.duration_seconds < self.MIN_AUDIO_SECONDS:
                 self.error_occurred.emit("Recording too short - speak longer.")
+                self._finish_voice_cycle()
                 self.transcription_done.emit()
                 return
 
@@ -1004,6 +1360,7 @@ class VoiceService(QObject):
         audio_path = capture if isinstance(capture, str) else ""
         if not audio_path or not os.path.exists(audio_path):
             self.error_occurred.emit("No audio captured.")
+            self._finish_voice_cycle()
             self.transcription_done.emit()
             return
 
@@ -1016,6 +1373,7 @@ class VoiceService(QObject):
         if size_bytes < min_bytes:
             self._cleanup_audio_file(audio_path)
             self.error_occurred.emit("Recording too short - speak longer.")
+            self._finish_voice_cycle()
             self.transcription_done.emit()
             return
 
@@ -1050,33 +1408,161 @@ class VoiceService(QObject):
             self._transcriber = None
 
         self._cleanup_audio_file(audio_path)
+        self._finish_voice_cycle()
         self.transcription_done.emit()
 
     def _on_listener_error(self, error: str):
-        self._enabled = False
-        self._startup_error = error
+        self._hotkey_available = False
         self.error_occurred.emit(f"Voice hotkey unavailable: {error}")
+
+    def _on_wake_listener_error(self, error: str):
+        self._wake_word_available = False
+        self.error_occurred.emit(f"Wake word unavailable: {error}")
+
+    def _on_wake_audio_ready(self, capture: object):
+        if not self._enabled or self._is_listening or self._transcriber is not None or self._wake_transcriber is not None:
+            return
+        if not isinstance(capture, AudioCapture):
+            return
+
+        self._wake_transcriber = WhisperTranscriberThread(
+            audio_input=capture.samples,
+            model_size=self.model_size,
+            language=self.language,
+            preferred_device=self._resolved_device,
+        )
+        self._wake_transcriber.transcription_ready.connect(self._on_wake_transcription_ready)
+        self._wake_transcriber.transcription_failed.connect(self._on_wake_transcription_failed)
+        self._wake_transcriber.finished.connect(self._on_wake_transcriber_finished)
+        self._wake_transcriber.start()
+
+    def _on_wake_transcription_ready(self, text: str):
+        command_text = VoiceCommandParser.extract_wake_command(text)
+        if command_text is None:
+            return
+        if command_text:
+            self.command_ready.emit(command_text)
+            return
+        self._pending_wake_followup = True
+
+    def _on_wake_transcription_failed(self, _error: str):
+        return
+
+    def _on_wake_transcriber_finished(self):
+        if self._wake_transcriber is not None:
+            self._resolved_device = self._wake_transcriber.resolved_device or self._resolved_device
+            self._wake_transcriber.deleteLater()
+            self._wake_transcriber = None
+        if self._pending_wake_followup:
+            self._pending_wake_followup = False
+            self._start_recording_session("wake-word", stop_on_silence=True)
+            return
+        if self.activation_mode == VoiceActivationMode.WAKE_WORD.value:
+            self._start_wake_listener()
+
+    def _start_hotkey_listener(self):
+        hotkey_backend = self._select_hotkey_backend()
+        hotkey_dependency = "Quartz" if hotkey_backend == "quartz" else "keyboard"
+        hotkey_module = _optional_import(hotkey_dependency)
+        if hotkey_module is None:
+            self._hotkey_available = False
+            return False
+
+        if hotkey_backend == "quartz" and not HotkeyListenerThread._macos_access_granted(hotkey_module):
+            self._hotkey_available = False
+            return False
+
+        self._stop_hotkey_listener()
+        self._hotkey_thread = HotkeyListenerThread(self.hotkey, backend=hotkey_backend)
+        self._hotkey_thread.hotkey_pressed.connect(self._on_hotkey_pressed)
+        self._hotkey_thread.hotkey_released.connect(self._on_hotkey_released)
+        self._hotkey_thread.listener_error.connect(self._on_listener_error)
+        self._hotkey_thread.start()
+        self._hotkey_available = True
+        return True
+
+    def _stop_hotkey_listener(self):
+        self._hotkey_available = False
+        if self._hotkey_thread is None:
+            return
+        self._hotkey_thread.stop()
+        self._hotkey_thread.wait(2000)
+        self._hotkey_thread.deleteLater()
+        self._hotkey_thread = None
+
+    def _start_wake_listener(self):
+        if self.activation_mode != VoiceActivationMode.WAKE_WORD.value:
+            self._wake_word_available = False
+            return False
+        if not self._enabled or self._is_listening or self._wake_transcriber is not None:
+            return False
+        if self._wake_listener is not None and self._wake_listener.isRunning():
+            self._wake_word_available = True
+            return True
+
+        self._stop_wake_listener()
+        self._wake_listener = WakeWordListenerThread()
+        self._wake_listener.wake_audio_ready.connect(self._on_wake_audio_ready)
+        self._wake_listener.listener_error.connect(self._on_wake_listener_error)
+        self._wake_listener.start()
+        self._wake_word_available = True
+        return True
+
+    def _stop_wake_listener(self):
+        self._wake_word_available = False
+        if self._wake_listener is None:
+            return
+        self._wake_listener.stop()
+        self._wake_listener.wait(2000)
+        self._wake_listener.deleteLater()
+        self._wake_listener = None
+
+    def _finish_voice_cycle(self):
+        self._activation_source = None
+        if self.activation_mode == VoiceActivationMode.WAKE_WORD.value and self._wake_transcriber is None:
+            self._start_wake_listener()
+
+    @staticmethod
+    def _normalize_activation_mode(value: str) -> str:
+        try:
+            return VoiceActivationMode(value).value
+        except Exception:
+            return VoiceActivationMode.MANUAL.value
 
     def _start_model_warmup(self):
         if self._warmup_thread is not None:
             return
         if WhisperTranscriberThread.is_model_cached(self.model_size, self._resolved_device):
+            self._startup_prepared = True
             return
 
         self._warmup_thread = WhisperWarmupThread(
             model_size=self.model_size,
             preferred_device=self._resolved_device,
+            language=self.language,
         )
         self._warmup_thread.warmup_complete.connect(self._on_warmup_complete)
         self._warmup_thread.warmup_failed.connect(self._on_warmup_failed)
         self._warmup_thread.finished.connect(self._on_warmup_finished)
         self._warmup_thread.start(QThread.LowPriority)
 
+    def _await_initial_warmup(self):
+        if self._warmup_thread is None or not self._warmup_thread.isRunning():
+            return
+        self._warmup_thread.wait(self.STARTUP_WARMUP_WAIT_MS)
+        if self._warmup_thread.isRunning():
+            return
+        if self._warmup_thread.resolved_device:
+            self._resolved_device = self._warmup_thread.resolved_device
+            self._startup_prepared = True
+
     def _on_warmup_complete(self, device: str):
         self._resolved_device = device or self._resolved_device
+        self._startup_prepared = True
 
     def _on_warmup_failed(self, error: str):
         print(f"[VoiceService] Whisper warmup skipped: {error}")
+        self._startup_prepared = False
 
     def _on_warmup_finished(self):
         if self._warmup_thread is None:
