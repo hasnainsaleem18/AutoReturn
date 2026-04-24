@@ -211,6 +211,7 @@ class TestFrontendDialogsWidgetsFormal(unittest.TestCase):
         css = get_stylesheet()
         self.assertIn("QMainWindow", css)
         self.assertIn("#messageTable", css)
+        self.assertIn('voiceState="listening"', css)
 
     # -------------------------
     # FUNCTION: test_tone_detection_display_visibility

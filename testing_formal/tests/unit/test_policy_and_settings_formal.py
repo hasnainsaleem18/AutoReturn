@@ -9,7 +9,12 @@ import unittest
 
 from src.backend.core.automation_coordinator import AutomationCoordinator
 from src.backend.core.reply_policy_engine import ReplyPolicyEngine
-from src.backend.models.automation_models import AutomationAction, AutomationSettings
+from src.backend.models.automation_models import (
+    AutomationAction,
+    AutomationSettings,
+    VoiceActivationMode,
+    VoiceSettings,
+)
 from src.backend.services.automation_settings_service import AutomationSettingsService
 
 
@@ -85,13 +90,46 @@ class TestAutomationSettingsServiceFormal(unittest.TestCase):
             path = os.path.join(tmp, "settings.json")
             svc = AutomationSettingsService(settings_path=path)
 
-            settings = AutomationSettings(dnd_enabled=True, auto_reply_allowlist=["boss@example.com"])
+            settings = AutomationSettings(
+                dnd_enabled=True,
+                auto_reply_allowlist=["boss@example.com"],
+                voice=VoiceSettings(enabled=False, activation_mode=VoiceActivationMode.WAKE_WORD),
+            )
             ok = svc.save_settings(settings)
             self.assertTrue(ok)
 
             loaded = svc.load_settings()
             self.assertTrue(loaded.dnd_enabled)
             self.assertEqual(loaded.auto_reply_allowlist, ["boss@example.com"])
+            self.assertFalse(loaded.voice.enabled)
+            self.assertEqual(loaded.voice.activation_mode, VoiceActivationMode.WAKE_WORD)
+
+    # -------------------------
+    # FUNCTION: test_load_legacy_file_adds_default_voice_settings
+    # Purpose: Validate legacy settings load voice defaults scenario.
+    # -------------------------
+    def test_load_legacy_file_adds_default_voice_settings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "settings.json")
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "dnd_enabled": True,
+                        "auto_reply_enabled": False,
+                        "auto_reply_allowlist": [],
+                        "file_access_paths": [],
+                        "max_auto_attachments": 3,
+                        "require_user_confirm_plain_reply": True,
+                    },
+                    f,
+                )
+
+            svc = AutomationSettingsService(settings_path=path)
+            loaded = svc.load_settings()
+            self.assertTrue(loaded.dnd_enabled)
+            self.assertTrue(loaded.voice.enabled)
+            self.assertEqual(loaded.voice.hotkey, "ctrl+shift+v")
+            self.assertEqual(loaded.voice.activation_mode, VoiceActivationMode.MANUAL)
 
     # -------------------------
     # FUNCTION: test_load_invalid_file_falls_back
@@ -148,9 +186,10 @@ class TestAutomationCoordinatorFormal(unittest.TestCase):
         decision = coordinator.evaluate_message({"source": "gmail", "email": "x@y.com"})
         self.assertEqual(decision.action, AutomationAction.PLAIN_REPLY)
 
-        updated = AutomationSettings(dnd_enabled=True)
+        updated = AutomationSettings(dnd_enabled=True, voice=VoiceSettings(enabled=False))
         self.assertTrue(coordinator.update_settings(updated))
         self.assertTrue(svc.saved.dnd_enabled)
+        self.assertFalse(svc.saved.voice.enabled)
 
 
 if __name__ == "__main__":

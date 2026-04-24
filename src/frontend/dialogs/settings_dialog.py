@@ -17,7 +17,7 @@ import json
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
     QLabel, QWidget, QTabWidget, QScrollArea, QTimeEdit, QLineEdit, QCheckBox,
-    QMessageBox, QFileDialog, QTextEdit
+    QMessageBox, QFileDialog, QTextEdit, QComboBox
 )
 from PySide6.QtCore import Qt, QTime, Signal, QSize
 from PySide6.QtGui import QPixmap, QPainter, QColor, QPen, QBrush
@@ -27,7 +27,7 @@ from src.frontend.ui.styles import get_stylesheet
 
 # Local imports for tone features
 from src.backend.models.tone_models import ToneType, get_tone_display_name
-from src.backend.models.automation_models import AutomationSettings
+from src.backend.models.automation_models import AutomationSettings, VoiceActivationMode, VoiceSettings
 
 # -------------------------
 # STYLE CONSTANTS
@@ -1919,14 +1919,14 @@ This token will let your desktop app send and receive messages as you, including
         )
 
         input_style = f"""
-            QTextEdit, QLineEdit {{
+            QTextEdit, QLineEdit, QComboBox {{
                 border: 1px solid {tokens['border']};
                 border-radius: {StyleConstants.RADIUS_SMALL}px;
                 padding: {StyleConstants.PADDING_SMALL}px;
                 background-color: {tokens['input_bg']};
                 color: {tokens['input_text']};
             }}
-            QTextEdit:focus, QLineEdit:focus {{
+            QTextEdit:focus, QLineEdit:focus, QComboBox:focus {{
                 border: 2px solid {tokens['input_focus']};
             }}
             QCheckBox {{
@@ -2021,6 +2021,62 @@ This token will let your desktop app send and receive messages as you, including
         access_layout.addWidget(self.max_auto_attachments_input, 0, Qt.AlignLeft)
         layout.addWidget(access_section)
 
+        voice_section = self._tone_section_frame()
+        voice_layout = QVBoxLayout(voice_section)
+        voice_layout.setContentsMargins(metrics["spacing"], metrics["spacing"], metrics["spacing"], metrics["spacing"])
+        voice_layout.setSpacing(StyleConstants.SPACING_SMALL)
+        voice_layout.addWidget(self._create_subsection_header("Voice Control"))
+        voice_layout.addWidget(
+            self._create_description(
+                "Configure voice control. Manual mode only listens when you click Mic or use the hotkey. Wake Word mode keeps a background listener active so you can say 'Hey AutoReturn'. Changes apply on the next app start."
+            )
+        )
+
+        voice_row, self.voice_enabled_checkbox = self._create_automation_toggle_row(
+            "Enable Voice Control",
+            self.automation_settings.voice.enabled,
+            tokens,
+        )
+        voice_layout.addWidget(voice_row)
+
+        hotkey_label = QLabel("Hotkey")
+        hotkey_label.setStyleSheet(
+            f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;"
+        )
+        voice_layout.addWidget(hotkey_label)
+
+        self.voice_hotkey_display = QLineEdit(self.automation_settings.voice.hotkey.upper())
+        self.voice_hotkey_display.setReadOnly(True)
+        self.voice_hotkey_display.setMaximumWidth(240)
+        self.voice_hotkey_display.setStyleSheet(input_style)
+        voice_layout.addWidget(self.voice_hotkey_display, 0, Qt.AlignLeft)
+
+        activation_label = QLabel("Activation Mode")
+        activation_label.setStyleSheet(
+            f"font-size: {StyleConstants.FONT_SIZE_MEDIUM}px; color: {tokens['muted_text']}; border: none;"
+        )
+        voice_layout.addWidget(activation_label)
+
+        self.voice_activation_mode_combo = QComboBox()
+        self.voice_activation_mode_combo.setMaximumWidth(260)
+        self.voice_activation_mode_combo.setStyleSheet(input_style)
+        self.voice_activation_mode_combo.addItem("Manual", VoiceActivationMode.MANUAL.value)
+        self.voice_activation_mode_combo.addItem("Wake Word", VoiceActivationMode.WAKE_WORD.value)
+        activation_index = self.voice_activation_mode_combo.findData(self.automation_settings.voice.activation_mode.value)
+        if activation_index >= 0:
+            self.voice_activation_mode_combo.setCurrentIndex(activation_index)
+        voice_layout.addWidget(self.voice_activation_mode_combo, 0, Qt.AlignLeft)
+
+        voice_note = QLabel(
+            "Manual mode keeps the mic closed until you trigger it. Wake Word mode behaves more like Siri and needs background microphone access. Voice uses the built-in Whisper Base model for a stable balance of speed and accuracy."
+        )
+        voice_note.setWordWrap(True)
+        voice_note.setStyleSheet(
+            f"font-size: {StyleConstants.FONT_SIZE_SMALL}px; color: {tokens['muted_text']}; border: none;"
+        )
+        voice_layout.addWidget(voice_note)
+        layout.addWidget(voice_section)
+
         actions_section = self._tone_section_frame()
         actions_layout = QVBoxLayout(actions_section)
         actions_layout.setContentsMargins(metrics["spacing"], metrics["spacing"], metrics["spacing"], metrics["spacing"])
@@ -2061,6 +2117,12 @@ This token will let your desktop app send and receive messages as you, including
                 file_access_paths=file_access_paths,
                 max_auto_attachments=max_auto_attachments,
                 require_user_confirm_plain_reply=self.require_user_confirm_plain_reply_checkbox.isChecked(),
+                voice=VoiceSettings(
+                    enabled=self.voice_enabled_checkbox.isChecked(),
+                    hotkey=self.automation_settings.voice.hotkey,
+                    activation_mode=VoiceActivationMode(self.voice_activation_mode_combo.currentData()),
+                    language=self.automation_settings.voice.language,
+                ),
             )
 
             if not self.orchestrator or not hasattr(self.orchestrator, "get_automation_coordinator"):
@@ -2074,7 +2136,12 @@ This token will let your desktop app send and receive messages as you, including
                 return
 
             self.automation_settings = updated
-            QMessageBox.information(self, "Automation Settings", "Automation settings updated successfully.")
+            QMessageBox.information(
+                self,
+                "Automation Settings",
+                "Automation and voice settings updated successfully.\n\n"
+                "Voice changes apply on the next app start.",
+            )
         except ValueError as e:
             QMessageBox.warning(self, "Invalid Input", str(e))
         except Exception as e:

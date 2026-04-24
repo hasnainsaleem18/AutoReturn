@@ -39,9 +39,29 @@ def get_stylesheet():
             border-radius: 8px;
             font-size: 14px;
         }
-        
+
         #btnVoice:hover {
             background-color: #024950;
+        }
+
+        #btnVoice[voiceState="idle"] {
+            background-color: #0FA4AF;
+            color: white;
+        }
+
+        #btnVoice[voiceState="listening"] {
+            background-color: #B42318;
+            color: white;
+        }
+
+        #btnVoice[voiceState="processing"] {
+            background-color: #024950;
+            color: white;
+        }
+
+        #btnVoice[voiceState="disabled"] {
+            background-color: #6B7280;
+            color: #F3F4F6;
         }
         
         #iconBtn {

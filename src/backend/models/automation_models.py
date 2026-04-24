@@ -23,6 +23,22 @@ class AutomationAction(str, Enum):
     IGNORE = "ignore"
 
 
+class VoiceActivationMode(str, Enum):
+    """Voice activation mode for microphone behavior."""
+
+    MANUAL = "manual"
+    WAKE_WORD = "wake_word"
+
+
+class VoiceSettings(BaseModel):
+    """Persisted configuration for push-to-talk voice control."""
+
+    enabled: bool = True
+    hotkey: str = "ctrl+shift+v"
+    activation_mode: VoiceActivationMode = VoiceActivationMode.MANUAL
+    language: str = "en"
+
+
 class AutomationSettings(BaseModel):
     """User-configurable automation settings persisted on disk."""
 
@@ -32,6 +48,7 @@ class AutomationSettings(BaseModel):
     file_access_paths: List[str] = Field(default_factory=list)
     max_auto_attachments: int = Field(default=3, ge=0, le=10)
     require_user_confirm_plain_reply: bool = True
+    voice: VoiceSettings = Field(default_factory=VoiceSettings)
 
 
 class PolicyDecision(BaseModel):
