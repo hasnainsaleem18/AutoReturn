@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=AutoReturn
+Comment=Unified AI Communication Management
+Exec=autoreturn
+Icon=autoreturn
+Type=Application
+Categories=Office;Network;Email;
+Terminal=false
+StartupNotify=true

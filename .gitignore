@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Application specific
+data/gmail_data/*.json
+data/auth/*.json
+data/users/**/*.json
+logs/*.log
+
+# Keep directory structure
+!data/gmail_data/.gitkeep
+!logs/.gitkeep
+
+# Keep settings template but ignore local overrides
+config/settings.local.conf
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+
+# ---- Build outputs (HEAVY - never commit these) ----
+# AppImage binary
+*.AppImage
+
+# AppImage build directory (contains all pip packages ~600MB)
+build_appimage/
+
+# Deb build directory
+build_deb/
+
+# Any other package build artifacts
+*.deb
+*.rpm
+*.pkg.tar.zst
+*.tar.gz
+*.tar.bz2
+
+# User data — contains OAuth tokens and credentials (NEVER commit)
+data/users/
+data/auth/
+data/gmail_data/token.json
+data/gmail_data/client_secret.json

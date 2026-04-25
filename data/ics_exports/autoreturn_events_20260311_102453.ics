@@ -1,0 +1,14 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AutoReturn//Calendar Export//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:slack-1773206175.604679-1773292560@autoreturn
+DTSTAMP:20260311T052453Z
+DTSTART;TZID=Asia/Karachi:20260312T101600
+DTEND;TZID=Asia/Karachi:20260313T101600
+SUMMARY:DM from 22P9112 Alishba Tariq
+DESCRIPTION:Subject: DM from 22P9112 Alishba Tariq\n\nMessage snippet:\nDM from 22P9112 Alishba Tariq [Default] Hi Hasnin\, Thanks for confirming—the 11 pm meeting tomorrow works for me. Looking forward to our discussion. Best regards\,
+END:VEVENT
+END:VCALENDAR

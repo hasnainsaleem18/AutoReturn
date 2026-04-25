@@ -1,0 +1,14 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AutoReturn//Calendar Export//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:gmail-19ccaf333c25ef61-1773061200@autoreturn
+DTSTAMP:20260311T050107Z
+DTSTART;TZID=Asia/Karachi:20260309T180000
+DTEND;TZID=Asia/Karachi:20260309T190000
+SUMMARY:Re: Coffee Meetup?
+DESCRIPTION:Subject: Re: Coffee Meetup?\n\nMessage snippet:\nRe: Coffee Meetup? Hey! Up for Coffee tomorrow 6PM again? On Sun\, Mar 8\, 2026 at 5:30 AM 22P9112 Alishba Tariq <p229112@pwr.nu.edu.pk> wrote: > Hey! Up for Coffee tomorrow 6PM? > > -- > Regards\, > Alishba Tariq\, > 22P-9112 > BS SE > FAST-NUCES > -- Regards\, Alishba Tariq\, 22P-9112 BS SE FAST-NUCES
+END:VEVENT
+END:VCALENDAR
