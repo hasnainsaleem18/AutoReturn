@@ -1,0 +1,33 @@
+{"timestamp": "2026-04-26T15:29:42", "event": "transcription", "text": "Next page", "legacy_action": "next_page", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T15:40:16", "event": "transcription", "text": "Next page", "legacy_action": "next_page", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T15:40:23", "event": "transcription", "text": "previous page", "legacy_action": "prev_page", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T15:40:44", "event": "transcription", "text": "Open Settings", "legacy_action": "open_settings", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T16:18:37", "event": "transcription", "text": "Next page", "legacy_action": "next_page", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:04:57", "event": "transcription", "text": "Next page", "legacy_action": "next_page", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:05:31", "event": "transcription", "text": "previous page", "legacy_action": "prev_page", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:05:47", "event": "transcription", "text": "Apply to aliasbha that meeting is arranged on gmail", "legacy_action": "orchestrator", "legacy_action_type": "agent_action"}
+{"timestamp": "2026-04-26T17:06:39", "event": "intent_plan_parsed", "text": "Apply to aliasbha that meeting is arranged on gmail", "steps": [{"action": "unknown", "channel": "any", "recipient": "", "message": "", "query": "", "target": "", "index": null, "send_mode": "review"}]}
+{"timestamp": "2026-04-26T17:06:39", "event": "intent_rejected", "text": "Apply to aliasbha that meeting is arranged on gmail", "reason": "unknown_intent"}
+{"timestamp": "2026-04-26T17:09:02", "event": "transcription", "text": "Reply to al-HBAT", "legacy_action": "reply_to_sender", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:09:02", "event": "intent_plan_parsed", "text": "Reply to al-HBAT", "steps": [{"action": "reply_to_sender", "channel": "any", "recipient": "Al-hbat", "message": "", "query": "", "target": "", "index": null, "send_mode": "review"}]}
+{"timestamp": "2026-04-26T17:09:48", "event": "transcription", "text": "Head to a Lesbac", "legacy_action": "orchestrator", "legacy_action_type": "agent_action"}
+{"timestamp": "2026-04-26T17:10:41", "event": "intent_plan_parsed", "text": "Head to a Lesbac", "steps": [{"action": "unknown", "channel": "any", "recipient": "", "message": "", "query": "", "target": "", "index": null, "send_mode": "review"}]}
+{"timestamp": "2026-04-26T17:10:41", "event": "intent_rejected", "text": "Head to a Lesbac", "reason": "unknown_intent"}
+{"timestamp": "2026-04-26T17:13:41", "event": "transcription", "text": "Show all messages", "legacy_action": "filter", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:13:55", "event": "transcription", "text": "Show gmail messages", "legacy_action": "filter", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:23:40", "event": "transcription", "text": "Show gmail messages", "legacy_action": "filter", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:24:00", "event": "transcription", "text": "Show all messages", "legacy_action": "filter", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:35:01", "event": "transcription", "text": "Show gmail messages", "legacy_action": "filter", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:36:11", "event": "transcription", "text": "Short voice history", "legacy_action": "orchestrator", "legacy_action_type": "agent_action"}
+{"timestamp": "2026-04-26T17:37:11", "event": "intent_plan_parsed", "text": "Short voice history", "steps": [{"action": "show_voice_history", "channel": "any", "recipient": "", "message": "", "query": "", "target": "", "index": null, "send_mode": "review"}]}
+{"timestamp": "2026-04-26T17:40:19", "event": "transcription", "text": "Find meeting tomorrow", "legacy_action": "search", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:41:12", "event": "transcription", "text": "Clear Search", "legacy_action": "orchestrator", "legacy_action_type": "agent_action"}
+{"timestamp": "2026-04-26T17:42:36", "event": "intent_plan_parsed", "text": "Clear Search", "steps": [{"action": "unknown", "channel": "any", "recipient": "", "message": "", "query": "", "target": "", "index": null, "send_mode": "review"}]}
+{"timestamp": "2026-04-26T17:42:36", "event": "intent_rejected", "text": "Clear Search", "reason": "unknown_intent"}
+{"timestamp": "2026-04-26T17:46:16", "event": "transcription", "text": "Open first message", "legacy_action": "open_message_by_index", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:47:56", "event": "transcription", "text": "Send a reply to first email, the reply is thanks for the update", "legacy_action": "reply_to_sender", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:47:56", "event": "intent_plan_parsed", "text": "Send a reply to first email, the reply is thanks for the update", "steps": [{"action": "reply_to_sender", "channel": "any", "recipient": "First Email", "message": "thanks for the update", "query": "", "target": "", "index": null, "send_mode": "review"}]}
+{"timestamp": "2026-04-26T17:49:03", "event": "transcription", "text": "Reply to cashon that thank you so much", "legacy_action": "reply_to_sender", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:49:03", "event": "intent_plan_parsed", "text": "Reply to cashon that thank you so much", "steps": [{"action": "reply_to_sender", "channel": "any", "recipient": "Cashon", "message": "thank you so much", "query": "", "target": "", "index": null, "send_mode": "review"}]}
+{"timestamp": "2026-04-26T17:49:54", "event": "transcription", "text": "Reply to Husnan saying thank you so much", "legacy_action": "reply_to_sender", "legacy_action_type": "ui_action"}
+{"timestamp": "2026-04-26T17:49:54", "event": "intent_plan_parsed", "text": "Reply to Husnan saying thank you so much", "steps": [{"action": "reply_to_sender", "channel": "any", "recipient": "Husnan", "message": "thank you so much", "query": "", "target": "", "index": null, "send_mode": "review"}]}

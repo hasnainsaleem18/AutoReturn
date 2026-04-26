@@ -227,6 +227,7 @@ class SlackService(QObject):
         self.users_cache = {}
         self.dm_channels_cache = {}
         self.processed_messages = set()
+        self._last_sent_message = None
     
     # -------------------------
     # CONNECT
@@ -393,6 +394,7 @@ class SlackService(QObject):
             return False
         
         try:
+            self._last_sent_message = None
             if user_id in self.dm_channels_cache:
                 channel_id = self.dm_channels_cache[user_id]
             else:
@@ -423,7 +425,15 @@ class SlackService(QObject):
                         self.message_sent.emit(False, error_msg)
                         return False
             else:
-                self.client.chat_postMessage(channel=channel_id, text=message_text)
+                response = self.client.chat_postMessage(channel=channel_id, text=message_text)
+                self._last_sent_message = {
+                    "channel_id": response.get("channel") or channel_id,
+                    "ts": response.get("ts", ""),
+                    "user_id": user_id,
+                    "text": message_text,
+                    "sent_at": datetime.now().isoformat(timespec="seconds"),
+                    "undo_supported": bool(response.get("ts")),
+                }
             
             user_info = self.users_cache.get(user_id, {})
             user_name = user_info.get('real_name', user_id)
@@ -436,6 +446,25 @@ class SlackService(QObject):
             self.error_occurred.emit(error_msg)
             self.message_sent.emit(False, error_msg)
             return False
+
+    def last_sent_message(self) -> Optional[dict]:
+        return dict(self._last_sent_message or {})
+
+    def delete_message(self, channel_id: str, ts: str) -> tuple[bool, str]:
+        """Delete a Slack message when the token has chat:write permission."""
+        if not self.is_connected:
+            return False, "Not connected to Slack."
+        if not channel_id or not ts:
+            return False, "Missing Slack message reference."
+
+        try:
+            self.client.chat_delete(channel=channel_id, ts=ts)
+            last = self._last_sent_message or {}
+            if last.get("channel_id") == channel_id and last.get("ts") == ts:
+                self._last_sent_message = None
+            return True, "Slack message deleted."
+        except SlackApiError as e:
+            return False, f"Could not undo Slack send: {e.response.get('error', str(e))}"
     
     # -------------------------
     # GET ALL USERS

@@ -16,7 +16,7 @@ from src.backend.agents.base_agent import BaseAgent
 from src.backend.agents.gmail_agent import GmailAgent
 from src.backend.agents.slack_agent import SlackAgent
 from src.backend.models.agent_models import AgentRequest, AgentResponse, Intent
-from src.backend.services.ai_service import OllamaService
+from src.backend.services.ai_service import DEFAULT_OLLAMA_MODEL, OllamaService
 from src.backend.core.draft_manager import DraftManager
 from src.backend.core.tone_engine import ToneEngine
 from src.backend.core.automation_coordinator import AutomationCoordinator
@@ -62,7 +62,7 @@ class Orchestrator:
     # Starts the AI service, registers all agents, sets up Tone Engine,
     # Draft Manager, and Automation Coordinator. Injects Tone Engine into agents.
     # -------------------------
-    def __init__(self, ollama_model: str = "gpt-oss:20b-cloud", ollama_base_url: str = "http://localhost:11434"):
+    def __init__(self, ollama_model: str = DEFAULT_OLLAMA_MODEL, ollama_base_url: str = "http://localhost:11434"):
         # Start the AI service that connects to the local Ollama model
         self.ai_service = OllamaService(model_name=ollama_model, base_url=ollama_base_url)
 

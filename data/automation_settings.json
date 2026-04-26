@@ -10,9 +10,10 @@
   "max_auto_attachments": 3,
   "require_user_confirm_plain_reply": false,
   "voice": {
-    "enabled": false,
+    "enabled": true,
     "hotkey": "ctrl+shift+v",
     "activation_mode": "manual",
-    "language": "en"
+    "language": "en",
+    "send_without_review": true
   }
 }

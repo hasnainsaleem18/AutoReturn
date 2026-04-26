@@ -39,14 +39,16 @@ supabase>=2.5.0
 spacy>=3.7.0
 
 # Scientific Computing (Used in tone detection for vector operations)
-numpy>=1.24.0
+numpy>=1.26.0,<2.0
 
 # Voice control
-#openai-whisper>=20231117
-#sounddevice>=0.4.6
-#keyboard>=0.13.5
+numba==0.62.1
+llvmlite==0.45.1
+openai-whisper>=20231117
+sounddevice>=0.4.6
+keyboard>=0.13.5; platform_system != "Darwin"
 pyobjc-framework-Quartz>=11.0; platform_system == "Darwin"
-#scipy>=1.11.0
+scipy>=1.11.0
 
 #Linux System Dependencies for sounddevice and audio input/output functionality
 # sudo apt-get install libportaudio2 libportaudiocpp0 portaudio19-dev python3-pyaudio

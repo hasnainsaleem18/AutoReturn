@@ -181,6 +181,7 @@ class SettingsDialog(QDialog):
     # Signals for communication with parent
     profile_updated = Signal(dict)
     logout_requested = Signal()
+    automation_settings_updated = Signal(object)
     
     # -------------------------
     # INITIALIZATION
@@ -2028,7 +2029,7 @@ This token will let your desktop app send and receive messages as you, including
         voice_layout.addWidget(self._create_subsection_header("Voice Control"))
         voice_layout.addWidget(
             self._create_description(
-                "Configure voice control. Manual mode only listens when you click Mic or use the hotkey. Wake Word mode keeps a background listener active so you can say 'Hey AutoReturn'. Changes apply on the next app start."
+                "Configure voice control. Manual mode only listens when you click Mic or use the hotkey. Wake Word mode keeps a background listener active so you can say 'Hey AutoReturn'. Changes apply immediately after saving."
             )
         )
 
@@ -2067,8 +2068,15 @@ This token will let your desktop app send and receive messages as you, including
             self.voice_activation_mode_combo.setCurrentIndex(activation_index)
         voice_layout.addWidget(self.voice_activation_mode_combo, 0, Qt.AlignLeft)
 
+        direct_send_row, self.voice_send_without_review_checkbox = self._create_automation_toggle_row(
+            "Send Voice Replies Without Review",
+            getattr(self.automation_settings.voice, "send_without_review", False),
+            tokens,
+        )
+        voice_layout.addWidget(direct_send_row)
+
         voice_note = QLabel(
-            "Manual mode keeps the mic closed until you trigger it. Wake Word mode behaves more like Siri and needs background microphone access. Voice uses the built-in Whisper Base model for a stable balance of speed and accuracy."
+            "Manual mode keeps the mic closed until you trigger it. Wake Word mode behaves more like Siri and needs background microphone access. When Send Voice Replies Without Review is enabled, voice commands with dictated text send immediately instead of opening the composer."
         )
         voice_note.setWordWrap(True)
         voice_note.setStyleSheet(
@@ -2122,6 +2130,7 @@ This token will let your desktop app send and receive messages as you, including
                     hotkey=self.automation_settings.voice.hotkey,
                     activation_mode=VoiceActivationMode(self.voice_activation_mode_combo.currentData()),
                     language=self.automation_settings.voice.language,
+                    send_without_review=self.voice_send_without_review_checkbox.isChecked(),
                 ),
             )
 
@@ -2136,11 +2145,11 @@ This token will let your desktop app send and receive messages as you, including
                 return
 
             self.automation_settings = updated
+            self.automation_settings_updated.emit(updated)
             QMessageBox.information(
                 self,
                 "Automation Settings",
-                "Automation and voice settings updated successfully.\n\n"
-                "Voice changes apply on the next app start.",
+                "Automation and voice settings updated successfully. Voice control updates immediately.",
             )
         except ValueError as e:
             QMessageBox.warning(self, "Invalid Input", str(e))

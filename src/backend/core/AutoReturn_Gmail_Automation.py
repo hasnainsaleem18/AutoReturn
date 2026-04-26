@@ -26,10 +26,7 @@ import mimetypes
 import threading
 from datetime import datetime
 
-try:
-    from plyer import notification
-except ImportError:  # pragma: no cover - optional dependency
-    notification = None
+from src.backend.utils.desktop_notifications import notify_desktop
 
 # Google API imports
 from googleapiclient.discovery import build
@@ -126,10 +123,7 @@ class PopupManager:
             title: Notification title
             message: Notification message content
         """
-        try:
-            notification.notify(title=title, message=message, timeout=8)
-        except Exception:
-            pass
+        notify_desktop(title, message, timeout=8)
 
 # -------------------------
 # OAUTH MANAGER

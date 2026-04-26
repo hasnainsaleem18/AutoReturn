@@ -10,6 +10,7 @@ from src.backend.models.agent_models import AgentResponse, Intent
 from src.frontend.ui.autoreturn_app import AutoReturnApp
 from src.backend.models.automation_models import VoiceSettings
 from src.backend.services.voice_service import VoiceCommand
+from src.backend.services.voice_intent_service import VoiceIntent
 
 
 class TestAutoReturnAppUtilsFormal(unittest.TestCase):
@@ -233,6 +234,61 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         self.app_obj.show_status_message.assert_called_once()
 
     # -------------------------
+    # FUNCTION: test_voice_direct_send_allows_explicit_text
+    # Purpose: Validate direct voice sending only needs setting, action, and text.
+    # -------------------------
+    def test_voice_direct_send_allows_explicit_text(self):
+        self.app_obj.voice_settings = VoiceSettings(send_without_review=True)
+        intent = VoiceIntent(
+            action="reply_to_sender",
+            message="here is update",
+        )
+
+        result = AutoReturnApp._can_send_voice_without_review(self.app_obj, intent, "here is update")
+
+        self.assertTrue(result)
+
+    # -------------------------
+    # FUNCTION: test_voice_direct_send_blocks_empty_text
+    # Purpose: Validate direct voice sending does not send empty replies.
+    # -------------------------
+    def test_voice_direct_send_blocks_empty_text(self):
+        self.app_obj.voice_settings = VoiceSettings(send_without_review=True)
+        intent = VoiceIntent(
+            action="reply_to_sender",
+            message="",
+        )
+
+        result = AutoReturnApp._can_send_voice_without_review(self.app_obj, intent, "")
+
+        self.assertFalse(result)
+
+    # -------------------------
+    # FUNCTION: test_gmail_voice_contact_lookup_from_loaded_messages
+    # Purpose: Validate Gmail contact lookup can resolve loaded sender contacts.
+    # -------------------------
+    def test_gmail_voice_contact_lookup_from_loaded_messages(self):
+        self.app_obj.messages = [
+            {"source": "gmail", "sender": "Hasnain Saleem", "email": "hasnain@example.com", "subject": "Update"},
+            {"source": "slack", "sender": "Hasnain", "email": "@hasnain"},
+        ]
+
+        contact = AutoReturnApp._find_gmail_contact_for_voice_recipient(self.app_obj, "hasnain")
+
+        self.assertEqual(contact["email"], "hasnain@example.com")
+
+    # -------------------------
+    # FUNCTION: test_gmail_voice_contact_lookup_accepts_email_address
+    # Purpose: Validate direct email addresses work without loaded contacts.
+    # -------------------------
+    def test_gmail_voice_contact_lookup_accepts_email_address(self):
+        self.app_obj.messages = []
+
+        contact = AutoReturnApp._find_gmail_contact_for_voice_recipient(self.app_obj, "person@example.com")
+
+        self.assertEqual(contact["email"], "person@example.com")
+
+    # -------------------------
     # FUNCTION: test_voice_button_click_starts_button_capture
     # Purpose: Validate Mic button activation path.
     # -------------------------
@@ -271,6 +327,17 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         self.app_obj.gmail_service = MagicMock()
         self.app_obj.gmail_service.is_connected = True
         self.app_obj._is_syncing_gmail = False
+        self.app_obj.messages = [
+            {
+                "id": "g1",
+                "source": "gmail",
+                "priority": "Low",
+                "ai_priority_score": "Low",
+                "ai_tasks": ["Informational"],
+                "ai_events": [],
+                "ai_events_count": 0,
+            }
+        ]
         self.app_obj.orchestrator = MagicMock()
         self.app_obj.orchestrator.route_request.return_value = object()
         self.app_obj.active_workers = []
@@ -308,6 +375,7 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         self.assertEqual(created_requests[0][0], Intent.FETCH_MESSAGES)
         self.assertEqual(created_requests[0][1]["max_results"], 7)
         self.assertFalse(created_requests[0][1]["add_ai_analysis"])
+        self.assertIn("g1", created_requests[0][1]["analysis_cache"])
 
     # -------------------------
     # FUNCTION: test_initial_slack_sync_complete_forwards_messages
@@ -320,6 +388,38 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
 
         AutoReturnApp._on_initial_slack_sync_complete(self.app_obj, response)
         self.app_obj.on_slack_new_messages.assert_called_once_with([{"id": "1", "source": "slack"}])
+
+    # -------------------------
+    # FUNCTION: test_slack_duplicate_does_not_recalculate_priority
+    # Purpose: Validate duplicate Slack messages reuse existing analysis.
+    # -------------------------
+    def test_slack_duplicate_does_not_recalculate_priority(self):
+        self.app_obj.messages = [
+            {
+                "id": "s1",
+                "source": "slack",
+                "priority": "Low",
+                "ai_priority_score": "Low",
+                "ai_tasks": ["Informational"],
+                "ai_events": [],
+                "ai_events_count": 0,
+            }
+        ]
+        self.app_obj.notifications = []
+        self.app_obj._schedule_table_refresh = MagicMock()
+
+        slack_agent = MagicMock()
+        slack_agent.priority_engine.calculate_priority = MagicMock(return_value="High")
+        self.app_obj.orchestrator = MagicMock()
+        self.app_obj.orchestrator.agents = {"slack": slack_agent}
+
+        AutoReturnApp.on_slack_new_messages(
+            self.app_obj,
+            [{"id": "s1", "source": "slack", "priority": "normal", "full_content": "urgent"}],
+        )
+
+        slack_agent.priority_engine.calculate_priority.assert_not_called()
+        self.assertEqual(len(self.app_obj.messages), 1)
 
 
 if __name__ == "__main__":

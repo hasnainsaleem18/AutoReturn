@@ -13,9 +13,14 @@ This module stays decoupled from the rest of the application and exposes only:
 from __future__ import annotations
 
 import importlib
+import importlib.util
+import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
+import time
 from collections import deque
 from dataclasses import dataclass
 from difflib import get_close_matches
@@ -33,6 +38,43 @@ def _optional_import(module_name: str):
         return importlib.import_module(module_name)
     except Exception:
         return None
+
+
+def _optional_dependency_available(module_name: str) -> bool:
+    """Check whether an optional dependency exists without importing it."""
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except Exception:
+        return False
+
+
+def _use_macos_subprocess_audio() -> bool:
+    """Return True when PortAudio work must stay out of the main process."""
+    return sys.platform == "darwin" and os.environ.get("AUTORETURN_INLINE_AUDIO") != "1"
+
+
+def _use_macos_subprocess_transcription() -> bool:
+    """Return True when Whisper/Torch work must stay out of the main process."""
+    return sys.platform == "darwin" and os.environ.get("AUTORETURN_INLINE_TRANSCRIBE") != "1"
+
+
+def _microphone_access_error_message(error: Exception) -> str:
+    details = str(error).strip()
+    if sys.platform == "darwin":
+        message = (
+            "Microphone access is unavailable. macOS may be blocking microphone "
+            "permission. Allow microphone access for Visual Studio Code, Terminal, "
+            "or Python in System Preferences > Security & Privacy > Privacy > "
+            "Microphone, then try Mic again."
+        )
+    else:
+        message = (
+            "Microphone access is unavailable. Check your operating system "
+            "microphone privacy settings, then try Mic again."
+        )
+    if details:
+        return f"{message} Details: {details}"
+    return message
 
 
 @dataclass
@@ -703,6 +745,7 @@ class AudioRecorderThread(QThread):
     """Record mono microphone input and prepare it for Whisper."""
 
     recording_stopped = Signal(object)
+    recording_failed = Signal(str)
 
     SAMPLE_RATE = 16000
     BLOCK_SIZE = 2048
@@ -714,21 +757,57 @@ class AudioRecorderThread(QThread):
     EDGE_NOISE_SECONDS = 0.18
     TRIM_PADDING_SECONDS = 0.18
     LOW_FREQUENCY_CUTOFF = 80
+    STOP_TIMEOUT_SECONDS = 5.0
 
-    def __init__(self, stop_on_silence: bool = False):
+    def __init__(
+        self,
+        stop_on_silence: bool = False,
+        input_device: Optional[int] = None,
+        np_module=None,
+        sd_module=None,
+        signal_module=None,
+    ):
         super().__init__()
         self._stop_flag = False
         self.stop_on_silence = stop_on_silence
+        self.input_device = input_device
+        self._np_module = np_module
+        self._sd_module = sd_module
+        self._signal_module = signal_module
+        self._process: Optional[subprocess.Popen] = None
+        self._stop_path: Optional[str] = None
 
     def run(self):
-        np = _optional_import("numpy")
-        sd = _optional_import("sounddevice")
-        signal = _optional_import("scipy.signal")
+        input_device = self.input_device
+        if _use_macos_subprocess_audio():
+            self._run_subprocess_recorder()
+            return
 
-        if np is None or sd is None:
+        if input_device is None:
+            error = RuntimeError(
+                "No preflighted microphone input device was provided. "
+                "Try Mic again after allowing microphone access."
+            )
+            self.recording_failed.emit(_microphone_access_error_message(error))
             self.recording_stopped.emit(None)
             return
 
+        np = self._np_module or _optional_import("numpy")
+        signal = self._signal_module
+        if np is None:
+            self.recording_failed.emit("Voice recording dependencies are unavailable.")
+            self.recording_stopped.emit(None)
+            return
+
+        sd = self._sd_module or _optional_import("sounddevice")
+        if sd is None:
+            self.recording_failed.emit("Voice recording dependencies are unavailable.")
+            self.recording_stopped.emit(None)
+            return
+
+        self._run_inline_recorder(np, sd, signal, input_device)
+
+    def _run_inline_recorder(self, np, sd, signal, input_device: int):
         frames = []
         total_frames = 0
         max_frames = self.SAMPLE_RATE * self.MAX_SECONDS
@@ -737,11 +816,12 @@ class AudioRecorderThread(QThread):
 
         try:
             with sd.InputStream(
+                device=input_device,
                 samplerate=self.SAMPLE_RATE,
                 channels=1,
                 dtype="float32",
                 blocksize=self.BLOCK_SIZE,
-                latency="low",
+                latency="high",
             ) as stream:
                 while not self._stop_flag and total_frames < max_frames:
                     block, _overflowed = stream.read(self.BLOCK_SIZE)
@@ -759,7 +839,9 @@ class AudioRecorderThread(QThread):
                             if silence_seconds >= self.AUTO_STOP_SILENCE_SECONDS:
                                 break
         except Exception as exc:
-            print(f"[VoiceService] Recording error: {exc}")
+            message = _microphone_access_error_message(exc)
+            print(f"[VoiceService] Recording error: {message}")
+            self.recording_failed.emit(message)
             self.recording_stopped.emit(None)
             return
 
@@ -782,6 +864,269 @@ class AudioRecorderThread(QThread):
 
     def stop_recording(self):
         self._stop_flag = True
+        self._write_stop_file()
+
+    def _write_stop_file(self):
+        if not self._stop_path:
+            return
+        try:
+            with open(self._stop_path, "w", encoding="utf-8") as stop_file:
+                stop_file.write("stop")
+        except OSError:
+            pass
+
+    def _run_subprocess_recorder(self):
+        output_fd, output_path = tempfile.mkstemp(prefix="autoreturn_voice_", suffix=".npy")
+        os.close(output_fd)
+        try:
+            os.unlink(output_path)
+        except OSError:
+            pass
+
+        with tempfile.TemporaryDirectory(prefix="autoreturn_voice_") as temp_dir:
+            stop_path = os.path.join(temp_dir, "stop")
+            self._stop_path = stop_path
+            if self._stop_flag:
+                self._write_stop_file()
+
+            args = [
+                sys.executable,
+                "-c",
+                self._subprocess_recorder_code(),
+                output_path,
+                stop_path,
+                "" if self.input_device is None else str(self.input_device),
+                str(self.SAMPLE_RATE),
+                str(self.BLOCK_SIZE),
+                str(self.MAX_SECONDS),
+                "1" if self.stop_on_silence else "0",
+                str(self.MIN_SIGNAL_PEAK),
+                str(self.AUTO_STOP_SILENCE_SECONDS),
+            ]
+
+            try:
+                process = subprocess.Popen(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                self._process = process
+            except Exception as exc:
+                self._process = None
+                self.recording_failed.emit(_microphone_access_error_message(exc))
+                self._cleanup_output_file(output_path)
+                self.recording_stopped.emit(None)
+                self._stop_path = None
+                return
+
+            stop_started_at = None
+            while process.poll() is None:
+                if self._stop_flag:
+                    self._write_stop_file()
+                    if stop_started_at is None:
+                        stop_started_at = time.monotonic()
+                    elif time.monotonic() - stop_started_at > self.STOP_TIMEOUT_SECONDS:
+                        process.terminate()
+                        break
+                time.sleep(0.05)
+
+            try:
+                stdout, stderr = process.communicate(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                stdout, stderr = process.communicate()
+
+            return_code = process.returncode
+            self._process = None
+            self._stop_path = None
+
+            if return_code != 0:
+                details = (stderr or stdout or "").strip()
+                if return_code is not None and return_code < 0:
+                    message = (
+                        "Voice recording crashed in the isolated macOS audio process. "
+                        "This usually means CoreAudio/PortAudio could not safely open "
+                        "the microphone for this launcher."
+                    )
+                else:
+                    message = "Voice recording failed in the isolated macOS audio process."
+                if details:
+                    message = f"{message} Details: {details}"
+                self.recording_failed.emit(message)
+                self._cleanup_output_file(output_path)
+                self.recording_stopped.emit(None)
+                return
+
+            if not os.path.exists(output_path):
+                self._cleanup_output_file(output_path)
+                self.recording_stopped.emit(None)
+                return
+
+            self.recording_stopped.emit(output_path)
+
+    @staticmethod
+    def _cleanup_output_file(output_path: Optional[str]):
+        if not output_path:
+            return
+        try:
+            if os.path.exists(output_path):
+                os.remove(output_path)
+        except OSError:
+            pass
+
+    @staticmethod
+    def _subprocess_recorder_code() -> str:
+        return r'''
+import os
+import sys
+import traceback
+
+import numpy as np
+import sounddevice as sd
+
+output_path = sys.argv[1]
+stop_path = sys.argv[2]
+input_device_arg = sys.argv[3].strip()
+sample_rate = int(sys.argv[4])
+block_size = int(sys.argv[5])
+max_seconds = float(sys.argv[6])
+stop_on_silence = sys.argv[7] == "1"
+min_signal_peak = float(sys.argv[8])
+auto_stop_silence_seconds = float(sys.argv[9])
+
+frames = []
+total_frames = 0
+max_frames = int(sample_rate * max_seconds)
+silence_seconds = 0.0
+speech_detected = False
+
+def resolve_input_device():
+    if input_device_arg:
+        return int(input_device_arg)
+
+    devices = sd.query_devices()
+    input_devices = []
+    for index, device in enumerate(devices):
+        try:
+            max_input_channels = int(device.get("max_input_channels", 0))
+        except Exception:
+            max_input_channels = 0
+        if max_input_channels > 0:
+            input_devices.append(index)
+
+    if not input_devices:
+        raise RuntimeError(
+            "No microphone input device is visible to Python. "
+            "macOS may be blocking microphone access for this app."
+        )
+
+    try:
+        default_device = sd.default.device
+        if isinstance(default_device, (list, tuple)):
+            default_input = int(default_device[0])
+        else:
+            default_input = int(default_device)
+        if default_input in input_devices:
+            return default_input
+    except Exception:
+        pass
+
+    return input_devices[0]
+
+try:
+    input_device = resolve_input_device()
+    with sd.InputStream(
+        device=input_device,
+        samplerate=sample_rate,
+        channels=1,
+        dtype="float32",
+        blocksize=block_size,
+        latency="high",
+    ) as stream:
+        while not os.path.exists(stop_path) and total_frames < max_frames:
+            block, _overflowed = stream.read(block_size)
+            block_copy = block.copy()
+            frames.append(block_copy)
+            total_frames += len(block_copy)
+
+            if stop_on_silence:
+                peak = float(np.max(np.abs(block_copy))) if len(block_copy) else 0.0
+                if peak >= min_signal_peak * 0.9:
+                    speech_detected = True
+                    silence_seconds = 0.0
+                elif speech_detected:
+                    silence_seconds += len(block_copy) / float(sample_rate)
+                    if silence_seconds >= auto_stop_silence_seconds:
+                        break
+
+    if frames:
+        audio = np.concatenate(frames, axis=0).flatten().astype(np.float32)
+        np.save(output_path, audio, allow_pickle=False)
+except Exception:
+    traceback.print_exc()
+    sys.exit(2)
+'''
+
+    @classmethod
+    def check_microphone_available(cls, sd_module=None) -> tuple[bool, str, Optional[int]]:
+        """Return whether a usable microphone input device is visible to sounddevice."""
+        sd = sd_module or _optional_import("sounddevice")
+        if sd is None:
+            return False, "Voice recording dependency sounddevice is unavailable.", None
+
+        try:
+            input_device = cls._resolve_input_device(sd)
+        except Exception as exc:
+            return False, _microphone_access_error_message(exc), None
+
+        if input_device is None:
+            error = RuntimeError(
+                "No microphone input device is visible to Python. "
+                "macOS may be blocking microphone access for this app."
+            )
+            return False, _microphone_access_error_message(error), None
+
+        try:
+            sd.check_input_settings(
+                device=input_device,
+                channels=1,
+                samplerate=cls.SAMPLE_RATE,
+                dtype="float32",
+            )
+        except Exception as exc:
+            return False, _microphone_access_error_message(exc), None
+
+        return True, "", input_device
+
+    @staticmethod
+    def _resolve_input_device(sd_module) -> Optional[int]:
+        devices = sd_module.query_devices()
+        input_devices = []
+        for index, device in enumerate(devices):
+            try:
+                max_input_channels = int(device.get("max_input_channels", 0))
+            except (AttributeError, TypeError, ValueError):
+                max_input_channels = 0
+            if max_input_channels > 0:
+                input_devices.append(index)
+
+        if not input_devices:
+            return None
+
+        try:
+            default_device = sd_module.default.device
+            if isinstance(default_device, (list, tuple)):
+                default_input = default_device[0]
+            else:
+                default_input = default_device
+            default_input = int(default_input)
+        except Exception:
+            default_input = -1
+
+        if default_input in input_devices:
+            return default_input
+        return input_devices[0]
 
     @classmethod
     def prepare_capture(cls, audio: Any, sample_rate: int, np_module=None, signal_module=None) -> Optional[AudioCapture]:
@@ -889,14 +1234,28 @@ class WakeWordListenerThread(QThread):
     SILENCE_SECONDS = 0.8
     PRE_ROLL_SECONDS = 0.35
 
-    def __init__(self):
+    def __init__(
+        self,
+        input_device: Optional[int] = None,
+        np_module=None,
+        sd_module=None,
+        signal_module=None,
+    ):
         super().__init__()
         self._running = False
+        self.input_device = input_device
+        self._np_module = np_module
+        self._sd_module = sd_module
+        self._signal_module = signal_module
 
     def run(self):
-        np = _optional_import("numpy")
-        sd = _optional_import("sounddevice")
-        signal = _optional_import("scipy.signal")
+        if sys.platform == "darwin" and (self._np_module is None or self._sd_module is None):
+            self.listener_error.emit("Wake word listener dependencies were not prepared before startup.")
+            return
+
+        np = self._np_module or _optional_import("numpy")
+        sd = self._sd_module or _optional_import("sounddevice")
+        signal = self._signal_module
 
         if np is None or sd is None:
             self.listener_error.emit("Wake word listener dependencies are unavailable.")
@@ -911,11 +1270,12 @@ class WakeWordListenerThread(QThread):
 
         try:
             with sd.InputStream(
+                device=self.input_device,
                 samplerate=self.SAMPLE_RATE,
                 channels=1,
                 dtype="float32",
                 blocksize=self.BLOCK_SIZE,
-                latency="low",
+                latency="high",
             ) as stream:
                 while self._running:
                     block, _overflowed = stream.read(self.BLOCK_SIZE)
@@ -949,7 +1309,7 @@ class WakeWordListenerThread(QThread):
                         speech_detected = False
         except Exception as exc:
             if self._running:
-                self.listener_error.emit(str(exc))
+                self.listener_error.emit(_microphone_access_error_message(exc))
         finally:
             self._running = False
 
@@ -993,6 +1353,7 @@ class WhisperTranscriberThread(QThread):
     _model_cache: Dict[tuple[str, str], Any] = {}
     _cache_lock = Lock()
     _device_cache: Optional[str] = None
+    SUBPROCESS_TIMEOUT_SECONDS = 180
 
     def __init__(
         self,
@@ -1010,6 +1371,10 @@ class WhisperTranscriberThread(QThread):
         self.resolved_device: Optional[str] = None
 
     def run(self):
+        if _use_macos_subprocess_transcription():
+            self._run_subprocess_transcription()
+            return
+
         try:
             model, device = self.load_cached_model(self.model_size, self.preferred_device)
             self.resolved_device = device
@@ -1031,6 +1396,149 @@ class WhisperTranscriberThread(QThread):
                 self.transcription_failed.emit("Empty transcription.")
         except Exception as exc:
             self.transcription_failed.emit(str(exc))
+
+    def _run_subprocess_transcription(self):
+        temp_dir_context = None
+        if isinstance(self.audio_input, str):
+            audio_path = self.audio_input
+            if not os.path.exists(audio_path):
+                self.transcription_failed.emit("Voice audio file is missing.")
+                return
+        else:
+            np = _optional_import("numpy")
+            if np is None:
+                self.transcription_failed.emit("numpy dependency is not installed.")
+                return
+
+            temp_dir_context = tempfile.TemporaryDirectory(prefix="autoreturn_transcribe_")
+            audio_path = os.path.join(temp_dir_context.name, "voice.npy")
+            try:
+                audio = np.asarray(self.audio_input, dtype=np.float32).flatten()
+                np.save(audio_path, audio.astype(np.float32), allow_pickle=False)
+            except Exception as exc:
+                temp_dir_context.cleanup()
+                self.transcription_failed.emit(f"Could not prepare voice audio for transcription: {exc}")
+                return
+
+        try:
+            args = [
+                sys.executable,
+                "-c",
+                self._subprocess_transcriber_code(),
+                audio_path,
+                self.model_size,
+                self.language or "en",
+                self.preferred_device or "",
+                self.COMMAND_PROMPT,
+            ]
+
+            try:
+                process = subprocess.run(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=self.SUBPROCESS_TIMEOUT_SECONDS,
+                )
+            except subprocess.TimeoutExpired:
+                self.transcription_failed.emit("Voice transcription timed out.")
+                return
+            except Exception as exc:
+                self.transcription_failed.emit(f"Voice transcription process failed: {exc}")
+                return
+
+            if process.returncode != 0:
+                details = (process.stderr or process.stdout or "").strip()
+                if len(details) > 500:
+                    details = details[-500:]
+                message = "Voice transcription failed in the isolated macOS process."
+                if details:
+                    message = f"{message} Details: {details}"
+                self.transcription_failed.emit(message)
+                return
+
+            try:
+                payload_text = (process.stdout or "").strip().splitlines()[-1]
+                payload = json.loads(payload_text)
+            except Exception as exc:
+                self.transcription_failed.emit(f"Voice transcription returned invalid output: {exc}")
+                return
+
+            self.resolved_device = payload.get("device") or self.preferred_device
+            text = VoiceCommandParser._cleanup_transcribed_text(payload.get("text") or "")
+            if text:
+                self.transcription_ready.emit(text)
+            else:
+                self.transcription_failed.emit("Empty transcription.")
+        finally:
+            if temp_dir_context is not None:
+                temp_dir_context.cleanup()
+
+    @staticmethod
+    def _subprocess_transcriber_code() -> str:
+        return r'''
+import json
+import sys
+import traceback
+
+import numpy as np
+
+audio_path = sys.argv[1]
+model_size = sys.argv[2]
+language = sys.argv[3] or "en"
+preferred_device = sys.argv[4] or None
+command_prompt = sys.argv[5]
+
+def optional_import(module_name):
+    try:
+        return __import__(module_name)
+    except Exception:
+        return None
+
+def detect_device():
+    torch = optional_import("torch")
+    if torch is None:
+        return "cpu"
+    try:
+        if torch.cuda.is_available():
+            return "cuda"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+    except Exception:
+        pass
+    return "cpu"
+
+try:
+    whisper = optional_import("whisper")
+    if whisper is None:
+        raise RuntimeError("whisper dependency is not installed.")
+
+    audio = np.load(audio_path, allow_pickle=False).astype(np.float32).flatten()
+    device = preferred_device or detect_device()
+    try:
+        model = whisper.load_model(model_size, device=device)
+    except Exception:
+        if device == "cpu":
+            raise
+        device = "cpu"
+        model = whisper.load_model(model_size, device=device)
+
+    result = model.transcribe(
+        audio,
+        language=language,
+        task="transcribe",
+        fp16=device == "cuda",
+        verbose=False,
+        condition_on_previous_text=False,
+        initial_prompt=command_prompt,
+        temperature=0.0,
+        no_speech_threshold=0.45,
+    )
+    print(json.dumps({"text": result.get("text") or "", "device": device}))
+except Exception:
+    traceback.print_exc()
+    sys.exit(2)
+'''
 
     @classmethod
     def detect_device(cls) -> str:
@@ -1204,12 +1712,17 @@ class VoiceService(QObject):
         self._wake_word_available = False
         self._pending_wake_followup = False
         self._startup_prepared = False
+        self._last_recording_error = ""
 
     def start(self) -> bool:
         """Start background voice capture. Returns True when the listener is live."""
         missing = []
-        for module_name in ("whisper", "sounddevice", "numpy"):
-            if _optional_import(module_name) is None:
+        for module_name in ("sounddevice", "numpy"):
+            if _use_macos_subprocess_audio():
+                module_present = _optional_dependency_available(module_name)
+            else:
+                module_present = _optional_import(module_name) is not None
+            if not module_present:
                 missing.append(module_name)
 
         if missing:
@@ -1222,12 +1735,10 @@ class VoiceService(QObject):
             self._enabled = True
             self._startup_error = ""
             self._startup_prepared = False
-            self._resolved_device = WhisperTranscriberThread.detect_device()
-            self._start_model_warmup()
+            self._resolved_device = None
             self._start_hotkey_listener()
             if self.activation_mode == VoiceActivationMode.WAKE_WORD.value:
                 self._start_wake_listener()
-            self._await_initial_warmup()
             print(f"[VoiceService] Ready. {self.usage_hint()}")
             return True
         except Exception as exc:
@@ -1278,6 +1789,9 @@ class VoiceService(QObject):
     def is_recording(self) -> bool:
         return self._is_listening
 
+    def last_recording_error(self) -> str:
+        return self._last_recording_error
+
     def current_activation_source(self) -> str:
         return self._activation_source or ""
 
@@ -1321,17 +1835,60 @@ class VoiceService(QObject):
         if self._transcriber is not None or self._wake_transcriber is not None:
             return False
 
+        self._last_recording_error = ""
         if self.activation_mode == VoiceActivationMode.WAKE_WORD.value:
             self._stop_wake_listener()
+
+        use_subprocess_audio = _use_macos_subprocess_audio()
+        input_device = None
+        if not use_subprocess_audio:
+            mic_check = getattr(AudioRecorderThread, "check_microphone_available", None)
+            if callable(mic_check):
+                ok, error, input_device = mic_check()
+            else:
+                ok, error, input_device = True, "", None
+            if not ok:
+                self._last_recording_error = error or "Microphone access is unavailable."
+                self.error_occurred.emit(self._last_recording_error)
+                return False
+
+        if use_subprocess_audio:
+            np_module = None
+            signal_module = None
+            sd_module = None
+        else:
+            np_module = _optional_import("numpy")
+            signal_module = _optional_import("scipy.signal")
+            sd_module = _optional_import("sounddevice")
+            if np_module is None or sd_module is None:
+                self._last_recording_error = "Voice recording dependencies are unavailable."
+                self.error_occurred.emit(self._last_recording_error)
+                return False
+
         self._activation_source = source
         self._is_listening = True
         self.listening_started.emit()
-        recorder = AudioRecorderThread(stop_on_silence=stop_on_silence)
+        recorder_kwargs = {"stop_on_silence": stop_on_silence}
+        if input_device is not None:
+            recorder_kwargs["input_device"] = input_device
+        recorder_kwargs.update(
+            {
+                "np_module": np_module,
+                "sd_module": sd_module,
+                "signal_module": signal_module,
+            }
+        )
+        recorder = AudioRecorderThread(**recorder_kwargs)
+        recorder.recording_failed.connect(self._on_recording_failed)
         recorder.recording_stopped.connect(self._on_recording_stopped)
         recorder.finished.connect(lambda: self._on_recorder_finished(recorder))
         self._recorder = recorder
         recorder.start()
         return True
+
+    def _on_recording_failed(self, error: str):
+        self._last_recording_error = error or "Voice recording failed."
+        self.error_occurred.emit(self._last_recording_error)
 
     def _on_recording_stopped(self, capture: object):
         if self._is_listening:
@@ -1359,7 +1916,8 @@ class VoiceService(QObject):
 
         audio_path = capture if isinstance(capture, str) else ""
         if not audio_path or not os.path.exists(audio_path):
-            self.error_occurred.emit("No audio captured.")
+            if not self._last_recording_error:
+                self.error_occurred.emit("No audio captured.")
             self._finish_voice_cycle()
             self.transcription_done.emit()
             return
@@ -1403,6 +1961,8 @@ class VoiceService(QObject):
         audio_path = None
         if self._transcriber is not None:
             self._resolved_device = self._transcriber.resolved_device or self._resolved_device
+            if self._resolved_device:
+                self._startup_prepared = True
             audio_path = self._transcriber.audio_path
             self._transcriber.deleteLater()
             self._transcriber = None
@@ -1496,12 +2056,48 @@ class VoiceService(QObject):
             return False
         if not self._enabled or self._is_listening or self._wake_transcriber is not None:
             return False
+        if sys.platform == "darwin" and os.environ.get("AUTORETURN_INLINE_AUDIO") != "1":
+            self._wake_word_available = False
+            return False
         if self._wake_listener is not None and self._wake_listener.isRunning():
             self._wake_word_available = True
             return True
 
+        mic_check = getattr(AudioRecorderThread, "check_microphone_available", None)
+        if callable(mic_check):
+            ok, error, input_device = mic_check()
+        else:
+            ok, error, input_device = True, "", None
+        if not ok:
+            self._wake_word_available = False
+            self._last_recording_error = error or "Microphone access is unavailable."
+            self.error_occurred.emit(self._last_recording_error)
+            return False
+
+        np_module = _optional_import("numpy")
+        sd_module = _optional_import("sounddevice")
+        signal_module = _optional_import("scipy.signal")
+        if np_module is None or sd_module is None:
+            self._wake_word_available = False
+            self._last_recording_error = "Wake word listener dependencies are unavailable."
+            self.error_occurred.emit(self._last_recording_error)
+            return False
+
         self._stop_wake_listener()
-        self._wake_listener = WakeWordListenerThread()
+        wake_kwargs = {}
+        if input_device is not None:
+            wake_kwargs["input_device"] = input_device
+        wake_kwargs.update(
+            {
+                "np_module": np_module,
+                "sd_module": sd_module,
+                "signal_module": signal_module,
+            }
+        )
+        try:
+            self._wake_listener = WakeWordListenerThread(**wake_kwargs)
+        except TypeError:
+            self._wake_listener = WakeWordListenerThread()
         self._wake_listener.wake_audio_ready.connect(self._on_wake_audio_ready)
         self._wake_listener.listener_error.connect(self._on_wake_listener_error)
         self._wake_listener.start()

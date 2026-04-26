@@ -107,6 +107,58 @@ class TestAgentsFetchIntegrationFormal(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(msg["ai_events_count"], 1)
 
     # -------------------------
+    # FUNCTION: test_gmail_agent_reuses_cached_analysis
+    # Purpose: Validate repeat Gmail syncs do not recompute existing analysis.
+    # -------------------------
+    async def test_gmail_agent_reuses_cached_analysis(self):
+        agent = GmailAgent.__new__(GmailAgent)
+        agent.name = "gmail_agent"
+        agent.backend = _FakeGmailBackend()
+
+        calls = {"priority": 0, "tasks": 0, "events": 0}
+
+        async def _priority(_msg):
+            calls["priority"] += 1
+            return "Medium"
+
+        async def _tasks(_msg):
+            calls["tasks"] += 1
+            return ["Simple Reply Required"]
+
+        class _CountingEventExtractor:
+            async def extract_from_message(self, _msg):
+                calls["events"] += 1
+                return []
+
+        agent.event_extractor = _CountingEventExtractor()
+        agent._analyze_priority = types.MethodType(lambda self, msg: _priority(msg), agent)
+        agent._extract_tasks = types.MethodType(lambda self, msg: _tasks(msg), agent)
+
+        req = AgentRequest(
+            intent=Intent.FETCH_MESSAGES,
+            parameters={
+                "add_ai_analysis": True,
+                "analysis_cache": {
+                    "g1": {
+                        "priority": "High",
+                        "ai_priority_score": "High",
+                        "ai_tasks": ["Informational"],
+                        "ai_events": [],
+                        "ai_events_count": 0,
+                    }
+                },
+            },
+        )
+        out = await GmailAgent._handle_fetch(agent, req)
+
+        self.assertTrue(out.success)
+        self.assertEqual(calls, {"priority": 0, "tasks": 0, "events": 0})
+        msg = out.data["messages"][0]
+        self.assertEqual(msg["priority"], "High")
+        self.assertEqual(msg["ai_tasks"], ["Informational"])
+        self.assertEqual(msg["ai_events"], [])
+
+    # -------------------------
     # FUNCTION: test_slack_agent_handle_fetch_with_ai
     # Purpose: Validate the slack agent handle fetch with ai scenario.
     # -------------------------
@@ -142,6 +194,65 @@ class TestAgentsFetchIntegrationFormal(unittest.IsolatedAsyncioTestCase):
         msg = out.data["messages"][0]
         self.assertEqual(msg["priority"], "Low")
         self.assertEqual(msg["ai_events_count"], 1)
+
+    # -------------------------
+    # FUNCTION: test_slack_agent_reuses_cached_analysis
+    # Purpose: Validate repeat Slack syncs do not recompute existing analysis.
+    # -------------------------
+    async def test_slack_agent_reuses_cached_analysis(self):
+        agent = SlackAgent.__new__(SlackAgent)
+        agent.name = "slack_agent"
+        agent.backend = _FakeSlackBackend()
+
+        calls = {"priority": 0, "tone": 0, "tasks": 0, "events": 0}
+
+        async def _priority(_msg):
+            calls["priority"] += 1
+            return "Low"
+
+        async def _tone(_msg):
+            calls["tone"] += 1
+            return "neutral"
+
+        def _tasks(_msg):
+            calls["tasks"] += 1
+            return ["Informational"]
+
+        class _CountingEventExtractor:
+            async def extract_from_message(self, _msg):
+                calls["events"] += 1
+                return []
+
+        agent.event_extractor = _CountingEventExtractor()
+        agent._analyze_priority = types.MethodType(lambda self, msg: _priority(msg), agent)
+        agent._analyze_tone = types.MethodType(lambda self, msg: _tone(msg), agent)
+        agent._classify_task = types.MethodType(lambda self, msg: _tasks(msg), agent)
+
+        req = AgentRequest(
+            intent=Intent.FETCH_MESSAGES,
+            parameters={
+                "add_ai_analysis": True,
+                "analysis_cache": {
+                    "s1": {
+                        "priority": "Medium",
+                        "ai_priority_score": "Medium",
+                        "ai_tone_signal": "formal_leaning",
+                        "ai_tasks": ["Simple Reply Required"],
+                        "ai_events": [],
+                        "ai_events_count": 0,
+                    }
+                },
+            },
+        )
+        out = await SlackAgent._handle_fetch(agent, req)
+
+        self.assertTrue(out.success)
+        self.assertEqual(calls, {"priority": 0, "tone": 0, "tasks": 0, "events": 0})
+        msg = out.data["messages"][0]
+        self.assertEqual(msg["priority"], "Medium")
+        self.assertEqual(msg["ai_tone_signal"], "formal_leaning")
+        self.assertEqual(msg["ai_tasks"], ["Simple Reply Required"])
+        self.assertEqual(msg["ai_events"], [])
 
 
 if __name__ == "__main__":

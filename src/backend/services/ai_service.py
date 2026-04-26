@@ -15,6 +15,11 @@ from typing import Optional
 from PySide6.QtCore import QThread, Signal, QObject
 
 
+DEFAULT_OLLAMA_MODEL = "qwen2.5:1.5b"
+SUMMARY_INPUT_CHAR_LIMIT = 1200
+SUMMARY_NUM_PREDICT = 70
+
+
 # -------------------------
 # OLLAMA SERVICE CLASS
 # Main connection class between AutoReturn and the local Ollama AI model.
@@ -30,7 +35,7 @@ class OllamaService(QObject):
     # CONSTRUCTOR: STORE SERVER CONFIG
     # Saves the AI model name and server address for all future requests.
     # -------------------------
-    def __init__(self, model_name: str = "gpt-oss:20b-cloud", base_url: str = "http://localhost:11434"):
+    def __init__(self, model_name: str = DEFAULT_OLLAMA_MODEL, base_url: str = "http://localhost:11434"):
         super().__init__()
         self.model_name = model_name
         self.base_url   = base_url
@@ -50,6 +55,34 @@ class OllamaService(QObject):
             return response.status_code == 200
         except:
             return False
+
+    def check_model_available(self) -> bool:
+        """Return True when the configured Ollama model exists locally."""
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=3)
+            if response.status_code != 200:
+                return False
+            payload = response.json()
+            models = payload.get("models", [])
+            names = {str(model.get("name", "")).strip() for model in models}
+            return self.model_name in names
+        except Exception:
+            return False
+
+    @staticmethod
+    def _trim_summary_input(message_text: str) -> str:
+        """Keep local CPU prompts bounded so summary generation completes."""
+        text = (message_text or "").strip()
+        if len(text) <= SUMMARY_INPUT_CHAR_LIMIT:
+            return text
+
+        head_size = int(SUMMARY_INPUT_CHAR_LIMIT * 0.7)
+        tail_size = SUMMARY_INPUT_CHAR_LIMIT - head_size
+        return (
+            text[:head_size].rstrip()
+            + "\n\n[...middle content omitted for speed...]\n\n"
+            + text[-tail_size:].lstrip()
+        )
 
     # -------------------------
     # ASYNC WRAPPER: GENERATE SUMMARY
@@ -75,32 +108,29 @@ class OllamaService(QObject):
     # -------------------------
     def generate_summary(self, message_text: str, sender: str = "", subject: str = "") -> Optional[str]:
         try:
-            # Build the prompt that instructs the AI on what format to produce
-            prompt = f"""Analyze the message and provide a Summary and a Task Classification.
+            message_text = self._trim_summary_input(message_text)
+            # Keep this prompt compact; local 7B CPU inference is prompt-length sensitive.
+            prompt = f"""Summarize and classify this inbox message.
+Return exactly two lines:
+Summary: <25 words max, refer to the sender as "The sender">
+Task: <Smart Draft | Auto Reply | Simple Reply | File Attachment>
 
-Categories for Task Classification:
-1. Smart Draft: Needs a thoughtful, composed reply (e.g., questions, discussions).
-2. Auto Reply: Needs a simple acknowledgement (e.g., "Noted", "OK", "Thanks").
-3. Simple Reply: Informational only, no specific action needed (e.g., "I'm leaving now").
-4. File Attachment: Sender is explicitly requesting a file.
+Classify as File Attachment only when the sender asks for a file. Classify as Auto Reply only when a short acknowledgement is enough.
 
-Rules:
-1. Refer to the sender as "The sender". DO NOT use their real name ({sender}).
-2. If it's a channel join message, classify as "Simple Reply".
-3. Format the output EXACTLY as follows:
-
-Summary: [1-2 sentence summary]
-
-Task: [Category Name]
-[Brief reason for classification]
-
+Sender: {sender}
+Subject: {subject}
 Message: {message_text}"""
 
             payload = {
                 "model":   self.model_name,
                 "prompt":  prompt,
                 "stream":  False,
-                "options": {"temperature": 0.3, "top_p": 0.9, "max_tokens": 100}
+                "options": {
+                    "temperature": 0.2,
+                    "top_p": 0.9,
+                    "num_predict": SUMMARY_NUM_PREDICT,
+                    "num_ctx": 2048,
+                },
             }
             response = requests.post(
                 self.api_url,
@@ -114,7 +144,7 @@ Message: {message_text}"""
                 print(f"[OllamaService] Summary generated OK ({len(summary)} chars)")
                 return summary if summary else "Unable to generate summary"
             else:
-                error_body = (response.text or "").strip().replace("\n", " ")
+                error_body = (getattr(response, "text", "") or "").strip().replace("\n", " ")
                 if len(error_body) > 240:
                     error_body = error_body[:240] + "..."
                 msg = f"Ollama summary request failed (HTTP {response.status_code}): {error_body}"
@@ -149,7 +179,12 @@ Message: {message_text}"""
                 "model":   self.model_name,
                 "prompt":  prompt,
                 "stream":  False,
-                "options": {"temperature": temperature, "top_p": 0.9, "max_tokens": max_tokens},
+                "options": {
+                    "temperature": temperature,
+                    "top_p": 0.9,
+                    "num_predict": max_tokens,
+                    "num_ctx": 2048,
+                },
             }
             response = requests.post(
                 self.api_url,
@@ -157,7 +192,7 @@ Message: {message_text}"""
                 timeout=self.text_timeout_seconds
             )
             if response.status_code != 200:
-                error_body = (response.text or "").strip().replace("\n", " ")
+                error_body = (getattr(response, "text", "") or "").strip().replace("\n", " ")
                 if len(error_body) > 240:
                     error_body = error_body[:240] + "..."
                 msg = f"Ollama text request failed (HTTP {response.status_code}): {error_body}"
@@ -238,6 +273,7 @@ class QueueSummaryGenerator(QObject):
     """Queue-based manager that generates summaries without crashing Ollama."""
 
     summary_generated = Signal(str, str)   # message_id, summary text
+    error_occurred    = Signal(str, str)   # message_id, error text
     batch_complete    = Signal(int)         # total count when full queue is done
     progress_update   = Signal(int, int)    # current completed, total queued
 
@@ -261,17 +297,26 @@ class QueueSummaryGenerator(QObject):
     # Immediately starts processing after adding.
     # -------------------------
     def add_to_queue(self, messages: list):
+        if not self.is_processing and not self.active_threads and not self.queue:
+            self.completed_count = 0
+            self.total_count = 0
+
         new_messages = [
             msg for msg in messages
             if (not msg.get('summary') or msg.get('summary') == '')
             and not any(m.get('id') == msg.get('id') for m in self.queue)
+            and str(
+                msg.get('full_content', msg.get('content_preview', msg.get('preview', '')))
+                or ""
+            ).strip()
         ]
         if not new_messages:
-            return
+            return 0
         self.queue.extend(new_messages)
         self.total_count += len(new_messages)
         print(f"Added {len(new_messages)} messages to summary queue. Total in queue: {len(self.queue)}")
         self.process_queue()
+        return len(new_messages)
 
     # -------------------------
     # PROCESS THE QUEUE
@@ -320,6 +365,7 @@ class QueueSummaryGenerator(QObject):
     # -------------------------
     def _on_error(self, message_id: str, error: str):
         print(f"Error generating summary for {message_id}: {error}")
+        self.error_occurred.emit(message_id, error)
         self.completed_count += 1
         self.progress_update.emit(self.completed_count, self.total_count)
 

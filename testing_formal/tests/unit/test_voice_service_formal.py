@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import types
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -15,6 +17,7 @@ from src.backend.services.voice_service import (
     VoiceService,
     WhisperTranscriberThread,
 )
+from src.backend.services.voice_intent_service import VoiceIntentService
 from testing_formal.tests.qt_utils import get_qapp
 
 
@@ -87,7 +90,7 @@ class _FakeWarmupThread:
 class _FakeWakeListenerThread:
     instances = []
 
-    def __init__(self):
+    def __init__(self, **_kwargs):
         self.wake_audio_ready = _FakeSignal()
         self.listener_error = _FakeSignal()
         self._running = False
@@ -110,7 +113,7 @@ class _FakeWakeListenerThread:
 
 
 class _FakeRecorderThread:
-    def __init__(self, stop_on_silence: bool = False):
+    def __init__(self, stop_on_silence: bool = False, **_kwargs):
         self.deleted = False
         self._running = True
         self.stop_on_silence = stop_on_silence
@@ -262,6 +265,54 @@ class TestVoiceCommandParserFormal(unittest.TestCase):
         self.assertEqual(command.action, "orchestrator")
 
 
+class TestVoiceIntentServiceFormal(unittest.TestCase):
+    # -------------------------
+    # FUNCTION: test_natural_reply_extracts_freeform_message
+    # Purpose: Validate natural voice reply parsing with arbitrary dictated text.
+    # -------------------------
+    def test_natural_reply_extracts_freeform_message(self):
+        intent = VoiceIntentService().parse("reply to Hasnain saying here is update for today")
+
+        self.assertEqual(intent.action, "reply_to_sender")
+        self.assertEqual(intent.recipient, "Hasnain")
+        self.assertEqual(intent.message, "here is update for today")
+        self.assertEqual(intent.send_mode, "review")
+
+    # -------------------------
+    # FUNCTION: test_context_reply_targets_current_message
+    # Purpose: Validate context-aware voice reply parsing.
+    # -------------------------
+    def test_context_reply_targets_current_message(self):
+        intent = VoiceIntentService().parse("reply to this saying I will send it today")
+
+        self.assertEqual(intent.action, "reply_to_sender")
+        self.assertEqual(intent.target, "current")
+        self.assertEqual(intent.message, "I will send it today")
+        self.assertEqual(intent.send_mode, "review")
+
+    # -------------------------
+    # FUNCTION: test_gmail_new_message_command_uses_gmail_channel
+    # Purpose: Validate Gmail-specific new-message parsing.
+    # -------------------------
+    def test_gmail_new_message_command_uses_gmail_channel(self):
+        intent = VoiceIntentService().parse("send email to Hasnain saying here is update")
+
+        self.assertEqual(intent.action, "send_message")
+        self.assertEqual(intent.channel, "gmail")
+        self.assertEqual(intent.recipient, "Hasnain")
+        self.assertEqual(intent.message, "here is update")
+
+    # -------------------------
+    # FUNCTION: test_multi_step_voice_plan
+    # Purpose: Validate deterministic multi-step voice planning fallback.
+    # -------------------------
+    def test_multi_step_voice_plan(self):
+        plan = VoiceIntentService().parse_plan("show urgent messages then open voice history")
+
+        self.assertEqual([step.action for step in plan], ["filter_messages", "show_voice_history"])
+        self.assertEqual(plan[0].target, "urgent")
+
+
 class TestVoiceServiceFormal(unittest.TestCase):
     @classmethod
     # -------------------------
@@ -276,13 +327,14 @@ class TestVoiceServiceFormal(unittest.TestCase):
     # Purpose: Validate graceful disable when essential voice deps are missing.
     # -------------------------
     def test_start_gracefully_disables_when_core_dependencies_missing(self):
-        with patch(
-            "src.backend.services.voice_service._optional_import",
-            side_effect=lambda name: None if name == "whisper" else object(),
-        ):
+        with patch("src.backend.services.voice_service.sys.platform", "linux"), \
+                patch(
+                    "src.backend.services.voice_service._optional_import",
+                    side_effect=lambda name: None if name == "sounddevice" else object(),
+                ):
             service = VoiceService()
             self.assertFalse(service.start())
-            self.assertIn("whisper", service.startup_error())
+            self.assertIn("sounddevice", service.startup_error())
 
     # -------------------------
     # FUNCTION: test_start_keeps_button_mode_when_hotkey_backend_missing
@@ -299,7 +351,7 @@ class TestVoiceServiceFormal(unittest.TestCase):
             service = VoiceService()
             self.assertTrue(service.start())
             self.assertTrue(service.is_available())
-            self.assertTrue(service.is_prepared())
+            self.assertFalse(service.is_prepared())
             self.assertIn("click mic", service.usage_hint().lower())
             self.assertEqual(len(_FakeWakeListenerThread.instances), 0)
             service.stop()
@@ -319,7 +371,7 @@ class TestVoiceServiceFormal(unittest.TestCase):
             service = VoiceService()
             self.assertTrue(service.start())
             self.assertTrue(service.is_available())
-            self.assertTrue(service.is_prepared())
+            self.assertFalse(service.is_prepared())
             self.assertNotIn("hold", service.usage_hint().lower())
             self.assertEqual(len(_FakeWakeListenerThread.instances), 0)
             service.stop()
@@ -342,7 +394,7 @@ class TestVoiceServiceFormal(unittest.TestCase):
             service = VoiceService()
             self.assertTrue(service.start())
             self.assertEqual(_FakeHotkeyThread.instances[-1].backend, "quartz")
-            self.assertTrue(service.is_prepared())
+            self.assertFalse(service.is_prepared())
             self.assertEqual(len(_FakeWakeListenerThread.instances), 0)
             service.stop()
 
@@ -357,10 +409,13 @@ class TestVoiceServiceFormal(unittest.TestCase):
             side_effect=lambda _name: object(),
         ), patch("src.backend.services.voice_service.HotkeyListenerThread", _FakeHotkeyThread), patch(
             "src.backend.services.voice_service.WakeWordListenerThread", _FakeWakeListenerThread
-        ), patch("src.backend.services.voice_service.WhisperWarmupThread", _FakeWarmupThread):
+        ), patch("src.backend.services.voice_service.WhisperWarmupThread", _FakeWarmupThread), patch(
+            "src.backend.services.voice_service.AudioRecorderThread.check_microphone_available",
+            return_value=(True, "", 0),
+        ):
             service = VoiceService(activation_mode=VoiceActivationMode.WAKE_WORD.value)
             self.assertTrue(service.start())
-            self.assertTrue(service.is_prepared())
+            self.assertFalse(service.is_prepared())
             self.assertIn("hey autoreturn", service.usage_hint().lower())
             self.assertEqual(len(_FakeWakeListenerThread.instances), 1)
             self.assertTrue(_FakeWakeListenerThread.instances[0].isRunning())
@@ -390,9 +445,10 @@ class TestVoiceServiceFormal(unittest.TestCase):
         starts = []
 
         class _RecorderForStart(_FakeRecorderThread):
-            def __init__(self, stop_on_silence: bool = False):
-                super().__init__(stop_on_silence=stop_on_silence)
+            def __init__(self, stop_on_silence: bool = False, **kwargs):
+                super().__init__(stop_on_silence=stop_on_silence, **kwargs)
                 self.recording_stopped = _FakeSignal()
+                self.recording_failed = _FakeSignal()
                 self.finished = _FakeSignal()
 
             def start(self):
@@ -404,6 +460,82 @@ class TestVoiceServiceFormal(unittest.TestCase):
 
         self.assertEqual(starts, [True])
         self.assertEqual(service.current_activation_source(), "button")
+
+    # -------------------------
+    # FUNCTION: test_button_capture_rejects_missing_microphone_before_recorder_starts
+    # Purpose: Validate macOS microphone preflight before native audio thread startup.
+    # -------------------------
+    def test_button_capture_rejects_missing_microphone_before_recorder_starts(self):
+        service = VoiceService()
+        service._enabled = True
+        errors = []
+        service.error_occurred.connect(errors.append)
+
+        with patch("src.backend.services.voice_service.sys.platform", "linux"), \
+                patch.object(
+                    AudioRecorderThread,
+                    "check_microphone_available",
+                    return_value=(False, "Microphone access is unavailable.", None),
+                ):
+            self.assertFalse(service.start_button_capture())
+
+        self.assertEqual(errors, ["Microphone access is unavailable."])
+        self.assertEqual(service.last_recording_error(), "Microphone access is unavailable.")
+
+    # -------------------------
+    # FUNCTION: test_macos_button_capture_skips_parent_sounddevice_preflight
+    # Purpose: Validate macOS recording keeps PortAudio checks out of the main process.
+    # -------------------------
+    def test_macos_button_capture_skips_parent_sounddevice_preflight(self):
+        service = VoiceService()
+        service._enabled = True
+        starts = []
+
+        class _RecorderForStart(_FakeRecorderThread):
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.recording_stopped = _FakeSignal()
+                self.recording_failed = _FakeSignal()
+                self.finished = _FakeSignal()
+
+            def start(self):
+                starts.append(getattr(self, "input_device", None))
+
+        with patch("src.backend.services.voice_service.sys.platform", "darwin"), \
+                patch.dict("src.backend.services.voice_service.os.environ", {}, clear=True), \
+                patch.object(AudioRecorderThread, "check_microphone_available") as mic_check, \
+                patch("src.backend.services.voice_service._optional_import") as optional_import, \
+                patch("src.backend.services.voice_service.AudioRecorderThread", _RecorderForStart):
+            optional_import.side_effect = lambda name: object() if name in {"numpy", "scipy.signal"} else None
+            self.assertTrue(service.start_button_capture())
+
+        mic_check.assert_not_called()
+        optional_import.assert_not_called()
+        self.assertEqual(starts, [None])
+
+    # -------------------------
+    # FUNCTION: test_microphone_check_requires_visible_input_device
+    # Purpose: Validate missing/blocked mic detection before sounddevice opens a stream.
+    # -------------------------
+    def test_microphone_check_requires_visible_input_device(self):
+        class _FakeDefault:
+            device = [-1, -1]
+
+        class _FakeSoundDevice:
+            default = _FakeDefault()
+
+            @staticmethod
+            def query_devices():
+                return []
+
+            @staticmethod
+            def check_input_settings(**_kwargs):
+                raise AssertionError("should not check settings without an input device")
+
+        ok, error, input_device = AudioRecorderThread.check_microphone_available(_FakeSoundDevice)
+        self.assertFalse(ok)
+        self.assertIsNone(input_device)
+        self.assertIn("Microphone access is unavailable", error)
 
     # -------------------------
     # FUNCTION: test_recording_stopped_rejects_empty_or_short_audio
@@ -520,6 +652,86 @@ class TestVoiceServiceFormal(unittest.TestCase):
         self.assertIsNotNone(capture)
         self.assertLess(capture.duration_seconds, len(raw) / 16000)
         self.assertGreater(capture.peak_level, 0.04)
+
+    # -------------------------
+    # FUNCTION: test_macos_transcriber_uses_isolated_process
+    # Purpose: Validate macOS Whisper/Torch work does not run in the main process.
+    # -------------------------
+    def test_macos_transcriber_uses_isolated_process(self):
+        ready = []
+        failed = []
+        calls = []
+        transcriber = WhisperTranscriberThread(np.ones(16000, dtype=np.float32))
+        transcriber.transcription_ready.connect(ready.append)
+        transcriber.transcription_failed.connect(failed.append)
+
+        def _fake_run(args, **_kwargs):
+            calls.append(args)
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout='{"text": " Show gmail messages. ", "device": "cpu"}\n',
+                stderr="",
+            )
+
+        with patch("src.backend.services.voice_service.sys.platform", "darwin"), \
+                patch.dict("src.backend.services.voice_service.os.environ", {}, clear=True), \
+                patch(
+                    "src.backend.services.voice_service._optional_import",
+                    side_effect=lambda name: np if name == "numpy" else object(),
+                ), \
+                patch.object(
+                    WhisperTranscriberThread,
+                    "load_cached_model",
+                    side_effect=AssertionError("parent process should not load Whisper"),
+                ), \
+                patch("src.backend.services.voice_service.subprocess.run", side_effect=_fake_run):
+            transcriber.run()
+
+        self.assertEqual(ready, ["Show gmail messages"])
+        self.assertEqual(failed, [])
+        self.assertEqual(transcriber.resolved_device, "cpu")
+        self.assertTrue(calls)
+
+    # -------------------------
+    # FUNCTION: test_macos_transcriber_uses_audio_path_without_parent_numpy
+    # Purpose: Validate macOS command audio stays file-based in the main process.
+    # -------------------------
+    def test_macos_transcriber_uses_audio_path_without_parent_numpy(self):
+        ready = []
+        failed = []
+        calls = []
+
+        def _fake_run(args, **_kwargs):
+            calls.append(args)
+            return types.SimpleNamespace(
+                returncode=0,
+                stdout='{"text": " Show all messages. ", "device": "cpu"}\n',
+                stderr="",
+            )
+
+        with tempfile.NamedTemporaryFile(suffix=".npy") as audio_file:
+            transcriber = WhisperTranscriberThread(audio_file.name)
+            transcriber.transcription_ready.connect(ready.append)
+            transcriber.transcription_failed.connect(failed.append)
+
+            with patch("src.backend.services.voice_service.sys.platform", "darwin"), \
+                    patch.dict("src.backend.services.voice_service.os.environ", {}, clear=True), \
+                    patch(
+                        "src.backend.services.voice_service._optional_import",
+                        side_effect=AssertionError("parent process should not import NumPy for file audio"),
+                    ), \
+                    patch.object(
+                        WhisperTranscriberThread,
+                        "load_cached_model",
+                        side_effect=AssertionError("parent process should not load Whisper"),
+                    ), \
+                    patch("src.backend.services.voice_service.subprocess.run", side_effect=_fake_run):
+                transcriber.run()
+
+        self.assertEqual(ready, ["Show all messages"])
+        self.assertEqual(failed, [])
+        self.assertEqual(transcriber.resolved_device, "cpu")
+        self.assertTrue(calls)
 
     # -------------------------
     # FUNCTION: test_detect_device_prefers_mps_when_available

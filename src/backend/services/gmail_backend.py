@@ -308,6 +308,35 @@ class GmailIntegrationService(QObject):
             self.error_occurred.emit(message)
             return False, message
 
+    def send_new_email(self, to_email: str, subject: str, body: str, attachments: list = None) -> tuple[bool, str]:
+        """Send a new Gmail message that is not tied to an existing thread."""
+        if not self.gmail_api:
+            message = "Connect to Gmail before sending."
+            self.error_occurred.emit(message)
+            return False, message
+
+        to_email = (to_email or "").strip()
+        if not to_email:
+            message = "Missing recipient email address."
+            self.error_occurred.emit(message)
+            return False, message
+
+        try:
+            with self._api_lock:
+                result = self.gmail_api.send_email(
+                    to_email,
+                    subject or "Message from AutoReturn",
+                    body,
+                    attachments=attachments or [],
+                )
+            if not result:
+                return False, "Gmail send failed."
+            return True, "Email sent successfully."
+        except Exception as exc:
+            message = str(exc)
+            self.error_occurred.emit(message)
+            return False, message
+
     # -------------------------
     # CREATE DRAFT FOR MESSAGE
     # Instantiates and creates draft for message.

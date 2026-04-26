@@ -97,7 +97,7 @@ ollama serve
 ### 3. Pull the AI Model
 
 ```bash
-ollama pull gpt-oss:20b-cloud
+ollama pull qwen2.5:1.5b
 ```
 
 ### 4. Configure Supabase (Authentication)

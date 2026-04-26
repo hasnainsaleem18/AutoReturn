@@ -15,6 +15,14 @@ from src.backend.services.slack_backend import SlackService
 from src.backend.services.ai_service import OllamaService
 from src.backend.core.priority_engine import PriorityEngine
 from src.backend.core.event_extractor import EventExtractor
+from src.backend.utils.message_analysis_cache import (
+    apply_cached_analysis,
+    extract_analysis_cache,
+    has_event_analysis,
+    has_priority_analysis,
+    has_task_analysis,
+    has_tone_analysis,
+)
 
 
 class SlackAgent(BaseAgent):
@@ -82,32 +90,49 @@ class SlackAgent(BaseAgent):
     async def _handle_fetch(self, request: AgentRequest) -> AgentResponse:
         limit  = request.parameters.get("limit", 200)
         add_ai = request.parameters.get("add_ai_analysis", True)
+        analysis_cache = extract_analysis_cache(request.parameters, "slack")
 
         messages = self.backend.sync_all_messages(limit=limit)
 
         if add_ai and messages:
-            print(f"Slack Agent: Analyzing priority/tone for {len(messages)} messages...")
+            cache_hits = sum(
+                1 for msg in messages
+                if str(msg.get("id", "") or "").strip() in analysis_cache
+            )
+            uncached_count = len(messages) - cache_hits
+            print(
+                f"Slack Agent: analyzing uncached priority/tone/events for "
+                f"{uncached_count} messages (reusing {cache_hits} cached)"
+            )
 
             async def process_slack_msg_light(msg):
                 try:
+                    apply_cached_analysis(msg, analysis_cache)
+
                     # Run Priority Algorithm (High / Medium / Low)
-                    priority_label           = await self._analyze_priority(msg)
-                    msg['ai_priority_score'] = priority_label
-                    msg['priority']          = priority_label   # UI badge reads this field
+                    if not has_priority_analysis(msg):
+                        priority_label           = await self._analyze_priority(msg)
+                        msg['ai_priority_score'] = priority_label
+                        msg['priority']          = priority_label   # UI badge reads this field
+                    elif not msg.get('priority'):
+                        msg['priority'] = msg.get('ai_priority_score', 'Low')
 
                     # Run Tone Detector (formal_leaning / informal_leaning / neutral)
-                    msg['ai_tone_signal']    = await self._analyze_tone(msg)
+                    if not has_tone_analysis(msg):
+                        msg['ai_tone_signal']    = await self._analyze_tone(msg)
 
                     # Run Task Classifier (File Attachment / Draft / Auto Reply / etc.)
-                    msg['ai_tasks']          = self._classify_task(msg)
+                    if not has_task_analysis(msg):
+                        msg['ai_tasks']          = self._classify_task(msg)
 
                     # Run Calendar Event Extractor (meeting dates/times)
-                    try:
-                        events               = await self.event_extractor.extract_from_message(msg)
-                        msg['ai_events']     = [e.model_dump(mode="json") for e in events] if events else []
-                        msg['ai_events_count'] = len(msg['ai_events'])
-                    except Exception as e:
-                        print(f"Slack schedule extraction error: {e}")
+                    if not has_event_analysis(msg):
+                        try:
+                            events               = await self.event_extractor.extract_from_message(msg)
+                            msg['ai_events']     = [e.model_dump(mode="json") for e in events] if events else []
+                            msg['ai_events_count'] = len(msg['ai_events'])
+                        except Exception as e:
+                            print(f"Slack schedule extraction error: {e}")
 
                     # Leave summary blank so background queue fills it later
                     if not msg.get('summary'):

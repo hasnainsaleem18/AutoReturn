@@ -37,6 +37,7 @@ class VoiceSettings(BaseModel):
     hotkey: str = "ctrl+shift+v"
     activation_mode: VoiceActivationMode = VoiceActivationMode.MANUAL
     language: str = "en"
+    send_without_review: bool = False
 
 
 class AutomationSettings(BaseModel):

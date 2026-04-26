@@ -43,6 +43,10 @@ class TestModelsFormal(unittest.TestCase):
         self.assertEqual(settings.hotkey, "ctrl+shift+v")
         self.assertEqual(settings.activation_mode, VoiceActivationMode.MANUAL)
         self.assertEqual(settings.language, "en")
+        self.assertFalse(settings.send_without_review)
+
+        direct_settings = VoiceSettings(send_without_review=True)
+        self.assertTrue(direct_settings.send_without_review)
 
     # -------------------------
     # FUNCTION: test_automation_settings_bounds
