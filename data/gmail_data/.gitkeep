@@ -1,0 +1,3 @@
+# This file ensures the gmail_data directory is tracked by git
+# while the actual credential files are ignored
+289278947712-a41rg9ciqt0aesj820r3b3dk43e85dbp.apps.googleusercontent.com

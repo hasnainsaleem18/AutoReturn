@@ -1,0 +1,34 @@
+{
+  "run_id": "20260308_192937",
+  "run_timestamp_utc": "2026-03-08T19:29:37.085659+00:00",
+  "python_version": "3.12.12",
+  "platform": "macOS-12.7.6-x86_64-i386-64bit",
+  "checks": [
+    {
+      "name": "python_version",
+      "passed": true,
+      "detail": "Detected Python 3.12.12 (required >= 3.12)"
+    },
+    {
+      "name": "core_imports",
+      "passed": true,
+      "detail": "Imported 4 modules"
+    },
+    {
+      "name": "event_extraction_feasibility",
+      "passed": true,
+      "detail": "Extracted 1 candidate(s)"
+    },
+    {
+      "name": "ollama_connectivity",
+      "passed": false,
+      "detail": "Ollama not reachable from this environment"
+    }
+  ],
+  "summary": {
+    "executed": 4,
+    "passed": 3,
+    "failed": 1,
+    "pass_rate": 75.0
+  }
+}

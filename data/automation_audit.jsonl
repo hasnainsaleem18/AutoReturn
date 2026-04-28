@@ -1,0 +1,21 @@
+{"timestamp": "2026-03-08T05:32:05.168244", "message_id": "19ccada60cbb21bb", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T05:37:51.630694", "message_id": "19ccada60cbb21bb", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T05:37:51.631693", "message_id": "19cca7486f030131", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T05:37:51.632127", "message_id": "19cbbed350e92898", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T05:57:01.269471", "message_id": "19ccada60cbb21bb", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T05:57:01.278337", "message_id": "19cca7486f030131", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T05:57:01.279159", "message_id": "19cbbed350e92898", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T05:59:29.766894", "message_id": "19ccaf333c25ef61", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T06:16:34.830914", "message_id": "19ccafd2a40dd2a8", "source": "gmail", "action": "auto_reply", "success": false, "reason": "Multiple possible files found (main.py, tone_service.py, tone_service.cpython-312.pyc). Please choose manually."}
+{"timestamp": "2026-03-08T06:54:52.809865", "message_id": "1772540150.159909", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
+{"timestamp": "2026-03-08T06:54:58.167367", "message_id": "1772540096.730029", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
+{"timestamp": "2026-03-08T11:17:29.267748", "message_id": "1772540150.159909", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
+{"timestamp": "2026-03-08T11:17:38.304341", "message_id": "1772540096.730029", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
+{"timestamp": "2026-03-08T11:18:17.629307", "message_id": "19ccc08bdf423cd8", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-03-08T22:38:35.152969", "message_id": "19ccb0d80ee49427", "source": "gmail", "action": "auto_reply", "success": false, "reason": "Attachment request detected, but no readable files found in allowed paths."}
+{"timestamp": "2026-03-08T22:38:42.163252", "message_id": "19ccafd2a40dd2a8", "source": "gmail", "action": "auto_reply", "success": false, "reason": "Attachment request detected, but no readable files found in allowed paths."}
+{"timestamp": "2026-03-08T22:38:44.453614", "message_id": "1772540150.159909", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
+{"timestamp": "2026-03-11T02:35:39.210326", "message_id": "1772540150.159909", "source": "", "action": "auto_reply", "success": false, "reason": "Skipped by safety rule."}
+{"timestamp": "2026-03-11T03:00:31.255361", "message_id": "19ccb0d80ee49427", "source": "gmail", "action": "auto_reply", "success": false, "reason": "Attachment request detected, but no readable files found in allowed paths."}
+{"timestamp": "2026-03-11T11:24:20.192476", "message_id": "19cdb89b48c423de", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-04-23T13:14:42.963207", "message_id": "19d4554bafa2ec2a", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}

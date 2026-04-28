@@ -1,0 +1,384 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usetheme{Madrid}
+\usecolortheme{default}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+\definecolor{passgreen}{HTML}{166534}
+\definecolor{failred}{HTML}{B91C1C}
+\definecolor{warnamber}{HTML}{92400E}
+\definecolor{mutedblue}{HTML}{1D4ED8}
+\definecolor{lightgray}{HTML}{F3F4F6}
+
+\newcommand{\metric}[2]{\textbf{#1} & #2\\}
+\newcommand{\statuspass}{\textcolor{passgreen}{Pass}}
+\newcommand{\statusfail}{\textcolor{failred}{Fail}}
+\newcommand{\statuswarn}{\textcolor{warnamber}{Environment failure}}
+\newcommand{\pathtext}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\barrow}[3]{#1 & #2 & \textcolor{mutedblue}{\rule{#3cm}{0.55em}}\\}
+
+\title[AutoReturn Test Evaluation]{AutoReturn Full Test Statistics And Evaluation}
+\subtitle{Corrected Full-Suite Test Report}
+\author{AutoReturn Project}
+\date{2026-04-28}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Report Scope}
+  \begin{itemize}
+    \item This presentation converts the corrected full-suite Markdown test report into LaTeX Beamer format.
+    \item The earlier result of 62/62 covered only the affected regression subset.
+    \item This report includes full discovery across \pathtext{testing_formal/} and \pathtext{tests/}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Test Discovery}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X r X X}
+    \toprule
+    Location & Files & Execution Method & Status\\
+    \midrule
+    \pathtext{testing_formal/tests/} & 26 & \pathtext{unittest discover} & Executed\\
+    \pathtext{tests/test_event_extractor.py} & 1 & Direct script run & Executed\\
+    \pathtext{tests/test_ollama.py} & 1 & Direct script run & Executed, environment failed\\
+    \pathtext{tests/test_tone_selector.py} & 1 & Manual Qt script & Not automated\\
+    \midrule
+    \textbf{Total discovered test files} & \textbf{29} & Mixed & 28 checked, 1 manual\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}[fragile]{Commands Used}
+  \footnotesize
+  Full formal suite:
+  \begin{verbatim}
+/usr/bin/time -p .venv/bin/python -m unittest discover \
+  -s testing_formal/tests -p 'test*.py'
+  \end{verbatim}
+
+  Legacy script checks:
+  \begin{verbatim}
+env PYTHONPATH=. /usr/bin/time -p \
+  .venv/bin/python tests/test_event_extractor.py
+
+env PYTHONPATH=. perl -e 'alarm 25; exec @ARGV' \
+  .venv/bin/python tests/test_ollama.py
+  \end{verbatim}
+
+  Pytest availability check:
+  \begin{verbatim}
+.venv/bin/python -m pytest -q tests
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Pytest Availability}
+  \begin{block}{Result}
+    \pathtext{pytest} is not installed in the active \pathtext{.venv}.
+  \end{block}
+
+  \begin{itemize}
+    \item The legacy \pathtext{tests/} folder cannot currently be run through pytest.
+    \item Formal tests were executed with Python \pathtext{unittest}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Formal Suite Summary}
+  \small
+  \begin{tabular}{lr}
+    \toprule
+    Metric & Result\\
+    \midrule
+    \metric{Formal test files executed}{26}
+    \metric{Formal test cases executed}{166}
+    \metric{Passed}{164}
+    \metric{Failed}{1}
+    \metric{Errors}{1}
+    \metric{Skipped}{0}
+    \metric{Pass rate}{98.80\%}
+    \metric{Failure rate}{0.60\%}
+    \metric{Error rate}{0.60\%}
+    \metric{Formal unittest runtime}{5.430s}
+    \metric{Formal wall-clock runtime}{13.18s}
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Formal Suite Outcome}
+  \small
+  \begin{tabular}{l r l}
+    \toprule
+    Outcome & Count & Visual\\
+    \midrule
+    Passed & 164 & \textcolor{passgreen}{\rule{9.8cm}{0.6em}}\\
+    Failed & 1 & \textcolor{failred}{\rule{0.2cm}{0.6em}}\\
+    Errors & 1 & \textcolor{warnamber}{\rule{0.2cm}{0.6em}}\\
+    Skipped & 0 & \rule{0cm}{0.6em}\\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.7cm}
+  \begin{block}{Formal Suite Result}
+    164 passed, 1 failed, 1 error, 0 skipped. Overall result: \statusfail.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Formal Results By File: Integration}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X r r r r r}
+    \toprule
+    Test File & Tests & Passed & Failed & Errors & Time\\
+    \midrule
+    \pathtext{test_agents_fetch_integration_formal.py} & 4 & 4 & 0 & 0 & 0.015s\\
+    \pathtext{test_summary_queue_integration.py} & 2 & 1 & 1 & 0 & 0.003s\\
+    \midrule
+    \textbf{Integration total} & \textbf{6} & \textbf{5} & \textbf{1} & \textbf{0} & \textbf{0.018s}\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Formal Results By File: Unit Tests 1}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X r r r r r}
+    \toprule
+    Test File & Tests & Passed & Failed & Errors & Time\\
+    \midrule
+    \pathtext{test_agents_orchestrator_formal.py} & 6 & 6 & 0 & 0 & 0.011s\\
+    \pathtext{test_ai_service_formal.py} & 5 & 5 & 0 & 0 & 0.003s\\
+    \pathtext{test_attachment_resolver_formal.py} & 4 & 4 & 0 & 0 & 0.006s\\
+    \pathtext{test_autoreturn_app_utils_formal.py} & 22 & 22 & 0 & 0 & 0.009s\\
+    \pathtext{test_calendar_service_formal.py} & 6 & 6 & 0 & 0 & 0.151s\\
+    \pathtext{test_desktop_notifications_formal.py} & 3 & 3 & 0 & 0 & 0.003s\\
+    \pathtext{test_draft_manager_formal.py} & 6 & 6 & 0 & 0 & 0.011s\\
+    \pathtext{test_event_extractor_formal.py} & 4 & 4 & 0 & 0 & 0.605s\\
+    \pathtext{test_frontend_dialogs_widgets_formal.py} & 10 & 9 & 0 & 1 & 0.783s\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Formal Results By File: Unit Tests 2}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X r r r r r}
+    \toprule
+    Test File & Tests & Passed & Failed & Errors & Time\\
+    \midrule
+    \pathtext{test_gmail_automation_core_formal.py} & 6 & 6 & 0 & 0 & 0.008s\\
+    \pathtext{test_gmail_backend_formal.py} & 6 & 6 & 0 & 0 & 0.005s\\
+    \pathtext{test_message_analysis_cache_formal.py} & 3 & 3 & 0 & 0 & 0.000s\\
+    \pathtext{test_models_formal.py} & 8 & 8 & 0 & 0 & 0.001s\\
+    \pathtext{test_orchestrator_init_formal.py} & 1 & 1 & 0 & 0 & 0.001s\\
+    \pathtext{test_policy_and_settings_formal.py} & 8 & 8 & 0 & 0 & 0.004s\\
+    \pathtext{test_priority_engine_formal.py} & 5 & 5 & 0 & 0 & 1.823s\\
+    \pathtext{test_project_wide_static_formal.py} & 2 & 2 & 0 & 0 & 1.188s\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Formal Results By File: Unit Tests 3}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X r r r r r}
+    \toprule
+    Test File & Tests & Passed & Failed & Errors & Time\\
+    \midrule
+    \pathtext{test_settings_and_main_formal.py} & 3 & 3 & 0 & 0 & 0.135s\\
+    \pathtext{test_slack_backend_formal.py} & 5 & 5 & 0 & 0 & 0.001s\\
+    \pathtext{test_timezone_utils_formal.py} & 3 & 3 & 0 & 0 & 0.111s\\
+    \pathtext{test_tone_detector_formal.py} & 1 & 1 & 0 & 0 & 0.003s\\
+    \pathtext{test_tone_engine_formal.py} & 4 & 4 & 0 & 0 & 0.011s\\
+    \pathtext{test_tone_service_formal.py} & 6 & 6 & 0 & 0 & 0.040s\\
+    \pathtext{test_voice_service_formal.py} & 33 & 33 & 0 & 0 & 0.032s\\
+    \midrule
+    \textbf{Formal total} & \textbf{166} & \textbf{164} & \textbf{1} & \textbf{1} & \textbf{4.960s}\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Test Distribution By Area}
+  \small
+  \begin{tabular}{l r r r r r}
+    \toprule
+    Area & Tests & Passed & Failed & Errors & Share\\
+    \midrule
+    Unit tests & 160 & 159 & 0 & 1 & 96.4\%\\
+    Integration tests & 6 & 5 & 1 & 0 & 3.6\%\\
+    \midrule
+    \textbf{Total formal tests} & \textbf{166} & \textbf{164} & \textbf{1} & \textbf{1} & \textbf{100.0\%}\\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8cm}
+  \begin{tabular}{l r l}
+    \toprule
+    Type & Count & Visual\\
+    \midrule
+    Unit tests & 160 & \textcolor{mutedblue}{\rule{9.5cm}{0.55em}}\\
+    Integration tests & 6 & \textcolor{mutedblue}{\rule{0.4cm}{0.55em}}\\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{Failing Formal Checks}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X l l X}
+    \toprule
+    Test & Type & Result & Issue\\
+    \midrule
+    \pathtext{TestSummaryQueueIntegration.test_add_to_queue_accepts_only_unsummarized_messages}
+    & Integration & Failure
+    & Expected queue length 2, actual queue length 1. Current \pathtext{QueueSummaryGenerator.add_to_queue()} rejects messages without content fields.\\
+    \addlinespace
+    \pathtext{TestFrontendDialogsWidgetsFormal.test_tone_selector_auto_suggest}
+    & Unit & Error
+    & \pathtext{ToneSelector.populate_tones()} accesses \pathtext{orchestrator.tone_engine.user_profile.default_tone}; the fake test tone engine has no \pathtext{user_profile}.\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Legacy Script Checks}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X r l X}
+    \toprule
+    Script & Executed & Result & Notes\\
+    \midrule
+    \pathtext{tests/test_event_extractor.py} & Yes & \statuspass & Ran with \pathtext{PYTHONPATH=.}. Output: Test 1 events: 1, Test 2 events: 1.\\
+    \pathtext{tests/test_ollama.py} & Yes & \statuswarn & Ollama was not running or not accessible at test time.\\
+    \pathtext{tests/test_tone_selector.py} & No & Manual only & Opens an interactive Qt window and blocks on \pathtext{app.exec()}.\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Combined Executable Check Summary}
+  \small
+  \begin{tabular}{lr}
+    \toprule
+    Metric & Result\\
+    \midrule
+    \metric{Executed formal test cases}{166}
+    \metric{Executed legacy scripts}{2}
+    \metric{Total executable checks}{168}
+    \metric{Passed checks}{165}
+    \metric{Failed checks}{2}
+    \metric{Error checks}{1}
+    \metric{Manual/not automated}{1}
+    \metric{Combined executable pass rate}{98.21\%}
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.7cm}
+  \begin{block}{Combined Result}
+    165 passed, 2 failed, 1 error, 1 manual/not automated. Overall result: \statusfail.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Evaluation Measures}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X X r r}
+    \toprule
+    Evaluation Measure & Formula & Formal Suite & Combined Executable\\
+    \midrule
+    Pass Rate & \pathtext{(Passed / Total Executed) * 100} & 98.80\% & 98.21\%\\
+    Failure Rate & \pathtext{(Failures / Total Executed) * 100} & 0.60\% & 1.19\%\\
+    Error Rate & \pathtext{(Errors / Total Executed) * 100} & 0.60\% & 0.60\%\\
+    Skip Rate & \pathtext{(Skipped / Total Executed) * 100} & 0.00\% & 0.00\%\\
+    Formal Unit Share & \pathtext{(Unit Tests / Formal Tests) * 100} & 96.4\% & N/A\\
+    Formal Integration Share & \pathtext{(Integration Tests / Formal Tests) * 100} & 3.6\% & N/A\\
+    Regression Status & \pathtext{Failures == 0 and Errors == 0} & Fail & Fail\\
+    Environment Dependency Status & Live external checks available & N/A & Ollama unavailable\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Functional Coverage: Core Backend}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{l X}
+    \toprule
+    Feature Area & What Is Covered\\
+    \midrule
+    Agents and orchestrator & Agent request handling, intent routing, orchestrator initialization.\\
+    Gmail and Slack backends & Mocked backend fetch/connection behavior and integration fetch flows.\\
+    AI service & Ollama service request handling, summary queue behavior, text/summary error handling.\\
+    Priority engine & Urgency scoring, dataset loading, sender priority rules, semantic model fallback path.\\
+    Tone engine/service & Tone detection, user preference updates, tone adjustment/recommendation error handling.\\
+    Event extraction and calendar & Relative event extraction, birthday extraction, task context, ICS/calendar service behavior.\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Functional Coverage: UI And Voice}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{l X}
+    \toprule
+    Feature Area & What Is Covered\\
+    \midrule
+    Voice feature & Command parsing, natural intent parsing, macOS isolated audio/transcription path, wake-word flow, recorder/transcriber lifecycle.\\
+    UI utilities & Filtering, sorting, pagination, voice UI actions, direct-send safety checks, contact lookup.\\
+    Dialogs and widgets & Auth dialog, reply dialogs, notification dialog, event review dialog, tone display, tone selector.\\
+    Settings and policy & Automation settings, reply policy, main/settings initialization.\\
+    Static checks & Project-wide import/syntax-oriented static tests.\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Limitations}
+  \scriptsize
+  \begin{tabularx}{\textwidth}{X X}
+    \toprule
+    Limitation & Impact\\
+    \midrule
+    \pathtext{pytest} is not installed in the active \pathtext{.venv}. & The legacy \pathtext{tests/} folder cannot be run through pytest without installing \pathtext{testing_formal/requirements-test.txt}.\\
+    \pathtext{tests/test_ollama.py} depends on a live Ollama server and local model. & It failed because Ollama was unavailable, not necessarily because the code is broken.\\
+    \pathtext{tests/test_tone_selector.py} is interactive. & It is not suitable for automated pass/fail execution without refactoring.\\
+    Formal Gmail/Slack integration tests use fake backends. & They validate application logic but not real OAuth/network behavior.\\
+    Live microphone and Whisper quality are not fully tested. & The macOS crash-isolation path is unit-tested, but real repeated voice recording is still a manual/system test.\\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}[fragile]{Final Evaluation}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \begin{block}{Formal Suite}
+      \begin{verbatim}
+Executed: 166
+Passed:   164
+Failed:   1
+Errors:   1
+Skipped:  0
+Result:   FAIL
+      \end{verbatim}
+    \end{block}
+
+    \column{0.48\textwidth}
+    \begin{block}{Combined Executable Checks}
+      \begin{verbatim}
+Executed: 168
+Passed:   165
+Failed:   2
+Errors:   1
+Manual:   1
+Result:   FAIL
+      \end{verbatim}
+    \end{block}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Conclusion}
+  \begin{itemize}
+    \item The corrected full evaluation shows that most of the project is passing.
+    \item The full formal suite does not currently pass because of 1 failure and 1 error.
+    \item One legacy live-service script is blocked by local Ollama availability.
+    \item The previous 62/62 result should be treated only as an affected-subset regression result.
+  \end{itemize}
+\end{frame}
+
+\end{document}

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#024950;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0FA4AF;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#AFDDE5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Main background circle -->
+  <circle cx="128" cy="128" r="120" fill="url(#bgGrad)" />
+
+  <!-- Outer ring -->
+  <circle cx="128" cy="128" r="118" fill="none" stroke="#0FA4AF" stroke-width="2" opacity="0.5"/>
+
+  <!-- Letter A - stylized -->
+  <text x="128" y="148" 
+        font-family="Arial, sans-serif" 
+        font-size="110" 
+        font-weight="900"
+        text-anchor="middle" 
+        fill="url(#arrowGrad)"
+        opacity="0.15">A</text>
+
+  <!-- Circular arrow (return symbol) -->
+  <!-- Arc top-right going clockwise -->
+  <path d="M 128 52 
+           A 76 76 0 1 1 68 175" 
+        fill="none" 
+        stroke="url(#arrowGrad)" 
+        stroke-width="14" 
+        stroke-linecap="round"/>
+
+  <!-- Arrow head pointing down-left -->
+  <polygon points="48,158 72,188 82,162" fill="url(#arrowGrad)"/>
+
+  <!-- Center dot / inbox symbol -->
+  <circle cx="128" cy="128" r="18" fill="#AFDDE5" opacity="0.9"/>
+  <circle cx="128" cy="128" r="10" fill="#024950"/>
+
+  <!-- Small envelope lines inside center -->
+  <line x1="118" y1="124" x2="138" y2="124" stroke="#AFDDE5" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="118" y1="129" x2="138" y2="129" stroke="#AFDDE5" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="118" y1="134" x2="132" y2="134" stroke="#AFDDE5" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- App name at bottom -->
+  <text x="128" y="218" 
+        font-family="Arial, sans-serif" 
+        font-size="22" 
+        font-weight="700"
+        text-anchor="middle" 
+        fill="#AFDDE5"
+        letter-spacing="3">AUTO</text>
+  <text x="128" y="238" 
+        font-family="Arial, sans-serif" 
+        font-size="16" 
+        font-weight="400"
+        text-anchor="middle" 
+        fill="#AFDDE5"
+        letter-spacing="5"
+        opacity="0.8">RETURN</text>
+</svg>

@@ -1,0 +1,297 @@
+{
+  "run_id": "20260308_195757",
+  "summary": {
+    "run_timestamp_utc": "2026-03-08T19:58:07.788027+00:00",
+    "python_version": "3.12.12",
+    "platform": "macOS-12.7.6-x86_64-i386-64bit",
+    "duration_seconds": 10.762,
+    "tests_run": 82,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "successful": true,
+    "coverage": {
+      "total_statements": 7529,
+      "covered_statements": 1855,
+      "coverage_percent": 24.64
+    }
+  },
+  "files": [
+    {
+      "file": "main.py",
+      "statements": 31,
+      "covered_statements": 21,
+      "coverage_percent": 67.74
+    },
+    {
+      "file": "src/__init__.py",
+      "statements": 1,
+      "covered_statements": 1,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/backend/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/backend/agents/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/backend/agents/base_agent.py",
+      "statements": 13,
+      "covered_statements": 3,
+      "coverage_percent": 23.08
+    },
+    {
+      "file": "src/backend/agents/gmail_agent.py",
+      "statements": 145,
+      "covered_statements": 13,
+      "coverage_percent": 8.97
+    },
+    {
+      "file": "src/backend/agents/slack_agent.py",
+      "statements": 136,
+      "covered_statements": 19,
+      "coverage_percent": 13.97
+    },
+    {
+      "file": "src/backend/core/AutoReturn_Gmail_Automation.py",
+      "statements": 385,
+      "covered_statements": 0,
+      "coverage_percent": 0.0
+    },
+    {
+      "file": "src/backend/core/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/backend/core/attachment_resolver.py",
+      "statements": 89,
+      "covered_statements": 61,
+      "coverage_percent": 68.54
+    },
+    {
+      "file": "src/backend/core/automation_coordinator.py",
+      "statements": 16,
+      "covered_statements": 6,
+      "coverage_percent": 37.5
+    },
+    {
+      "file": "src/backend/core/draft_manager.py",
+      "statements": 73,
+      "covered_statements": 41,
+      "coverage_percent": 56.16
+    },
+    {
+      "file": "src/backend/core/event_extractor.py",
+      "statements": 235,
+      "covered_statements": 141,
+      "coverage_percent": 60.0
+    },
+    {
+      "file": "src/backend/core/orchestrator.py",
+      "statements": 122,
+      "covered_statements": 24,
+      "coverage_percent": 19.67
+    },
+    {
+      "file": "src/backend/core/priority_engine.py",
+      "statements": 159,
+      "covered_statements": 0,
+      "coverage_percent": 0.0
+    },
+    {
+      "file": "src/backend/core/reply_policy_engine.py",
+      "statements": 33,
+      "covered_statements": 23,
+      "coverage_percent": 69.7
+    },
+    {
+      "file": "src/backend/core/tone_engine.py",
+      "statements": 380,
+      "covered_statements": 0,
+      "coverage_percent": 0.0
+    },
+    {
+      "file": "src/backend/models/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/backend/models/agent_models.py",
+      "statements": 20,
+      "covered_statements": 0,
+      "coverage_percent": 0.0
+    },
+    {
+      "file": "src/backend/models/automation_models.py",
+      "statements": 24,
+      "covered_statements": 0,
+      "coverage_percent": 0.0
+    },
+    {
+      "file": "src/backend/models/event_models.py",
+      "statements": 32,
+      "covered_statements": 6,
+      "coverage_percent": 18.75
+    },
+    {
+      "file": "src/backend/models/tone_models.py",
+      "statements": 79,
+      "covered_statements": 4,
+      "coverage_percent": 5.06
+    },
+    {
+      "file": "src/backend/services/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/backend/services/ai_service.py",
+      "statements": 141,
+      "covered_statements": 40,
+      "coverage_percent": 28.37
+    },
+    {
+      "file": "src/backend/services/automation_settings_service.py",
+      "statements": 29,
+      "covered_statements": 14,
+      "coverage_percent": 48.28
+    },
+    {
+      "file": "src/backend/services/calendar_service.py",
+      "statements": 166,
+      "covered_statements": 95,
+      "coverage_percent": 57.23
+    },
+    {
+      "file": "src/backend/services/gmail_backend.py",
+      "statements": 215,
+      "covered_statements": 59,
+      "coverage_percent": 27.44
+    },
+    {
+      "file": "src/backend/services/slack_backend.py",
+      "statements": 246,
+      "covered_statements": 67,
+      "coverage_percent": 27.24
+    },
+    {
+      "file": "src/backend/services/tone_service.py",
+      "statements": 79,
+      "covered_statements": 57,
+      "coverage_percent": 72.15
+    },
+    {
+      "file": "src/backend/utils/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/backend/utils/timezone_utils.py",
+      "statements": 29,
+      "covered_statements": 6,
+      "coverage_percent": 20.69
+    },
+    {
+      "file": "src/frontend/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/frontend/dialogs/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/frontend/dialogs/auth_dialog.py",
+      "statements": 413,
+      "covered_statements": 241,
+      "coverage_percent": 58.35
+    },
+    {
+      "file": "src/frontend/dialogs/event_review_dialog.py",
+      "statements": 332,
+      "covered_statements": 121,
+      "coverage_percent": 36.45
+    },
+    {
+      "file": "src/frontend/dialogs/notification_dialog.py",
+      "statements": 72,
+      "covered_statements": 58,
+      "coverage_percent": 80.56
+    },
+    {
+      "file": "src/frontend/dialogs/plain_reply_review_dialog.py",
+      "statements": 70,
+      "covered_statements": 50,
+      "coverage_percent": 71.43
+    },
+    {
+      "file": "src/frontend/dialogs/send_gmail_reply_dialog.py",
+      "statements": 156,
+      "covered_statements": 77,
+      "coverage_percent": 49.36
+    },
+    {
+      "file": "src/frontend/dialogs/send_slack_message_dialog.py",
+      "statements": 163,
+      "covered_statements": 85,
+      "coverage_percent": 52.15
+    },
+    {
+      "file": "src/frontend/dialogs/settings_dialog.py",
+      "statements": 974,
+      "covered_statements": 274,
+      "coverage_percent": 28.13
+    },
+    {
+      "file": "src/frontend/ui/__init__.py",
+      "statements": 0,
+      "covered_statements": 0,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/frontend/ui/autoreturn_app.py",
+      "statements": 2276,
+      "covered_statements": 152,
+      "coverage_percent": 6.68
+    },
+    {
+      "file": "src/frontend/ui/styles.py",
+      "statements": 2,
+      "covered_statements": 1,
+      "coverage_percent": 50.0
+    },
+    {
+      "file": "src/frontend/widgets/__init__.py",
+      "statements": 4,
+      "covered_statements": 4,
+      "coverage_percent": 100.0
+    },
+    {
+      "file": "src/frontend/widgets/tone_detection_display.py",
+      "statements": 74,
+      "covered_statements": 36,
+      "coverage_percent": 48.65
+    },
+    {
+      "file": "src/frontend/widgets/tone_selector.py",
+      "statements": 115,
+      "covered_statements": 55,
+      "coverage_percent": 47.83
+    }
+  ]
+}

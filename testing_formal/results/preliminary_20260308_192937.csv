@@ -1,0 +1,2 @@
+run_id,run_timestamp_utc,python_version,platform,tests_executed,tests_passed,tests_failed,ollama_reachable,event_extraction_feasible,notes
+20260308_192937,2026-03-08T19:29:37.085659+00:00,3.12.12,macOS-12.7.6-x86_64-i386-64bit,4,3,1,False,True,Generated from preliminary JSON report

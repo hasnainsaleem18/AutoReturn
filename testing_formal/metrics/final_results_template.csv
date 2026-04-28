@@ -1,0 +1,8 @@
+metric_name,metric_value,unit,run_id,notes
+pass_rate,0.0,ratio,run_xxx,
+summary_throughput,0.0,messages_per_minute,run_xxx,
+event_extraction_precision,0.0,ratio,run_xxx,
+event_extraction_recall,0.0,ratio,run_xxx,
+event_extraction_f1,0.0,ratio,run_xxx,
+mean_summary_latency,0.0,seconds,run_xxx,
+error_rate,0.0,ratio,run_xxx,
