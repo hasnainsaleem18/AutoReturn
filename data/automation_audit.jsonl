@@ -19,3 +19,5 @@
 {"timestamp": "2026-03-11T03:00:31.255361", "message_id": "19ccb0d80ee49427", "source": "gmail", "action": "auto_reply", "success": false, "reason": "Attachment request detected, but no readable files found in allowed paths."}
 {"timestamp": "2026-03-11T11:24:20.192476", "message_id": "19cdb89b48c423de", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
 {"timestamp": "2026-04-23T13:14:42.963207", "message_id": "19d4554bafa2ec2a", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-04-29T02:56:48.778677", "message_id": "19dba5c1a8673981", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}
+{"timestamp": "2026-04-29T03:21:25.576383", "message_id": "19dba5c1a8673981", "source": "gmail", "action": "auto_reply", "success": true, "reason": "Reply sent successfully."}

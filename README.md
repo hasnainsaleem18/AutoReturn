@@ -237,31 +237,193 @@ Built on **PySide6 (Qt for Python)**, styled with custom CSS.
 
 ## Project Structure
 
+Current tracked project structure. Local/generated folders such as `.git/`, `.venv/`, `__pycache__/`, `.pytest_cache/`, and ignored OAuth credential files are intentionally not shown.
+
 ```text
 AutoReturn/
-├── main.py                        # Application entry point
-├── run.sh                         # Dev launcher script
-├── requirements.txt               # Python dependencies
-├── config/                        # App configuration
-├── data/                          # JSON databases (priority rules, tone profiles)
-├── appimage/                      # AppImage build system
-│   ├── build_appimage.sh          # AppImage builder script
-│   ├── autoreturn.svg             # App icon
-│   ├── requirements-appimage.txt  # Bundled dependencies (no voice)
-│   └── build_issues/             # Documented build issues & fixes
-├── packaging/
-│   └── build_deb.sh              # DEB package builder script
-├── src/
-│   ├── backend/
-│   │   ├── core/                  # Algorithms (Priority, Tone, Events, Drafts)
-│   │   ├── agents/                # GmailAgent, SlackAgent
-│   │   ├── services/              # AI, Gmail, Slack, Supabase, Calendar
-│   │   └── models/                # Pydantic schemas
-│   └── frontend/
-│       ├── ui/                    # Main window (autoreturn_app.py)
-│       ├── dialogs/               # Auth, Settings, Reply, Event dialogs
-│       └── widgets/               # Tone selector, notification widgets
-└── docs/                          # Architecture docs & algorithm writeups
+|-- .gitignore
+|-- .python-version
+|-- README.md
+|-- appimage
+|   |-- AutoReturn.desktop
+|   |-- BUILD_ISSUES_LOG.md
+|   |-- autoreturn.svg
+|   |-- build_appimage.sh
+|   |-- build_issues
+|   |   |-- README.md
+|   |   |-- issue_01_shiboken6_missing.md
+|   |   |-- issue_02_spacy_model_not_bundled.md
+|   |   |-- issue_03_tone_engine_crash.md
+|   |   |-- issue_04_wrong_ollama_model.md
+|   |   |-- issue_05_hardcoded_mac_path.md
+|   |   |-- issue_06_apprun_hardcoded_python.md
+|   |   |-- issue_07_gmail_credentials_readonly_appdir.md
+|   |   `-- issue_08_summaries_not_generating.md
+|   |-- entrypoint.py
+|   `-- requirements-appimage.txt
+|-- config
+|   |-- settings.conf
+|   `-- tone_detection_rules.json
+|-- data
+|   |-- automation_audit.jsonl
+|   |-- automation_settings.json
+|   |-- gmail_data
+|   |   `-- .gitkeep
+|   |-- ics_exports
+|   |   |-- autoreturn_events_20260311_100107.ics
+|   |   |-- autoreturn_events_20260311_101413.ics
+|   |   `-- autoreturn_events_20260311_102453.ics
+|   |-- priority_dataset.json
+|   |-- tone_profile.json
+|   `-- voice_activity.jsonl
+|-- docs
+|   |-- Tone_Detection_Algorithm.md
+|   |-- backend_architecture.md
+|   |-- test_statistics_and_evaluation.md
+|   |-- test_statistics_and_evaluation_presentation.tex
+|   `-- test_statistics_tables_frames_only.tex
+|-- logs
+|   `-- .gitkeep
+|-- main.py
+|-- packaging
+|   `-- build_deb.sh
+|-- requirements.txt
+|-- run.sh
+|-- src
+|   |-- __init__.py
+|   |-- backend
+|   |   |-- __init__.py
+|   |   |-- agents
+|   |   |   |-- __init__.py
+|   |   |   |-- base_agent.py
+|   |   |   |-- gmail_agent.py
+|   |   |   `-- slack_agent.py
+|   |   |-- core
+|   |   |   |-- AutoReturn_Gmail_Automation.py
+|   |   |   |-- __init__.py
+|   |   |   |-- attachment_resolver.py
+|   |   |   |-- automation_coordinator.py
+|   |   |   |-- draft_manager.py
+|   |   |   |-- event_extractor.py
+|   |   |   |-- orchestrator.py
+|   |   |   |-- priority_engine.py
+|   |   |   |-- reply_policy_engine.py
+|   |   |   `-- tone_engine.py
+|   |   |-- models
+|   |   |   |-- __init__.py
+|   |   |   |-- agent_models.py
+|   |   |   |-- automation_models.py
+|   |   |   |-- event_models.py
+|   |   |   `-- tone_models.py
+|   |   |-- services
+|   |   |   |-- __init__.py
+|   |   |   |-- ai_service.py
+|   |   |   |-- automation_settings_service.py
+|   |   |   |-- calendar_service.py
+|   |   |   |-- gmail_backend.py
+|   |   |   |-- slack_backend.py
+|   |   |   |-- supabase_auth_service.py
+|   |   |   |-- tone_service.py
+|   |   |   |-- voice_intent_service.py
+|   |   |   `-- voice_service.py
+|   |   `-- utils
+|   |       |-- __init__.py
+|   |       |-- desktop_notifications.py
+|   |       |-- message_analysis_cache.py
+|   |       `-- timezone_utils.py
+|   `-- frontend
+|       |-- __init__.py
+|       |-- assets
+|       |   |-- Gmail_Logo_32px.png
+|       |   |-- icons8-slack-new-48.png
+|       |   `-- notification-bell-red.png
+|       |-- dialogs
+|       |   |-- __init__.py
+|       |   |-- auth_dialog.py
+|       |   |-- event_review_dialog.py
+|       |   |-- notification_dialog.py
+|       |   |-- plain_reply_review_dialog.py
+|       |   |-- send_gmail_reply_dialog.py
+|       |   |-- send_slack_message_dialog.py
+|       |   `-- settings_dialog.py
+|       |-- ui
+|       |   |-- __init__.py
+|       |   |-- autoreturn_app.py
+|       |   `-- styles.py
+|       `-- widgets
+|           |-- __init__.py
+|           |-- tone_detection_display.py
+|           `-- tone_selector.py
+|-- testing_formal
+|   |-- FINAL_RESULTS_TEMPLATE.md
+|   |-- METRICS_FRAMEWORK.md
+|   |-- PRELIMINARY_RESULTS.md
+|   |-- README.md
+|   |-- TEST_CASE_MATRIX.md
+|   |-- TEST_PLAN.md
+|   |-- conftest.py
+|   |-- manual
+|   |   `-- SYSTEM_TEST_CHECKLIST.md
+|   |-- metrics
+|   |   |-- final_results_template.csv
+|   |   `-- preliminary_results_template.csv
+|   |-- pytest.ini
+|   |-- requirements-test.txt
+|   |-- results
+|   |   |-- full_suite_20260308_195757.csv
+|   |   |-- full_suite_20260308_195757.json
+|   |   |-- full_suite_20260308_200345.csv
+|   |   |-- full_suite_20260308_200345.json
+|   |   |-- full_suite_20260308_200629.csv
+|   |   |-- full_suite_20260308_200629.json
+|   |   |-- full_suite_20260310_234651.csv
+|   |   |-- full_suite_20260310_234651.json
+|   |   |-- full_suite_20260311_045324.csv
+|   |   |-- full_suite_20260311_045324.json
+|   |   |-- preliminary_20260308_192937.csv
+|   |   |-- preliminary_20260308_192937.json
+|   |   `-- preliminary_20260311_045301.json
+|   |-- scripts
+|   |   |-- export_results_csv.py
+|   |   |-- run_full_formal_suite.py
+|   |   `-- run_preliminary_tests.py
+|   `-- tests
+|       |-- __init__.py
+|       |-- integration
+|       |   |-- __init__.py
+|       |   |-- test_agents_fetch_integration_formal.py
+|       |   `-- test_summary_queue_integration.py
+|       |-- qt_utils.py
+|       `-- unit
+|           |-- __init__.py
+|           |-- test_agents_orchestrator_formal.py
+|           |-- test_ai_service_formal.py
+|           |-- test_attachment_resolver_formal.py
+|           |-- test_autoreturn_app_utils_formal.py
+|           |-- test_calendar_service_formal.py
+|           |-- test_desktop_notifications_formal.py
+|           |-- test_draft_manager_formal.py
+|           |-- test_event_extractor_formal.py
+|           |-- test_frontend_dialogs_widgets_formal.py
+|           |-- test_gmail_automation_core_formal.py
+|           |-- test_gmail_backend_formal.py
+|           |-- test_message_analysis_cache_formal.py
+|           |-- test_models_formal.py
+|           |-- test_orchestrator_init_formal.py
+|           |-- test_policy_and_settings_formal.py
+|           |-- test_priority_engine_formal.py
+|           |-- test_project_wide_static_formal.py
+|           |-- test_settings_and_main_formal.py
+|           |-- test_slack_backend_formal.py
+|           |-- test_timezone_utils_formal.py
+|           |-- test_tone_detector_formal.py
+|           |-- test_tone_engine_formal.py
+|           |-- test_tone_service_formal.py
+|           `-- test_voice_service_formal.py
+`-- tests
+    |-- test_event_extractor.py
+    |-- test_ollama.py
+    `-- test_tone_selector.py
 ```
 
 ---

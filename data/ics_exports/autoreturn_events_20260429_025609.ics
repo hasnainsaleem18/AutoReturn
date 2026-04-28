@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AutoReturn//Calendar Export//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:gmail-19dba5c1a8673981-1776963600@autoreturn
+DTSTAMP:20260428T215609Z
+DTSTART;TZID=Asia/Karachi:20260423T220000
+DTEND;TZID=Asia/Karachi:20260423T230000
+SUMMARY:Urgent Meeting Arrangement
+DESCRIPTION:Subject: Urgent Meeting Arrangement\n\nMessage snippet:\nUrgent Meeting Arrangement Urgently set a meeting today at 10PM. Thankyou. -- Regards\, Alishba Tariq\, 22P-9112 BS SE FAST-NUCES
+LOCATION:10PM
+END:VEVENT
+END:VCALENDAR

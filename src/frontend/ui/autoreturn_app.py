@@ -34,6 +34,7 @@ from PySide6.QtGui import (QColor, QIcon, QPixmap, QFont, QFontMetrics,
 from src.frontend.ui.styles import get_stylesheet
 from src.frontend.dialogs.notification_dialog import NotificationDialog
 from src.frontend.dialogs.settings_dialog import SettingsDialog
+from src.frontend.dialogs.auth_dialog import AuthDialog
 from src.frontend.dialogs.send_slack_message_dialog import SendSlackMessageDialog
 from src.frontend.dialogs.event_review_dialog import EventReviewDialog
 from src.frontend.dialogs.plain_reply_review_dialog import PlainReplyReviewDialog
@@ -384,6 +385,7 @@ class AutoReturnApp(QMainWindow):
             print(f"Could not restore Supabase session in app: {exc}")
         self.connected_accounts_map = self._load_connected_accounts_for_user()
         self.gmail_service.set_data_dir(self._get_gmail_data_dir())
+        self.calendar_service = CalendarService(self._get_gmail_data_dir())
         if 'connected_accounts' not in self.user_data:
             self.user_data['connected_accounts'] = {
                 'gmail': False,
@@ -437,9 +439,7 @@ class AutoReturnApp(QMainWindow):
                 'priority': 'normal'
             })
             
-            unread_count = sum(1 for n in self.notifications if not n.get('read', False))
-            if hasattr(self, 'notif_badge'):
-                self.notif_badge.setText(str(unread_count))
+            self._refresh_notification_badge()
 
     def _start_initial_slack_sync(self, limit: int = 200):
         """Fetch initial Slack history in the background to avoid blocking the UI thread."""
@@ -1053,9 +1053,7 @@ class AutoReturnApp(QMainWindow):
             print(f"{notif_message}")
             self._notify_desktop("Slack Message", notif_message)
 
-        unread_count = sum(1 for n in self.notifications if not n.get('read', False))
-        if hasattr(self, 'notif_badge'):
-            self.notif_badge.setText(str(unread_count))
+        self._refresh_notification_badge()
 
         self._start_draft_generation_for_messages(draft_candidates)
         self._start_auto_reply_for_messages(auto_reply_candidates)
@@ -1756,9 +1754,7 @@ class AutoReturnApp(QMainWindow):
             })
             self._notify_desktop("Gmail Message", notif_message)
 
-        unread_count = sum(1 for n in self.notifications if not n.get('read', False))
-        if hasattr(self, 'notif_badge'):
-            self.notif_badge.setText(str(unread_count))
+        self._refresh_notification_badge()
         # Sort by Priority (Rank) then Timestamp
         p_map = {'High': 3, 'Medium': 2, 'Low': 1}
         self.messages.sort(key=lambda x: (p_map.get(self._normalize_priority(x.get('priority', 'Low')), 1), float(x.get('timestamp', 0))), reverse=True)
@@ -2274,9 +2270,26 @@ class AutoReturnApp(QMainWindow):
         dialog = NotificationDialog(self.notifications, self)
         dialog.exec()
         
-        unread_count = sum(1 for n in self.notifications if not n.get('read', False))
-        if hasattr(self, 'notif_badge'):
-            self.notif_badge.setText(str(unread_count))
+        self._refresh_notification_badge()
+
+    def _notification_unread_count(self) -> int:
+        return sum(1 for n in self.notifications if not n.get('read', False))
+
+    def _refresh_notification_badge(self):
+        self._set_notification_badge_count(self._notification_unread_count())
+
+    def _set_notification_badge_count(self, count: int):
+        if not hasattr(self, "notif_badge"):
+            return
+        count = max(0, int(count or 0))
+        text = str(count)
+        badge = self.notif_badge
+        badge.setText(text)
+        badge.setVisible(count > 0)
+        width = max(20, 12 + (len(text) * 7))
+        badge.setFixedSize(width, 18)
+        badge.move(max(0, 38 - width), 1)
+        badge.raise_()
 
     # -------------------------
     # VOICE CONTROL
@@ -2749,21 +2762,63 @@ class AutoReturnApp(QMainWindow):
         dialog = QDialog(self)
         dialog.setWindowTitle("Voice Command History")
         dialog.resize(980, 520)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+            }
+            QLabel#dialogTitle {
+                color: #003135;
+                font-size: 17px;
+                font-weight: 700;
+            }
+            QTableWidget {
+                background-color: #FFFFFF;
+                alternate-background-color: #F7FCFD;
+                color: #003135;
+                border: 1px solid #AFDDE5;
+                border-radius: 8px;
+                gridline-color: #AFDDE5;
+                selection-background-color: #D4F4F7;
+                selection-color: #003135;
+            }
+            QTableWidget::item {
+                padding: 7px;
+            }
+            QHeaderView::section {
+                background-color: #AFDDE5;
+                color: #003135;
+                border: none;
+                border-bottom: 2px solid #024950;
+                padding: 10px 12px;
+                font-weight: 700;
+            }
+            QPushButton#btnSecondary {
+                padding: 8px 16px;
+                border: 2px solid #0FA4AF;
+                background-color: #FFFFFF;
+                border-radius: 8px;
+                color: #024950;
+                font-weight: 600;
+            }
+            QPushButton#btnSecondary:hover {
+                background-color: #D4F4F7;
+            }
+        """)
 
         layout = QVBoxLayout(dialog)
         title = QLabel("Voice Command History")
         title.setObjectName("dialogTitle")
         layout.addWidget(title)
 
-        table = QTableWidget(len(events), 4)
-        table.setHorizontalHeaderLabels(["Time", "Event", "Text", "Details"])
+        table = QTableWidget(len(events), 3)
+        table.setHorizontalHeaderLabels(["Time", "Event", "Text"])
         table.verticalHeader().setVisible(False)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectRows)
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        table.setAlternatingRowColors(True)
 
         for row, event in enumerate(events):
             text = event.get("text", "")
@@ -2773,7 +2828,6 @@ class AutoReturnApp(QMainWindow):
                 event.get("timestamp", ""),
                 event.get("event", ""),
                 text,
-                self._voice_history_details(event),
             ]
             for col, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
@@ -2785,6 +2839,7 @@ class AutoReturnApp(QMainWindow):
         button_row = QHBoxLayout()
         button_row.addStretch()
         close_btn = QPushButton("Close")
+        close_btn.setObjectName("btnSecondary")
         close_btn.clicked.connect(dialog.accept)
         button_row.addWidget(close_btn)
         layout.addLayout(button_row)
@@ -3337,11 +3392,12 @@ class AutoReturnApp(QMainWindow):
         notif_btn.setFixedSize(40, 40)
         notif_btn.clicked.connect(self.show_notifications)
         
-        badge = QLabel("3")
+        badge = QLabel("")
         badge.setObjectName("notificationBadge")
         badge.setParent(notif_btn)
-        badge.move(20, 2)
+        badge.setAlignment(Qt.AlignCenter)
         self.notif_badge = badge
+        self._set_notification_badge_count(0)
         
         self.user_name_label = QLabel("User")
         self.user_name_label.setObjectName("userNameLabel")
@@ -4891,6 +4947,42 @@ class AutoReturnApp(QMainWindow):
         dialog.setWindowTitle("Priority Details")
         dialog.resize(520, 300)
         dialog.setMinimumSize(460, 260)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #FFFFFF;
+            }
+            QLabel#detailTitle {
+                color: #003135;
+                font-size: 17px;
+                font-weight: 700;
+            }
+            QLabel#detailMeta {
+                color: #024950;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            QTextEdit#priorityExplanation {
+                background-color: #F7FCFD;
+                color: #003135;
+                border: 1px solid #AFDDE5;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 14px;
+                selection-background-color: #D4F4F7;
+                selection-color: #003135;
+            }
+            QPushButton#btnSecondary {
+                padding: 8px 16px;
+                border: 2px solid #0FA4AF;
+                background-color: #FFFFFF;
+                border-radius: 8px;
+                color: #024950;
+                font-weight: 600;
+            }
+            QPushButton#btnSecondary:hover {
+                background-color: #D4F4F7;
+            }
+        """)
 
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -4913,6 +5005,7 @@ class AutoReturnApp(QMainWindow):
         context.setWordWrap(True)
 
         explanation = QTextEdit()
+        explanation.setObjectName("priorityExplanation")
         explanation.setReadOnly(True)
         explanation.setPlainText(advice)
         explanation.setMinimumHeight(120)
@@ -5551,6 +5644,7 @@ class AutoReturnApp(QMainWindow):
         dialog.sync_gmail_callback = lambda: self.handle_gmail_sync(quiet=False)
         dialog.get_gmail_status_callback = self.gmail_service.get_status_snapshot
         dialog.profile_updated.connect(self.on_profile_updated)
+        dialog.logout_requested.connect(lambda: QTimer.singleShot(0, self.handle_logout_requested))
         dialog.automation_settings_updated.connect(self.on_automation_settings_updated)
         dialog.refresh_gmail_status()
         dialog.exec()
@@ -5569,6 +5663,143 @@ class AutoReturnApp(QMainWindow):
         self.user_data = updated_user
         if hasattr(self, 'user_name_label'):
             self.user_name_label.setText(self.user_data.get('name', 'User'))
+
+    # -------------------------
+    # LOGOUT HANDLING
+    # Returns the application to the authentication dialog after logout.
+    # -------------------------
+    def handle_logout_requested(self):
+        """Log out the current user and show the login dialog."""
+        self._prepare_for_logout()
+        self.hide()
+
+        authenticated_user_data = {}
+        auth_dialog = AuthDialog()
+
+        def on_authenticated(user_data):
+            authenticated_user_data.update(user_data or {})
+
+        auth_dialog.authenticated.connect(on_authenticated)
+        if auth_dialog.exec() != AuthDialog.Accepted or not authenticated_user_data:
+            QApplication.instance().quit()
+            return
+
+        self._reset_after_login()
+        self.set_user_info(authenticated_user_data)
+        self.show()
+        self._schedule_startup_tasks()
+        self.show_status_message(
+            f"Signed in as {self.user_data.get('email', self.user_data.get('name', 'User'))}"
+        )
+
+    # -------------------------
+    # PREPARE FOR LOGOUT
+    # Stops background work, disconnects services, and clears user session state.
+    # -------------------------
+    def _prepare_for_logout(self):
+        self.time_refresh_timer.stop()
+        self.gmail_refresh_timer.stop()
+        self._startup_tasks_scheduled = False
+        self._startup_gmail_backfill_scheduled = False
+        self._is_syncing_gmail = False
+
+        if hasattr(self, "queue_summary_generator") and self.queue_summary_generator:
+            self.queue_summary_generator.stop_all()
+
+        for thread_id, thread in list(getattr(self, "summary_threads", {}).items()):
+            if thread and thread.isRunning():
+                thread.quit()
+                thread.wait(1000)
+        self.summary_threads.clear()
+
+        self.stop_slack_listener()
+        if getattr(self.slack_service, "is_connected", False):
+            self.slack_service.disconnect()
+        if getattr(self.gmail_service, "is_connected", False):
+            self.gmail_service.disconnect()
+
+        self._stop_voice_service()
+        self._voice_service_init_attempted = False
+
+        self._sign_out_current_auth_session()
+        self._clear_runtime_user_state()
+
+    # -------------------------
+    # SIGN OUT CURRENT AUTH SESSION
+    # Clears provider-specific login session artifacts.
+    # -------------------------
+    def _sign_out_current_auth_session(self):
+        auth_method = (self.user_data or {}).get("auth_method", "")
+        if auth_method == "email":
+            try:
+                self.supabase_auth_service.sign_out()
+            except Exception as exc:
+                print(f"Could not sign out of Supabase: {exc}")
+
+        if auth_method == "google":
+            token_path = self._google_login_token_path()
+            try:
+                if os.path.exists(token_path):
+                    os.remove(token_path)
+            except OSError as exc:
+                print(f"Could not remove Google login token: {exc}")
+
+    # -------------------------
+    # GOOGLE LOGIN TOKEN PATH
+    # Returns the persisted Google sign-in token path.
+    # -------------------------
+    def _google_login_token_path(self) -> str:
+        if os.environ.get("APPIMAGE"):
+            root = os.path.join(os.path.expanduser("~"), ".autoreturn")
+        else:
+            root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        return os.path.join(root, "data", "auth", "google_login_token.json")
+
+    # -------------------------
+    # CLEAR RUNTIME USER STATE
+    # Clears current-user data before a fresh login.
+    # -------------------------
+    def _clear_runtime_user_state(self):
+        self.user_data = None
+        self.connected_accounts_map = {}
+        self.messages = []
+        self.notifications = []
+        self.automation_drafted_message_ids.clear()
+        self.automation_draft_pending_ids.clear()
+        self.automation_auto_replied_ids.clear()
+        self.automation_auto_reply_pending_ids.clear()
+        self.selected_message_keys.clear()
+        self._last_context_message_key = None
+        self.current_page = 1
+        self._current_page_messages = []
+        self.active_filter = "all"
+        self.current_sort_column = None
+        self.sort_order = Qt.AscendingOrder
+        self.expanded_row = None
+        self.search_query = ""
+        self.search_filters = None
+        self.voice_command_history = []
+
+        if hasattr(self, "search_field"):
+            self.search_field.blockSignals(True)
+            self.search_field.clear()
+            self.search_field.blockSignals(False)
+        if hasattr(self, "notif_badge"):
+            self._set_notification_badge_count(0)
+        if hasattr(self, "user_name_label"):
+            self.user_name_label.setText("User")
+        if hasattr(self, "table"):
+            self.populate_table()
+
+    # -------------------------
+    # RESET AFTER LOGIN
+    # Re-enables per-user services after successful login.
+    # -------------------------
+    def _reset_after_login(self):
+        self._startup_tasks_scheduled = False
+        self._startup_gmail_backfill_scheduled = False
+        self._is_syncing_gmail = False
+        self._init_voice_service()
 
     # -------------------------
     # USER STORAGE KEY

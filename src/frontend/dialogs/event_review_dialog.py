@@ -94,6 +94,27 @@ class EventReviewDialog(QDialog):
                 padding: 8px;
                 border: none;
             }
+            QMessageBox {
+                background-color: #ffffff;
+                color: #003135;
+            }
+            QMessageBox QLabel {
+                color: #003135;
+                background: transparent;
+                font-size: 14px;
+            }
+            QMessageBox QPushButton {
+                min-width: 78px;
+                padding: 7px 14px;
+                border: 2px solid #0FA4AF;
+                border-radius: 7px;
+                background-color: #ffffff;
+                color: #024950;
+                font-weight: 600;
+            }
+            QMessageBox QPushButton:hover {
+                background-color: #D4F4F7;
+            }
         """)
 
         layout = QVBoxLayout(self)
@@ -305,7 +326,11 @@ class EventReviewDialog(QDialog):
         ok, msg = self.calendar_service.connect(allow_flow=True)
         if not ok:
             if not auto_only:
-                QMessageBox.warning(self, "Calendar", msg)
+                QMessageBox.warning(
+                    self,
+                    "Calendar",
+                    msg or "Calendar connection failed. Please check your Google Calendar authorization.",
+                )
             return
 
         selected_after_conflicts = self._resolve_conflicts(selected, interactive=not auto_only)

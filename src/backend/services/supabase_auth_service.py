@@ -109,6 +109,19 @@ class SupabaseAuthService:
             raise RuntimeError(f"Could not restore Supabase session: {exc}") from exc
 
     # -------------------------
+    # SIGN OUT
+    # Clears the authenticated Supabase session for this client instance.
+    # -------------------------
+    def sign_out(self) -> None:
+        if not self.is_configured():
+            return
+        client = self._get_client()
+        try:
+            client.auth.sign_out()
+        except Exception as exc:
+            raise RuntimeError(f"Could not sign out of Supabase: {exc}") from exc
+
+    # -------------------------
     # GET CONNECTED ACCOUNTS
     # Loads integration ownership rows for the authenticated user.
     # -------------------------

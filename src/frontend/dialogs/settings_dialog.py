@@ -566,17 +566,30 @@ class SettingsDialog(QDialog):
         
         # Text Edit for Sender Priorities
         self.priority_text_edit = QTextEdit()
+        self.priority_text_edit.setAcceptRichText(False)
+        self.priority_text_edit.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self.priority_text_edit.setPlaceholderText(
+            "boss@company.com = 10\n"
+            "client@example.com = 8\n"
+            "newsletter@example.com = 0"
+        )
         self.priority_text_edit.setStyleSheet(f"""
             QTextEdit {{
                 background-color: {StyleConstants.COLOR_WHITE};
                 color: {StyleConstants.COLOR_DARKEST};
-                border: 1px solid {StyleConstants.COLOR_LIGHT};
+                border: 2px solid {StyleConstants.COLOR_LIGHT};
                 border-radius: {StyleConstants.RADIUS_MEDIUM}px;
-                padding: {StyleConstants.PADDING_SMALL}px;
-                font-family: monospace;
+                padding: {StyleConstants.PADDING_LARGE}px;
+                font-family: Menlo, Monaco, Consolas, monospace;
+                font-size: {StyleConstants.FONT_SIZE_LARGE}px;
+                selection-background-color: {StyleConstants.COLOR_LIGHT};
+                selection-color: {StyleConstants.COLOR_DARKEST};
+            }}
+            QTextEdit:focus {{
+                border: 2px solid {StyleConstants.COLOR_PRIMARY};
             }}
         """)
-        self.priority_text_edit.setMinimumHeight(250)
+        self.priority_text_edit.setMinimumHeight(310)
         
         self._load_priority_data()
         layout.addWidget(self.priority_text_edit)
@@ -616,18 +629,20 @@ class SettingsDialog(QDialog):
                 if not sender.startswith("_"):
                     text_lines.append(f"{sender} = {score}")
             
-            self.priority_text_edit.setPlainText("\\n".join(text_lines))
+            self.priority_text_edit.setPlainText("\n".join(text_lines))
         except Exception as e:
             self.priority_text_edit.setPlainText(f"Error loading data: {e}")
             self.priority_data = {}
 
     def _save_priority_rules(self):
         try:
-            lines = self.priority_text_edit.toPlainText().split('\\n')
+            normalized_text = self.priority_text_edit.toPlainText().replace("\\n", "\n")
+            self.priority_text_edit.setPlainText(normalized_text)
+            lines = normalized_text.splitlines()
             new_rules = {}
             for line in lines:
                 if '=' in line:
-                    parts = line.split('=')
+                    parts = line.split('=', 1)
                     sender = parts[0].strip()
                     try:
                         score = float(parts[1].strip())
@@ -1930,6 +1945,18 @@ This token will let your desktop app send and receive messages as you, including
             QTextEdit:focus, QLineEdit:focus, QComboBox:focus {{
                 border: 2px solid {tokens['input_focus']};
             }}
+            QComboBox::drop-down {{
+                width: 34px;
+                border-left: 1px solid {tokens['border']};
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {tokens['input_bg']};
+                color: {tokens['input_text']};
+                border: 1px solid {tokens['border']};
+                selection-background-color: {StyleConstants.COLOR_LIGHT};
+                selection-color: {StyleConstants.COLOR_DARKEST};
+                padding: 4px;
+            }}
             QCheckBox {{
                 color: {tokens['text']};
                 spacing: 8px;
@@ -2059,10 +2086,15 @@ This token will let your desktop app send and receive messages as you, including
         voice_layout.addWidget(activation_label)
 
         self.voice_activation_mode_combo = QComboBox()
-        self.voice_activation_mode_combo.setMaximumWidth(260)
+        self.voice_activation_mode_combo.setMinimumWidth(240)
+        self.voice_activation_mode_combo.setMaximumWidth(340)
+        self.voice_activation_mode_combo.setMinimumHeight(metrics["control_h"])
+        self.voice_activation_mode_combo.setMinimumContentsLength(18)
+        self.voice_activation_mode_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.voice_activation_mode_combo.setStyleSheet(input_style)
         self.voice_activation_mode_combo.addItem("Manual", VoiceActivationMode.MANUAL.value)
         self.voice_activation_mode_combo.addItem("Wake Word", VoiceActivationMode.WAKE_WORD.value)
+        self.voice_activation_mode_combo.view().setMinimumWidth(240)
         activation_index = self.voice_activation_mode_combo.findData(self.automation_settings.voice.activation_mode.value)
         if activation_index >= 0:
             self.voice_activation_mode_combo.setCurrentIndex(activation_index)

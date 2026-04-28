@@ -78,12 +78,38 @@ def get_stylesheet():
         }
         
         #notificationBadge {
-            background-color: #964734;
+            background-color: #B9503A;
             color: white;
-            font-size: 10px;
-            padding: 2px 5px;
-            border-radius: 10px;
+            font-size: 11px;
+            padding: 0;
+            border: 1px solid #FFFFFF;
+            border-radius: 9px;
+            font-weight: 700;
+        }
+
+        QMessageBox {
+            background-color: #FFFFFF;
+            color: #003135;
+        }
+
+        QMessageBox QLabel {
+            color: #003135;
+            background: transparent;
+            font-size: 14px;
+        }
+
+        QMessageBox QPushButton {
+            min-width: 78px;
+            padding: 7px 14px;
+            border: 2px solid #0FA4AF;
+            border-radius: 7px;
+            background-color: #FFFFFF;
+            color: #024950;
             font-weight: 600;
+        }
+
+        QMessageBox QPushButton:hover {
+            background-color: #D4F4F7;
         }
         
         #mainContent {

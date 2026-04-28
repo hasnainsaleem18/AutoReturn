@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.backend.models.agent_models import AgentResponse, Intent
 from src.frontend.ui.autoreturn_app import AutoReturnApp
@@ -376,6 +376,62 @@ class TestAutoReturnAppUtilsFormal(unittest.TestCase):
         self.assertEqual(created_requests[0][1]["max_results"], 7)
         self.assertFalse(created_requests[0][1]["add_ai_analysis"])
         self.assertIn("g1", created_requests[0][1]["analysis_cache"])
+
+    # -------------------------
+    # FUNCTION: test_show_settings_routes_logout_signal_to_main_window
+    # Purpose: Validate Settings logout requests are wired back to the app.
+    # -------------------------
+    def test_show_settings_routes_logout_signal_to_main_window(self):
+        class _Signal:
+            def __init__(self):
+                self.callback = None
+
+            def connect(self, callback):
+                self.callback = callback
+
+            def emit(self):
+                if self.callback:
+                    self.callback()
+
+        class _FakeSettingsDialog:
+            def __init__(self, *_args, **_kwargs):
+                self.connect_slack_callback = None
+                self.upload_gmail_json_callback = None
+                self.connect_gmail_callback = None
+                self.sync_gmail_callback = None
+                self.get_gmail_status_callback = None
+                self.profile_updated = _Signal()
+                self.logout_requested = _Signal()
+                self.automation_settings_updated = _Signal()
+
+            def refresh_gmail_status(self):
+                return None
+
+            def exec(self):
+                self.logout_requested.emit()
+                return 1
+
+        self.app_obj.user_data = {"email": "user@example.com"}
+        self.app_obj.gmail_service = MagicMock()
+        self.app_obj.gmail_service.get_status_snapshot.return_value = {}
+        self.app_obj.orchestrator = MagicMock()
+        self.app_obj.connect_slack = MagicMock()
+        self.app_obj.upload_gmail_credentials = MagicMock()
+        self.app_obj.authorize_gmail = MagicMock()
+        self.app_obj.handle_gmail_sync = MagicMock()
+        self.app_obj.on_profile_updated = MagicMock()
+        self.app_obj.on_automation_settings_updated = MagicMock()
+        self.app_obj.handle_logout_requested = MagicMock()
+        self.app_obj.update_status_bar = MagicMock()
+
+        with patch("src.frontend.ui.autoreturn_app.SettingsDialog", _FakeSettingsDialog), \
+                patch(
+                    "src.frontend.ui.autoreturn_app.QTimer.singleShot",
+                    side_effect=lambda _ms, callback: callback(),
+                ):
+            AutoReturnApp.show_settings(self.app_obj)
+
+        self.app_obj.handle_logout_requested.assert_called_once()
 
     # -------------------------
     # FUNCTION: test_initial_slack_sync_complete_forwards_messages
