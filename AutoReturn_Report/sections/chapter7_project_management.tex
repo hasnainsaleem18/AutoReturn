@@ -1,0 +1,81 @@
+\chapter{Project Management and Deployment Considerations}
+\label{sec:project_management}
+
+\section{Project Timeline}
+The timeline in Table~\ref{tab:project_timeline} follows the same phase schedule used in the iteration chapter so that planning evidence remains consistent across the report.
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{8cm}|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{2.5cm}|}
+\hline
+\textbf{Phase} & \textbf{Duration} & \textbf{Status} & \textbf{Semester} \\ \hline
+Phase 1: Research \& Requirement Analysis & 0--3 Weeks & Completed & Semester 1 \\ \hline
+Phase 2: System Design \& Architecture & 3--6 Weeks & Completed & Semester 1 \\ \hline
+Phase 3: API Research \& Integration Testing & 6--12 Weeks & Completed & Semester 1 \\ \hline
+Phase 4: Backend \& Core System Development & 12--18 Weeks & Completed & Semester 1,2 \\ \hline
+Phase 5: Desktop App (Frontend) & 18--22 Weeks & Completed & Semester 1,2 \\ \hline
+Phase 6: Smart Automation \& Features & 22--26 Weeks & Completed & Semester 1,2 \\ \hline
+Phase 7: Testing, Evaluation \& Finalization & 26--28 Weeks & Completed & Semester 2 \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Project Timeline}
+\label{tab:project_timeline}
+\end{table}
+\FloatBarrier
+
+This timeline also shows that implementation, integration, testing, and reporting were handled as coordinated phases rather than as isolated late-stage tasks. That structure helped the team keep the academic deliverables aligned with the actual technical progress of the project.
+
+\section{Risk Management}
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2cm}|>{\raggedright\arraybackslash}p{5cm}|>{\raggedright\arraybackslash}p{6cm}|}
+\hline
+\textbf{Risk ID} & \textbf{Risk} & \textbf{Mitigation} \\ \hline
+R1 & Authentication expiry and integration instability & Token refresh handling, safer local storage, and more controlled service logic. \\ \hline
+R2 & Voice interaction inconsistency & Confidence-based fallback and continued reliance on manual interaction for less mature scenarios. \\ \hline
+R3 & Integration failure across services & Retry logic, logging, isolation of service responsibilities, and staged testing. \\ \hline
+R4 & LLM output inconsistency & Prompt refinement, constrained output handling, and validation in downstream workflows. \\ \hline
+R5 & Cross-platform interface issues & Use of PySide6 and repeated interface refinement for more consistent behavior. \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Key Project Risks and Mitigation Measures}
+\end{table}
+
+These risks were tracked throughout development because the project depended on multiple external services, user-facing automation, and model-assisted behavior. As a result, mitigation planning was treated as a continuing engineering activity rather than a one-time management formality.
+
+\section{Team Work Distribution}
+All three members contributed throughout requirements analysis, implementation, testing, presentations, and report preparation. Their primary ownership areas are summarized below, but the project was completed through continuous joint effort rather than isolated task silos.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}p{6.0cm}|>{\raggedright\arraybackslash}p{5.2cm}|}
+\hline
+\textbf{Member} & \textbf{Primary Ownership and Implemented Features} & \textbf{Shared Contribution Areas} \\ \hline
+Muhammad Hasnain Saleem & Voice-enabled actions, wake-word activation, calendar feature, priority handling, and message-data workflows including synchronized processing pathways used by the unified inbox and downstream automation features. & Testing, presentations, report preparation, refinement of implemented workflows, and final system consolidation. \\ \hline
+Kashan Saeed & Core framework, orchestration logic, AI-service integration, orchestrator, unified inbox backbone, email/message summary, draft generation, plain-text response flow, task classification, task extraction, CI/CD support, and core deployment packaging direction. & Architecture refinement, testing, presentations, documentation, and stabilization of the final desktop prototype. \\ \hline
+Alishba Tariq & Tone preference, Gmail agent, Slack agent, event-driven file lookup, search, desktop and pop-up notifications, sender statistics, website and deployment work, DND, auto-reply behavior, and supporting backend integrations for user-facing workflows. & Interface refinement, testing, presentations, report structuring, documentation, and final evaluation alignment. \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Team Work Distribution}
+\end{table}
+
+\section{Change Management}
+The project evolved from a broad operating-system automation idea into a communication-centered assistant focused on Gmail and Slack. During FYP-II, the implementation matured into a native PySide6 desktop application with orchestrator-agent coordination, unified message handling, policy-based automation, event extraction, and attachment-control workflows. Voice support was retained as a supporting feature, but its scope was narrowed so the final system remained aligned with the most stable and testable workflows.
+
+This process of change was important because it prevented the project from remaining too broad or speculative. Instead, the final report and prototype now reflect a more disciplined scope that matches what was actually implemented and validated.
+
+\section{Project Closure}
+The project closure produced a working desktop prototype, documented source code, test evidence, presentation material, and the final thesis report. The resulting system remains an academic prototype, but it establishes a stable base for further packaging, broader platform testing, and continued refinement of communication automation features.
+
+In that sense, closure in this project does not mean technical finality. It means that the work has reached a coherent and defensible stopping point for academic evaluation, while still leaving room for future extension beyond the FYP timeline.

@@ -1,0 +1,40 @@
+\chapter{Conclusions and Future Work}
+\label{sec:conclusions}
+
+\section{Conclusion}
+This project set out to address the fragmentation of modern communication workflows by designing an intelligent desktop system that can unify Gmail and Slack interactions and support them with automation. The final implementation shows that this objective is achievable to a meaningful extent through a modular orchestrator-agent architecture, user-controlled model integration, policy-based automation, and a native desktop interface.
+
+The completed system provides several practical capabilities: unified message handling, draft generation, summarization, tone-aware assistance, priority classification, event extraction, attachment resolution support, and configurable response behavior. These features show that AutoReturn is more than a conceptual integration layer. It is a functioning productivity prototype that combines multiple communication-support workflows within one environment.
+
+The project also made clear that intelligent communication automation requires careful boundaries. Model output must be constrained, automation rules must remain transparent, and ambiguous cases must fall back to explicit user control. This insight shaped the priority engine, policy settings, and ambiguity-blocking logic. As a result, the project contributes not only an implementation, but also a practical lesson in balancing assistance with controllability.
+
+\textbf{Key Outcomes.}
+\begin{itemize}
+    \item A native desktop application was developed to consolidate Gmail- and Slack-based workflows.
+    \item An orchestrator-agent design was used to structure integrations and keep the system extensible.
+    \item AI-assisted features were implemented for summarization, drafting, extraction, classification, and tone support.
+    \item Policy-based automation was introduced to support draft-only, plain-reply, auto-reply, DND, and allowlist behavior.
+    \item The project established a foundation for future expansion without requiring the current report to claim fully finished enterprise readiness.
+\end{itemize}
+
+These outcomes matter because they demonstrate that the project advanced beyond conceptual integration and into a functioning prototype with meaningful technical depth. They also show that AutoReturn contributes both an implemented system and a reusable architectural direction for future refinement.
+
+\section{Limitations}
+Despite its strengths, AutoReturn remains an academic prototype with several limitations. Integration support is still focused on a small number of platforms. Voice functionality, while more developed than in the earlier concept phase, is not yet a complete conversational subsystem.
+
+Performance and behavior may vary depending on model setup, device capabilities, and external API conditions. In addition, some advanced scenarios still require manual confirmation because full automation would introduce unacceptable ambiguity or trust risk.
+
+\section{Future Work}
+Future work should concentrate on strengthening depth rather than simply adding breadth. The most valuable next steps are:
+\begin{itemize}
+    \item Expanding platform integrations only after the current Gmail and Slack workflows are further stabilized.
+    \item Improving packaging and deployment for easier installation across supported operating systems.
+    \item Refining voice interaction so that command capture, transcription, and workflow execution operate more reliably and consistently.
+    \item Strengthening evaluation with broader testing, better performance profiling, and more structured user feedback collection.
+    \item Improving explainability so users can better understand why the system produced a given priority, summary, or automation decision.
+    \item Extending policy controls and permission boundaries for safer automation in more sensitive communication scenarios.
+\end{itemize}
+
+These next steps are deliberately focused on maturity and reliability rather than on feature inflation. That direction is consistent with the overall lesson of the project: controlled refinement is more valuable than unchecked expansion in communication-centered automation systems.
+
+Overall, AutoReturn demonstrates that a privacy-aware, AI-assisted communication workspace can be built as a coherent desktop system rather than as a loose collection of wrappers and cloud automations. The project does not solve every challenge of intelligent workflow automation, but it establishes a strong technical and architectural base for further development.

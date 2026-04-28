@@ -1,0 +1,115 @@
+\documentclass{fast-nuces-bs}
+
+% -------------------------
+% PACKAGE IMPORTS
+% Loads layout, figures, tables, algorithms, and hyperlink support.
+\usepackage{blindtext}
+\usepackage{tikz}
+\usepackage{mathptmx}
+\usepackage[T1]{fontenc}
+\usepackage{lipsum}
+\usepackage{sectsty}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{adjustbox}
+\usepackage{pdflscape}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{tabularx}
+\usepackage{placeins}   % \FloatBarrier
+\usepackage{needspace}
+\usepackage{rotating}   % sidewaysfigure if needed
+\usepackage{hyperref}
+\usepackage{url}         % For url commands
+\usepackage{amsmath}    % For mathematical equations
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\geometry{margin=1in}
+\titlespacing*{\section}{0pt}{16pt}{8pt}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+% -------------------------
+% LAYOUT TUNING
+% Adjusts heading and float spacing for cleaner page flow.
+\setlength{\intextsep}{8pt}
+\setlength{\textfloatsep}{10pt}
+\setlength{\floatsep}{8pt}
+\Urlmuskip=0mu plus 2mu\relax
+\emergencystretch=2em
+
+% Prevent double blank pages between chapters.
+\let\cleardoublepage\clearpage
+\flushbottom
+
+% -------------------------
+% DOCUMENT METADATA
+% Defines title-page and degree information.
+\department{Department of Software Engineering}
+\faculty{Computer Science}
+\degreeyear{2026}
+\degreemonth{April}
+\degreename{Bachelor of Science in Software Engineering}
+\campuscity{Peshawar}
+\authorone{Alishba Tariq }{22P-9112 }
+\authortwo{Muhammad Hasnain Saleem}{22P-9123}
+\authorthree{Kashan Saeed}{22P-9128}
+\supervisor{Dr. Nouman Azam}
+\sessionduration{2022--2026}
+\directorname{Dr. Omar Usman, Director of the Campus}
+\hodname{Dr. Qasm Jan}
+\fypcoordinatorname{Mr. Riaz Nawab}
+\title{AutoReturn \\ \large An Agentic Unified Intelligent Multi-Platform Communication System}
+\certificatetitle{AutoReturn: An Agentic Unified Intelligent Multi-Platform Communication System}
+
+% -------------------------
+% FRONT MATTER
+% Includes acknowledgements and abstract.
+\begin{document}
+
+\begin{acknowledgements}
+We would like to express our deepest gratitude to our supervisor, \textbf{Dr. Nouman Azam}, for his continuous guidance, motivation, and valuable knowledge throughout the development of our Final Year Project. We also thank our department faculty and peers for their constructive feedback and encouragement. Lastly, we appreciate our families for their constant support and patience during the completion of this project.
+\end{acknowledgements}
+
+\begin{abstract}
+This project presents \textbf{AutoReturn}, an AI-assisted communication automation platform that unifies Gmail and Slack workflows through a modular orchestrator-agent design. By consolidating fragmented productivity workflows, the system provides an intelligent workspace for message summarization, prioritization, draft generation, event extraction, and policy-based response support.
+
+Key technical components include: 
+1) Python-native, async-first modular architecture; 
+2) Configurable model-backed processing for drafting, summarization, and extraction tasks; 
+3) Agent-based orchestration for Gmail and Slack; 
+4) Custom priority classification algorithm leveraging urgency, deadlines, and sender importance; 
+5) Intelligent communication pipelines supporting draft generation, controlled replies, and tone adjustment.  
+
+AutoReturn incorporates a flexible automation policy engine, allowing user-defined rules for DND, allowlists, and draft-only/plain-reply/auto-reply behaviors. It also handles contextual file attachments with ambiguity-blocking logic, prompting manual selection when multiple matches exist. Event extraction, calendar conflict detection, and ICS export further enhance workflow automation.
+
+Implementation progress includes Gmail and Slack integration, unified inbox, message summarization, draft generation, priority classification, tone recommendation, event extraction, and calendar-related export support. Formal automated testing evidence recorded a successful full-suite run of 111 executed tests with 0 failures and 30.47\% code coverage. AutoReturn demonstrates how intelligent agent-based automation can reduce communication overload while preserving user control, transparency, and privacy-aware workflow handling.
+\end{abstract}
+
+% -------------------------
+% CHAPTER INCLUDES
+% Loads the finalized report chapters in sequence.
+\input{sections/chapter1_introduction}
+\input{sections/chapter2_literature_review}
+\input{sections/chapter3_system_design}
+\input{sections/chapter4_system_modeling}
+\input{sections/chapter5_implementation}
+\input{sections/chapter5_iterations}
+\input{sections/chapter6_testing}
+\input{sections/chapter7_project_management}
+\input{sections/chapter10_user_manual}
+\input{sections/chapter9_conclusions}
+
+% -------------------------
+% REFERENCES AND APPENDIX
+% Adds the manual references list and supplementary links.
+\addcontentsline{toc}{chapter}{References}
+\input{sections/references_manual}
+
+\appendix
+\input{sections/appendix_a_resources}
+
+\end{document}

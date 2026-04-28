@@ -1,0 +1,43 @@
+\chapter{Iteration 2}
+\label{ch:iter2}
+
+The first iteration is expected to be completed by the final of the FYP-1.
+This chapter will have some of the artifacts based on system design. The requirements analysis section is same for all the systems while the design may vary. There may have two types of designs the structural design or . First section is for the structural design.
+
+structural design
+\section{Domain Model/ Class Diagram}
+\section{Component Diagram}
+\section{Layer Diagram}
+\section{Structure Chart}
+Behavior Design
+\section{Flow Diagram}
+\section{Data Flow Diagram (DFD)}
+\section{Data Dictionary}
+\section{Activity Diagram}
+\section{Network Automata/ Graphs or State Machine}
+\section{Call Graph or Sequence Diagram}
+\section{Interaction Overview Diagram}
+
+For all above designs
+
+\section{Schema Design/ ER Diagram}
+\section{Data Structure Design}
+Any information
+\section{Algorithm Design}
+Any information
+\section{Development Phase}
+Comments, Naming Conventions, Static Analysis of Code, etc.,
+\subsection{Unit Test}
+\subsection{Suites or Test Cases}
+\section{Maintainable Phase}
+\subsection{CI/ CD}
+\subsection{Deployment Diagram}
+\subsection{System-Level Test Suites, Test      Cases}
+\subsection{SVN or GitHub (Optional)}
+\subsection{Configuration/ Setup and Tool Manual (Optional)}
+
+\begin{tikzpicture}  
+\begin{umlsystem}[x=4, fill=red!10]{The system}  \umlusecase{use case1}  \umlusecase[y=-2]{use case2}  \umlusecase[y=-4]{use case3}  \umlusecase[x=4, y=-2, width=1.5cm]{use case4 on 2 lines}  \umlusecase[x=6, fill=green!20]{use case5}  \umlusecase[x=6, y=-4]{use case6}  \end{umlsystem}    \umlactor{user}  \umlactor[y=-3]{subuser}  \umlactor[x=14, y=-1.5]{admin}
+
+\umlinherit{subuser}{user}  \umlassoc{user}{usecase-1}  \umlassoc{subuser}{usecase-2}  \umlassoc{subuser}{usecase-3}  \umlassoc{admin}{usecase-5}  \umlassoc{admin}{usecase-6}  \umlinherit{usecase-2}{usecase-1}  \umlVHextend{usecase-5}{usecase-4}  \umlinclude[name=incl]{usecase-3}{usecase-4}    \umlnote[x=7, y=-7]{incl-1}{note on include dependency}
+\end{tikzpicture}

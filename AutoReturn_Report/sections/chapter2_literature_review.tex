@@ -1,0 +1,251 @@
+\chapter{Literature Review}
+\label{sec:literature_review}
+
+\section{Introduction}
+This chapter presents a structured review of prior research, existing products, and technical directions related to unified communication platforms, AI-assisted productivity tools, and voice-enabled workflow support. The aim is to identify the main conceptual foundations of AutoReturn and to show how the final system responds to limitations observed in earlier tools and supporting literature.
+
+The chapter does not treat literature and tool analysis as separate disconnected topics. Instead, it combines them so that academic foundations, technical enablers, and market-facing baselines can be read together as part of the context that shaped the final prototype.
+
+\section{Research Review of Foundational Studies}
+Table~\ref{tab:research_review_summary} summarizes the most relevant academic and technical studies that informed the final design.
+
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{|>{\raggedright\arraybackslash}p{0.7cm}|>{\raggedright\arraybackslash}p{2.0cm}|>{\raggedright\arraybackslash}p{3.0cm}|>{\raggedright\arraybackslash}X|>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{No.} & \textbf{Author(s) \& Year} & \textbf{Title / Source} & \textbf{Core Focus / Methodology} & \textbf{Relevance to FYP} \\ \hline
+1 & Bentahar, J. (2005) & \textit{A Pragmatic and Semantic Unified Framework for Agent Communication} & Develops a unified framework for pragmatic and semantic aspects of multi-agent communication. & Provides theoretical grounding for coordinated agent interaction in automated workflows. \\ \hline
+2 & Cao, J. (2024) & \textit{Deploying Large Language Models as Agents} & Explains how LLMs can be connected to tools and APIs through autonomous agent patterns. & Supports the orchestrator-agent design used in AutoReturn. \\ \hline
+3 & Kumar, G. V. and Jayanthi, P. (2015) & \textit{Real Time Text and Speech Recognition System} & Presents real-time speech-to-text and text-based language processing for natural language interfaces. & Informs the voice-control direction and human-computer interaction layer of the system. \\ \hline
+4 & OpenAI (2023) & \textit{Whisper Speech Recognition Repository} & Provides practical speech transcription models and integration guidance for local or semi-local voice processing workflows. & Informs the speech-to-text pathway used for voice-enabled interaction in AutoReturn. \\ \hline
+5 & Ollama Documentation (2024) & \textit{Ollama Local LLM Framework Documentation} & Documents local model execution, runtime integration, and developer-facing deployment workflow. & Directly informs the configurable model runtime used in the project. \\ \hline
+\end{tabularx}
+\caption{Research Review Summary}
+\label{tab:research_review_summary}
+\end{table}
+\FloatBarrier
+
+\section{Investigation Framework}
+Alongside the research review, the project compared existing tools against a shared investigation framework. Table~\ref{tab:investigation_framework} summarizes the criteria used during this analysis.
+
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{|c|>{\raggedright\arraybackslash}p{11cm}|}
+\hline
+\textbf{No.} & \textbf{Investigation Criterion} \\ \hline
+1 & Impact of the application \\ \hline
+2 & Core communication features \\ \hline
+3 & AI and automation features \\ \hline
+4 & Voice and NLP features \\ \hline
+5 & Business model and deployment orientation \\ \hline
+6 & Market dynamics and practical positioning \\ \hline
+\end{tabular}
+\caption{Investigation Framework Used for Competitive Analysis}
+\label{tab:investigation_framework}
+\end{table}
+\FloatBarrier
+
+\section{Unified Communication Platforms}
+\noindent This section reviews representative platforms that attempt to reduce communication fragmentation by bringing multiple services into one workspace. It is relevant to AutoReturn because these tools define the baseline that a unified desktop assistant must improve upon.
+
+\subsection{Existing Solutions}
+Several unified communication platforms attempt to reduce fragmentation in digital workflows by consolidating multiple services into a single workspace. Ferdium and Rambox focus primarily on service aggregation and workspace convenience \cite{ferdium2024}. Wavebox extends this idea with productivity-oriented workspace management \cite{wavebox2024}, while Beeper emphasizes cross-platform message unification \cite{beeper2024}. Shift combines email and application workflows in a commercial productivity environment \cite{shift2024}. Although these systems improve accessibility and reduce context switching, most of them remain centered on application bundling rather than intelligent, workflow-level automation.
+
+This pattern is important because it shows that unification by itself does not necessarily improve the quality of work decisions. AutoReturn therefore aims to extend the idea of a unified workspace by combining aggregation with prioritization, extraction, and policy-aware communication support.
+
+\subsection{Limitations of Current Solutions}
+Most unified communication tools still share several limitations. They often rely on cloud-centered processing, offer limited workflow intelligence, and provide little support for explainable automation. Native task extraction, controlled reply behavior, local privacy-conscious processing, and policy-based communication handling are still uncommon in mainstream productivity aggregators.
+
+These limitations help clarify why AutoReturn was positioned as more than an application wrapper. The goal was not only to centralize messages, but also to introduce user-controlled intelligence and workflow support that remain understandable and adjustable.
+
+\section{AI-Powered Communication Assistants}
+\noindent This section focuses on tools that add summarization, drafting, classification, or workflow automation to communication environments. These systems help frame the current AI-assistance landscape and reveal the tradeoffs between convenience, privacy, and controllability.
+
+\subsection{Email Automation Systems}
+Email-oriented AI assistants have become increasingly common, especially in premium productivity and customer-support platforms. Superhuman offers advanced drafting and inbox-management support, but it remains expensive and heavily cloud-dependent \cite{superhuman2024}. Front, Hiver, and Missive provide shared-inbox workflows designed mainly for teams and support operations rather than individual adaptive assistance \cite{front2024}. Respond.io offers automation for business communication channels \cite{respond2024}, while Chatwoot reflects the open-source support-centered side of this market \cite{chatwoot2024}. These tools demonstrate the growing demand for AI assistance, but they also show that automation is often tied to commercial cloud ecosystems and narrow usage scenarios.
+
+This observation reinforces the need for a system such as AutoReturn, where AI assistance can be integrated into a broader personal workflow without requiring a purely enterprise or support-desk context. It also highlights the importance of controllability when automated drafting and response suggestions are introduced into communication tools.
+
+\subsection{Local AI Processing}
+Recent advances in local or locally controlled model deployment have made privacy-preserving AI applications increasingly practical. Frameworks such as Ollama simplify model execution and integration within desktop applications \cite{ollama2024}, while NLP libraries such as spaCy support deterministic text analysis for ranking, tone analysis, and message understanding workflows \cite{spacy2024}. In the current AutoReturn implementation, the AI layer is built around an Ollama-backed runtime with configurable model selection, while voice transcription is supported through Whisper-based processing \cite{whisper2023}. Together, these technologies provide a practical foundation for AI-assisted workflows that preserve greater user control over execution and data handling.
+
+This direction is especially important for desktop productivity software, where privacy expectations and response transparency can influence adoption as much as raw model quality. A locally controlled pathway therefore supports both technical flexibility and user trust.
+
+\section{Theoretical Foundations}
+\noindent The project is also grounded in prior work on agent communication, LLM-based task execution, and speech-enabled interfaces. These foundations explain why AutoReturn is designed as an orchestrated multi-component system rather than as a single monolithic assistant.
+
+\subsection{Agent-Based Communication}
+Bentahar's work on pragmatic and semantic frameworks for agent communication provides an important theoretical basis for coordination, intent exchange, and semantic interpretation in multi-agent systems \cite{bentahar2005}. This is directly relevant to AutoReturn because the system uses a modular orchestrator-agent design in which specialized components cooperate to process messages, apply policies, and produce user-facing actions.
+
+In practical terms, this foundation supports the decision to keep platform logic, message analysis, and policy handling separated into cooperating modules. That separation improves both maintainability and the explainability of the resulting workflows.
+
+\subsection{LLM Agent Integration}
+Cao's work on deploying Large Language Models as agents demonstrates how language models can act as orchestration components when connected to tools and APIs \cite{cao2024}. This perspective aligns closely with AutoReturn's use of model-driven summarization, drafting, extraction, and workflow routing, where the LLM is not treated as a standalone chatbot but as part of a broader software pipeline.
+
+This is especially relevant to AutoReturn because the project does not rely on a single conversational interaction loop. Instead, the model participates selectively in summarization, drafting, extraction, and classification steps that are embedded within a larger desktop workflow.
+
+\subsection{Voice Interface Integration}
+Kumar and Penchala's work on speech recognition and language interfaces provides the conceptual basis for integrating spoken commands into a productivity system \cite{kumar2015}. Although the voice subsystem in AutoReturn is still evolving, this literature remains relevant because it frames voice interaction as a practical extension of workflow automation rather than a separate interface layer.
+
+Taken together, these theoretical foundations justify the main design direction of the project: modular coordination, explainable workflow support, and selective use of AI where it improves practical communication tasks.
+
+\section{Comparative Investigation and Market Analysis}
+\noindent Beyond formal literature, comparative investigation helps position AutoReturn relative to existing commercial and open-source tools. The following subsections summarize the main market-facing trends and feature comparisons that are most relevant to the final system.
+
+\textbf{Funding and Market Trends.} The unified communication and AI-assistant markets continue to show strong momentum. For example, Respond.io raised \$7 million in Series A funding led by Headline Asia \cite{technode2022}, illustrating continued investor interest in communication automation platforms. At the same time, remote and hybrid work environments have increased demand for consolidated communication tools, while growing concern over cloud data exposure has strengthened the case for privacy-conscious and locally controlled AI systems. These trends provide a practical market justification for a system such as AutoReturn, which combines unification, automation, and user control.
+
+These broader trends do not by themselves validate the final prototype, but they do show that the problem domain remains relevant. They also help explain why a privacy-aware desktop assistant can be academically meaningful as well as practically timely.
+
+\textbf{Impact of the Application.} The table below summarizes the broad positioning of representative tools in terms of target users, company scale, and visible market presence. This comparison is useful mainly as context, showing that AutoReturn is being developed in a space occupied by both lightweight aggregators and more mature commercial platforms.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.0cm}|>{\raggedright\arraybackslash}p{2.7cm}|>{\centering\arraybackslash}p{1.3cm}|>{\centering\arraybackslash}p{0.9cm}|>{\raggedright\arraybackslash}p{2.3cm}|>{\centering\arraybackslash}p{1.4cm}|}
+\hline
+\textbf{Competitor} & \textbf{Target Market} & \textbf{Revenue} & \textbf{Year} & \textbf{HQ Location} & \textbf{Staff} \\ \hline
+\shortstack[l]{Ferdi/\\Ferdium} & Developers, freelancers & <\$500K & 2019 & Open source & 5--10 \\ \hline
+Rambox & Teams, freelancers & \~\$2M & 2015 & Buenos Aires, Argentina & 11--50 \\ \hline
+Wavebox & Remote teams, professionals & \~\$10M & 2016 & UK & 11--50 \\ \hline
+Beeper & General users & \~\$25M & 2021 & Palo Alto, CA & 11--50 \\ \hline
+Shift & Professionals & \~\$15M & 2016 & Vancouver, Canada & 51--100 \\ \hline
+Respond.io & Teams, enterprises & \~\$18M & 2015 & Hong Kong & 101--250 \\ \hline
+\shortstack[l]{Front/Hiver/\\Missive} & Teams, support & \~\$50M & 2013 & San Francisco, CA & 101--250 \\ \hline
+Chatwoot & SMEs, support teams & \~\$5M & 2017 & India & 11--50 \\ \hline
+Crisp Chat & Businesses & \~\$10M & 2015 & France & 11--50 \\ \hline
+Superhuman & Professionals & \~\$35M & 2014 & San Francisco, CA & 51--100 \\ \hline
+BrowserOS & Developers & N/A & 2021 & Open source & 1--10 \\ \hline
+\shortstack[l]{Comet\\(Perplexity)} & General users & N/A & 2023 & San Francisco, CA & 1--10 \\ \hline
+Opera Neon & General users & N/A & 2017 & Oslo, Norway & Part of Opera \\ \hline
+Fellou & Teams & N/A & 2020 & Unknown & 1--10 \\ \hline
+AutoReturn & Professionals, teams & Pre-revenue & 2025 & Pakistan & 2--5 \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Impact Analysis of Competitor Applications}
+\label{tab:impact_competitors}
+\end{table}
+\FloatBarrier
+
+The comparison indicates that many established products already occupy strong commercial positions, but they do so with different priorities such as enterprise collaboration, support operations, or application bundling. AutoReturn is therefore better understood as a focused academic prototype that targets a narrower but still relevant workflow problem.
+
+\textbf{Core Communication Features.} In the following comparison tables, \textit{Part.} denotes limited or indirect support rather than full native coverage.
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.1}
+\setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.25cm}|>{\centering\arraybackslash}p{0.95cm}|>{\centering\arraybackslash}p{0.85cm}|>{\centering\arraybackslash}p{0.8cm}|>{\centering\arraybackslash}p{0.9cm}|>{\centering\arraybackslash}p{0.9cm}|>{\centering\arraybackslash}p{0.9cm}|>{\centering\arraybackslash}p{0.95cm}|}
+\hline
+\textbf{Competitor} & \textbf{Gmail} & \textbf{Slack} & \textbf{Apps} & \textbf{Inbox} & \textbf{Draft} & \textbf{Reply} & \textbf{Alerts} \\ \hline
+\shortstack[l]{Ferdi/\\Ferdium} & Yes & Yes & Yes & Yes & No & No & Yes \\ \hline
+Rambox & Part. & Yes & Yes & Yes & Yes & No & No \\ \hline
+Wavebox & Yes & Yes & Yes & Yes & Yes & Part. & No \\ \hline
+Beeper & Yes & Part. & Part. & Yes & Yes & Yes & No \\ \hline
+Shift & Part. & Yes & Yes & Yes & Yes & Part. & Yes \\ \hline
+Respond.io & Yes & Yes & No & Yes & Yes & Yes & Yes \\ \hline
+\shortstack[l]{Front/Hiver/\\Missive} & Yes & No & Yes & Yes & Yes & Yes & Part. \\ \hline
+Chatwoot & Yes & No & Yes & Yes & Part. & Yes & Part. \\ \hline
+Crisp Chat & Part. & Yes & No & Yes & No & Part. & No \\ \hline
+Superhuman & Yes & No & No & Part. & Yes & Yes & No \\ \hline
+BrowserOS & No & No & Part. & Part. & Part. & No & Part. \\ \hline
+\shortstack[l]{Comet\\(Perplexity)} & No & No & No & No & Part. & Part. & Part. \\ \hline
+Opera Neon & No & Part. & No & Part. & Part. & No & Part. \\ \hline
+Fellou & No & No & Part. & No & No & No & Part. \\ \hline
+AutoReturn & Yes & Yes & Yes & Yes & Yes & Yes & Yes \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Core Communication Features Comparison}
+\label{tab:core_comm_features}
+\end{table}
+\FloatBarrier
+
+The comparative feature analysis indicates that multi-app access, unified inbox design, Gmail support, and smart drafting are among the most valuable baseline capabilities in this category. Several commercial tools are already strong in drafting, automation, or inbox management, while AutoReturn remains competitive mainly because it combines these functions in a single desktop workflow rather than because each individual feature is uniquely unmatched.
+
+\textbf{AI and Automation Features.} Table~\ref{tab:ai_automation_features} compares automation features that are visible to end users or clearly documented as part of product workflows.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.08}
+\setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.05cm}|>{\centering\arraybackslash}p{1.15cm}|>{\centering\arraybackslash}p{1.0cm}|>{\centering\arraybackslash}p{1.15cm}|>{\centering\arraybackslash}p{1.1cm}|}
+\hline
+\textbf{Competitor} & \textbf{Extract} & \textbf{Prio.} & \textbf{Local AI} & \textbf{Flow} \\ \hline
+\shortstack[l]{Ferdi/\\Ferdium} & No & No & No & No \\ \hline
+Rambox & No & No & No & No \\ \hline
+Wavebox & Part. & No & No & Part. \\ \hline
+Beeper & Part. & Part. & No & No \\ \hline
+Shift & Part. & Part. & No & Part. \\ \hline
+Respond.io & Part. & Yes & No & Yes \\ \hline
+\shortstack[l]{Front/Hiver/\\Missive} & Yes & Part. & No & Part. \\ \hline
+Chatwoot & Part. & Part. & No & Part. \\ \hline
+Crisp Chat & Part. & No & No & Part. \\ \hline
+Superhuman & Part. & Part. & Part. & No \\ \hline
+BrowserOS & No & No & Part. & No \\ \hline
+\shortstack[l]{Comet\\(Perplexity)} & Yes & Part. & Part. & Part. \\ \hline
+Opera Neon & No & No & Part. & No \\ \hline
+Fellou & Part. & No & No & Part. \\ \hline
+AutoReturn & Yes & Yes & Yes & Yes \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{AI and Automation Features Comparison}
+\label{tab:ai_automation_features}
+\end{table}
+\FloatBarrier
+
+Table~\ref{tab:ai_automation_features} highlights a common pattern in the market: many tools now include some automation or AI assistance, but the depth and visibility of those features vary widely. Within this landscape, AutoReturn is distinguished by its locally controlled AI pathway, configurable priority rules, event extraction, and policy-based workflow handling. The comparison also shows that several competitors provide partial automation support, which places AutoReturn's contribution primarily in integration depth and privacy-oriented design.
+
+\textbf{Voice and NLP Features.} Voice-related comparisons are especially sensitive because some products expose lightweight dictation or assistant hooks without providing a complete voice workflow. Table~\ref{tab:voice_nlp_features} therefore focuses on transcription, workflow actions, and general NLP assistance, while using \textit{Part.} where support appears limited or indirect.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.08}
+\setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.6cm}|>{\centering\arraybackslash}p{1.0cm}|>{\centering\arraybackslash}p{1.3cm}|>{\centering\arraybackslash}p{1.1cm}|}
+\hline
+\textbf{Competitor} & \textbf{STT} & \textbf{Actions} & \textbf{NLP Aid} \\ \hline
+\shortstack[l]{Ferdi/\\Ferdium} & No & No & No \\ \hline
+Rambox & No & No & No \\ \hline
+Wavebox & No & No & No \\ \hline
+Beeper & No & No & Part. \\ \hline
+Shift & No & No & Part. \\ \hline
+Respond.io & No & Part. & Yes \\ \hline
+\shortstack[l]{Front/Hiver/\\Missive} & No & No & Part. \\ \hline
+Chatwoot & No & No & Part. \\ \hline
+Crisp Chat & No & No & Part. \\ \hline
+Superhuman & Part. & No & Part. \\ \hline
+BrowserOS & No & Part. & Part. \\ \hline
+\shortstack[l]{Comet\\(Perplexity)} & Part. & Part. & Yes \\ \hline
+Opera Neon & No & No & Part. \\ \hline
+Fellou & No & Part. & Part. \\ \hline
+AutoReturn & Yes & Part. & Yes \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Voice and NLP Features Comparison}
+\label{tab:voice_nlp_features}
+\end{table}
+\FloatBarrier
+
+Voice-enabled productivity remains comparatively underdeveloped across current tools, although several products do expose limited dictation or NLP-driven behavior. AutoReturn includes transcription support and limited voice-assisted workflow handling, but its voice subsystem remains narrower than a full conversational assistant. Voice interaction is therefore a supporting feature area within the system rather than its sole distinguishing capability.
+
+\section{Research Gaps}
+Based on the literature and comparative investigation, several gaps remain significant. First, many existing tools still rely on cloud-first AI services and do not prioritize local or user-controlled processing. Second, although several systems aggregate communication channels successfully, far fewer connect those channels to actionable workflows such as drafting, extraction, prioritization, and policy-based response generation. Third, practical voice-enabled desktop automation remains underdeveloped, with most voice features either absent or disconnected from meaningful productivity actions. Fourth, explainable message prioritization remains limited, even in products that advertise intelligent assistance. Finally, there is a continuing need for useful workflow intelligence that does not depend on large labeled datasets or expensive enterprise infrastructure.
+
+These gaps define the main contribution space for AutoReturn. The project does not claim to solve all of them completely, but it does respond to them through a unified desktop workflow, orchestrated services, controllable automation, and a more privacy-aware technical direction.
+
+\section{Conclusion}
+The literature review and comparative investigation show that existing tools typically excel in one or two areas, such as communication aggregation, email drafting, enterprise collaboration, or workflow automation, but rarely combine locally controlled AI, multi-platform unification, configurable policies, and voice-enabled interaction within a single desktop system. AutoReturn addresses part of this gap through its unified inbox, orchestrator-agent architecture, model-assisted automation features, and policy-aware workflows. Voice maturity, market validation, and broader platform support remain important areas for future development.
+
+The next chapter presents the system architecture and design choices that were made in response to these identified gaps.

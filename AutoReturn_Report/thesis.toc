@@ -1,0 +1,117 @@
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.3}%
+\contentsline {section}{\numberline {1.1}Project Overview}{1}{section.4}%
+\contentsline {section}{\numberline {1.2}Motivation}{1}{section.5}%
+\contentsline {section}{\numberline {1.3}Problem Statement}{2}{section.6}%
+\contentsline {section}{\numberline {1.4}Proposed Solution}{2}{section.7}%
+\contentsline {section}{\numberline {1.5}Objectives}{2}{section.8}%
+\contentsline {section}{\numberline {1.6}Research Questions}{3}{section.9}%
+\contentsline {section}{\numberline {1.7}Scope and Limitations}{3}{section.15}%
+\contentsline {chapter}{\numberline {2}Literature Review}{5}{chapter.16}%
+\contentsline {section}{\numberline {2.1}Introduction}{5}{section.17}%
+\contentsline {section}{\numberline {2.2}Research Review of Foundational Studies}{5}{section.18}%
+\contentsline {section}{\numberline {2.3}Investigation Framework}{7}{section.20}%
+\contentsline {section}{\numberline {2.4}Unified Communication Platforms}{7}{section.22}%
+\contentsline {subsection}{\numberline {2.4.1}Existing Solutions}{7}{subsection.23}%
+\contentsline {subsection}{\numberline {2.4.2}Limitations of Current Solutions}{8}{subsection.24}%
+\contentsline {section}{\numberline {2.5}AI-Powered Communication Assistants}{8}{section.25}%
+\contentsline {subsection}{\numberline {2.5.1}Email Automation Systems}{8}{subsection.26}%
+\contentsline {subsection}{\numberline {2.5.2}Local AI Processing}{9}{subsection.27}%
+\contentsline {section}{\numberline {2.6}Theoretical Foundations}{9}{section.28}%
+\contentsline {subsection}{\numberline {2.6.1}Agent-Based Communication}{9}{subsection.29}%
+\contentsline {subsection}{\numberline {2.6.2}LLM Agent Integration}{10}{subsection.30}%
+\contentsline {subsection}{\numberline {2.6.3}Voice Interface Integration}{10}{subsection.31}%
+\contentsline {section}{\numberline {2.7}Comparative Investigation and Market Analysis}{10}{section.32}%
+\contentsline {section}{\numberline {2.8}Research Gaps}{15}{section.37}%
+\contentsline {section}{\numberline {2.9}Conclusion}{16}{section.38}%
+\contentsline {chapter}{\numberline {3}System Analysis and Design}{17}{chapter.39}%
+\contentsline {section}{\numberline {3.1}System Architecture}{17}{section.40}%
+\contentsline {section}{\numberline {3.2}Core Components}{17}{section.41}%
+\contentsline {section}{\numberline {3.3}Behavioral Design Patterns}{18}{section.42}%
+\contentsline {subsection}{\numberline {3.3.1}Priority Classification Pattern}{18}{subsection.43}%
+\contentsline {subsection}{\numberline {3.3.2}Intelligent Pipelines}{19}{subsection.45}%
+\contentsline {subsection}{\numberline {3.3.3}Tone Preference Pattern}{20}{subsection.46}%
+\contentsline {chapter}{\numberline {4}System Modeling}{22}{chapter.48}%
+\contentsline {section}{\numberline {4.1}Use Case Diagram}{22}{section.49}%
+\contentsline {section}{\numberline {4.2}Use Case Descriptions}{23}{section.51}%
+\contentsline {subsection}{\numberline {4.2.1}UC-01: Unified Inbox Management}{23}{subsection.52}%
+\contentsline {subsection}{\numberline {4.2.2}UC-02: Draft and Reply Assistance}{24}{subsection.58}%
+\contentsline {subsection}{\numberline {4.2.3}UC-03: Voice-Assisted Control}{24}{subsection.66}%
+\contentsline {subsection}{\numberline {4.2.4}UC-04: Task Extraction and Management}{25}{subsection.73}%
+\contentsline {subsection}{\numberline {4.2.5}UC-05: File Attachment Automation}{26}{subsection.79}%
+\contentsline {section}{\numberline {4.3}Activity Diagrams}{26}{section.85}%
+\contentsline {subsection}{\numberline {4.3.1}Overall System Activity}{27}{subsection.86}%
+\contentsline {subsection}{\numberline {4.3.2}Activity 1: Voice-Based Interaction and Control}{28}{subsection.88}%
+\contentsline {subsection}{\numberline {4.3.3}Activity 2: Smart Email and Message Automation}{29}{subsection.90}%
+\contentsline {subsection}{\numberline {4.3.4}Activity 3: Multi-App Integration and Authentication}{30}{subsection.92}%
+\contentsline {section}{\numberline {4.4}Component Diagram}{31}{section.94}%
+\contentsline {section}{\numberline {4.5}Architecture Diagram}{31}{section.96}%
+\contentsline {section}{\numberline {4.6}Wireframes}{32}{section.98}%
+\contentsline {subsection}{\numberline {4.6.1}Unified Workspace Wireframe}{32}{subsection.99}%
+\contentsline {subsection}{\numberline {4.6.2}Notification and Assisted Reply Wireframe}{33}{subsection.101}%
+\contentsline {section}{\numberline {4.7}Modeling Discussion}{34}{section.103}%
+\contentsline {chapter}{\numberline {5}Implementation}{35}{chapter.104}%
+\contentsline {section}{\numberline {5.1}Implementation Overview}{35}{section.105}%
+\contentsline {section}{\numberline {5.2}Module Details}{35}{section.106}%
+\contentsline {section}{\numberline {5.3}Selected Technical Challenges and Solutions}{36}{section.109}%
+\contentsline {section}{\numberline {5.4}Implementation Patterns}{39}{section.111}%
+\contentsline {subsection}{\numberline {5.4.1}Orchestrator-Agent Coordination}{39}{subsection.112}%
+\contentsline {subsection}{\numberline {5.4.2}Priority Scoring}{39}{subsection.113}%
+\contentsline {subsection}{\numberline {5.4.3}Voice Command Handling}{40}{subsection.114}%
+\contentsline {section}{\numberline {5.5}Representative Code Snippets}{40}{section.115}%
+\contentsline {subsection}{\numberline {5.5.1}Base Agent Interface}{40}{subsection.116}%
+\contentsline {subsection}{\numberline {5.5.2}Priority Engine Pattern}{41}{subsection.117}%
+\contentsline {section}{\numberline {5.6}User Interface Screens}{41}{section.118}%
+\contentsline {section}{\numberline {5.7}Conclusion}{41}{section.121}%
+\contentsline {chapter}{\numberline {6}Development Iterations}{44}{chapter.122}%
+\contentsline {section}{\numberline {6.1}Introduction}{44}{section.123}%
+\contentsline {section}{\numberline {6.2}Iteration Plan}{44}{section.124}%
+\contentsline {section}{\numberline {6.3}Iteration 1}{45}{section.126}%
+\contentsline {subsection}{\numberline {6.3.1}Objectives}{45}{subsection.127}%
+\contentsline {subsection}{\numberline {6.3.2}Major Deliverables}{45}{subsection.128}%
+\contentsline {subsection}{\numberline {6.3.3}Iteration Outcome}{45}{subsection.129}%
+\contentsline {section}{\numberline {6.4}Iteration 2}{46}{section.130}%
+\contentsline {subsection}{\numberline {6.4.1}Objectives}{46}{subsection.131}%
+\contentsline {subsection}{\numberline {6.4.2}Major Deliverables}{46}{subsection.132}%
+\contentsline {subsection}{\numberline {6.4.3}Iteration Outcome}{46}{subsection.133}%
+\contentsline {section}{\numberline {6.5}Iteration 3}{46}{section.134}%
+\contentsline {subsection}{\numberline {6.5.1}Objectives}{46}{subsection.135}%
+\contentsline {subsection}{\numberline {6.5.2}Major Deliverables}{47}{subsection.136}%
+\contentsline {subsection}{\numberline {6.5.3}Iteration Outcome}{47}{subsection.137}%
+\contentsline {section}{\numberline {6.6}Iteration 4}{47}{section.138}%
+\contentsline {subsection}{\numberline {6.6.1}Objectives}{47}{subsection.139}%
+\contentsline {subsection}{\numberline {6.6.2}Major Deliverables}{47}{subsection.140}%
+\contentsline {subsection}{\numberline {6.6.3}Iteration Outcome}{47}{subsection.141}%
+\contentsline {section}{\numberline {6.7}Iteration 5}{48}{section.142}%
+\contentsline {subsection}{\numberline {6.7.1}Objectives}{48}{subsection.143}%
+\contentsline {subsection}{\numberline {6.7.2}Major Deliverables}{48}{subsection.144}%
+\contentsline {subsection}{\numberline {6.7.3}Iteration Outcome}{48}{subsection.145}%
+\contentsline {chapter}{\numberline {7}Testing, Results, and Discussion}{49}{chapter.146}%
+\contentsline {section}{\numberline {7.1}Testing Strategy}{49}{section.147}%
+\contentsline {section}{\numberline {7.2}Test Cases -- Part 1}{49}{section.148}%
+\contentsline {section}{\numberline {7.3}Test Cases -- Part 2}{51}{section.150}%
+\contentsline {section}{\numberline {7.4}Testing Outcomes}{51}{section.152}%
+\contentsline {section}{\numberline {7.5}Performance Metrics}{52}{section.155}%
+\contentsline {section}{\numberline {7.6}Key Technical Challenges Identified}{53}{section.157}%
+\contentsline {section}{\numberline {7.7}Discussion}{53}{section.159}%
+\contentsline {section}{\numberline {7.8}Conclusion}{54}{section.160}%
+\contentsline {chapter}{\numberline {8}Project Management and Deployment Considerations}{55}{chapter.161}%
+\contentsline {section}{\numberline {8.1}Project Timeline}{55}{section.162}%
+\contentsline {section}{\numberline {8.2}Risk Management}{56}{section.164}%
+\contentsline {section}{\numberline {8.3}Team Work Distribution}{56}{section.166}%
+\contentsline {section}{\numberline {8.4}Change Management}{56}{section.168}%
+\contentsline {section}{\numberline {8.5}Project Closure}{57}{section.169}%
+\contentsline {chapter}{\numberline {9}User Manual}{59}{chapter.170}%
+\contentsline {section}{\numberline {9.1}Introduction}{59}{section.171}%
+\contentsline {section}{\numberline {9.2}Getting Started}{59}{section.172}%
+\contentsline {section}{\numberline {9.3}User Interface Guide}{60}{section.179}%
+\contentsline {section}{\numberline {9.4}Features and Functionality}{60}{section.180}%
+\contentsline {section}{\numberline {9.5}Frequently Asked Questions (FAQs)}{61}{section.189}%
+\contentsline {chapter}{\numberline {10}Conclusions and Future Work}{62}{chapter.194}%
+\contentsline {section}{\numberline {10.1}Conclusion}{62}{section.195}%
+\contentsline {section}{\numberline {10.2}Limitations}{63}{section.196}%
+\contentsline {section}{\numberline {10.3}Future Work}{63}{section.197}%
+\contentsline {chapter}{References}{64}{section.197}%
+\contentsline {chapter}{\numberline {A}Supplementary Material}{67}{appendix.199}%
+\contentsline {section}{\numberline {A.1}Project Repository}{67}{section.200}%
+\contentsline {section}{\numberline {A.2}Project Website}{67}{section.201}%

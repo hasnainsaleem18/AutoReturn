@@ -1,0 +1,155 @@
+\chapter{Testing, Results, and Discussion}
+\label{sec:testing}
+
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\section{Testing Strategy}
+The testing strategy was designed to cover both technical correctness and practical workflow behavior. Because AutoReturn coordinates multiple external services, automation rules, and model-assisted workflows, the evaluation had to combine reproducible backend checks with scenario-based validation of user-facing behavior.
+
+\begin{itemize}
+    \item Unit testing of individual agents (Gmail, Slack, Task Extraction)
+    \item Integration testing of the unified inbox with model-assisted services
+    \item End-to-end scenario testing for automated replies
+    \item Performance-oriented checks for batch processing and core message workflows
+    \item Manual validation of user-facing behaviors such as summaries, drafts, and settings
+\end{itemize}
+
+The formal automated suite was executed using a pytest-based workflow with trace-backed coverage reporting, which provided reproducible evidence for backend correctness and exercised the core automation paths of the system \cite{pytest2024,pythontrace2024}.
+
+\section{Test Cases -- Part 1}
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabularx}{\textwidth}{|l|Y|Y|Y|Y|Y|Y|}
+\hline
+\textbf{ID} & \textbf{Scenario} & \textbf{Objective} & \textbf{Pre-conditions} & \textbf{Test Steps} & \textbf{Test Data} & \textbf{Expected Result} \\ \hline
+TC\_INT\_01 & Verify multi-app integration (Slack + Gmail) & Ensure APIs connect successfully & Valid tokens & Connect apps and fetch messages & OAuth keys & Unified inbox retrieved \\ \hline
+TC\_AUTO\_01 & Auto email summarization & Verify NLP summaries & Gmail linked & Run summarization & Sample emails & Concise summaries shown \\ \hline
+TC\_TASK\_01 & Actionable information extraction & Ensure events or follow-up items are identified & Slack + Gmail active & Run extractor & Message text & Structured extracted output generated \\ \hline
+TC\_NOTIF\_01 & Configurable alerts & Validate custom notifications & Event rule set & Trigger alert condition & "Interview call" email & Notification triggered \\ \hline
+TC\_DASH\_01 & Unified inbox display & Verify dashboard merges notifications & Apps linked & Open dashboard & Message events & Combined view accurate \\ \hline
+TC\_STATUS\_01 & Voice command parsing & Check that supported voice input is transcribed and routed correctly & Mic active & Speak a supported command & Voice input & Command mapped to the expected UI action or workflow \\ \hline
+\end{tabularx}
+\end{adjustbox}
+\caption{Test Cases – Integration and Automation}
+\end{table}
+\FloatBarrier
+
+These cases emphasize the main communication workflows that define AutoReturn’s practical value, especially integration, summarization, extraction, notifications, and dashboard behavior. They were selected because they represent the most visible user-facing paths in the implemented system.
+
+\section{Test Cases -- Part 2}
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabularx}{\textwidth}{|l|Y|Y|Y|Y|Y|Y|}
+\hline
+\textbf{ID} & \textbf{Scenario} & \textbf{Objective} & \textbf{Pre-conditions} & \textbf{Test Steps} & \textbf{Test Data} & \textbf{Expected Result} \\ \hline
+TC\_REMIND\_01 & Follow-up reminder & Ensure reminders trigger correctly & Gmail + Slack active & Set reminder, simulate delay & Reminder = 3h & Alert generated \\ \hline
+TC\_SENTI\_01 & Sentiment analysis & Validate emotion or urgency detection & NLP model active & Analyze strong message tone & "URGENT! Project failed" & Marked as urgent \\ \hline
+TC\_LOG\_01 & Audit trail logging & Ensure action logs recorded & Admin access & Perform actions, open log & Log entries & Accurate timestamps \\ \hline
+TC\_ACCESS\_01 & Access revocation & Check permission removal & Active session & Revoke Gmail access & Gmail token & Access denied message \\ \hline
+TC\_OFFLINE\_01 & Offline functionality & Validate limited offline support & Cached data available & Disconnect, run summary & Cached threads & Summary shown locally \\ \hline
+TC\_SECURITY\_01 & Token encryption & Verify secure local storage & Tokens issued & Inspect encrypted store & Access tokens & Encrypted securely \\ \hline
+\end{tabularx}
+\end{adjustbox}
+\caption{Test Cases – Notifications, Security, and Reliability}
+\end{table}
+\FloatBarrier
+
+The second group complements the first by covering reminders, logging, revocation, offline behavior, and credential protection. Together, both test-case sets provide a broader view of the system than feature validation alone.
+
+\section{Testing Outcomes}
+Testing confirmed that the core implementation is functional across the main backend workflows, especially for integration, summarization, drafting, classification, and automation logic. The results are encouraging, but they should be interpreted carefully: the current test suite provides meaningful technical evidence, yet it does not by itself prove full production readiness or broad user validation.
+
+Based on the documented successful full-suite run dated 2026-03-08, the system achieved the following results:
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Test Category} & \textbf{Total Tests} & \textbf{Failures} & \textbf{Status} \\ \hline
+Formal automated suite & 111 & 0 & Successful \\ \hline
+\end{tabular}
+\caption{Test Execution Results}
+\end{table}
+
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{5.8cm}|>{\centering\arraybackslash}p{4.8cm}|}
+\hline
+\textbf{Metric} & \textbf{Value} \\ \hline
+Total Tests Executed & 111 \\
+Test Failures & 0 \\
+Successful Execution & 111 / 111 tests completed \\
+Code Coverage & 30.47\% \\
+Test Duration & 33.6 seconds \\
+Execution Platform & macOS 12.7.6 (x86\_64) \\
+\hline
+\end{tabular}
+\caption{Comprehensive Test Metrics}
+\end{table}
+
+Overall code coverage reached 30.47\% across 7,529 executable statements. The formal suite directly covered 2,294 statements while exercising the core integration, orchestration, summarization, drafting, and policy-handling paths. Coverage was strongest in backend workflow logic, which is appropriate because the most critical technical risk in this project lay in multi-service coordination rather than purely visual interface rendering.
+
+\section{Performance Metrics}
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{6.0cm}|>{\centering\arraybackslash}p{4.6cm}|}
+\hline
+\textbf{Performance Indicator} & \textbf{Observed Result} \\ \hline
+Full automated suite duration & 33.6 seconds \\ \hline
+Tests executed in one run & 111 \\ \hline
+Average throughput & 3.31 tests/second \\ \hline
+Run completion status & Successful \\ \hline
+Observed workflow responsiveness & Stable for prototype-scale inbox, drafting, and settings workflows \\ \hline
+\end{tabular}
+\caption{Observed Performance Indicators}
+\end{table}
+
+The measured full-suite execution time shows that the implemented backend workflows can be exercised within well under one minute on a standard desktop environment. In practical use, summarization, drafting, classification, and settings-related actions remained responsive enough for interactive prototype operation. These measurements do not replace a full production benchmark program, but they provide concrete evidence that the system performs acceptably for the scope of the final project.
+
+\section{Key Technical Challenges Identified}
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{5.2cm}|>{\raggedright\arraybackslash}p{6cm}|}
+\hline
+\textbf{Challenge Area} & \textbf{Observed Issue} & \textbf{Project Response} \\ \hline
+Model workflow optimization & Runtime choice, response delay, and context-length handling affected summary, draft, and extraction consistency. & The final system used configurable model routing, message-cleaning steps, and more conservative prompt flow so that intelligent services remained practical for desktop use. \\ \hline
+System integration & Gmail, Slack, and shared backend services exposed different message structures, credential states, and synchronization conditions. & The orchestrator-agent design normalized cross-platform data and isolated integration responsibilities so downstream automation could operate on a shared message model. \\ \hline
+Privacy and security & Local credential handling, automation safety, and user trust were critical because the application processes communication data. & Token protection, review-first behavior, allowlists, DND controls, and explicit policy checks were used to keep automation controlled and safer by default. \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Key Technical Challenges Identified During Testing}
+\end{table}
+
+These challenge areas are especially relevant because they connect testing outcomes with design priorities. They also show that the final prototype was shaped as much by risk management and reliability concerns as by feature expansion.
+
+\section{Discussion}
+The testing phase revealed several important insights about system maturity. Core backend workflows are in place and technically demonstrable, but the evidence also shows that the project is still in a prototype stage where further stabilization, broader coverage, and fuller user-facing validation are needed.
+
+\textbf{Strengths.} The strongest outcome of testing is that the system demonstrates robust Gmail and Slack integration together with working automation paths for summarization, drafting, classification, and event-related workflows. The project also provides meaningful automated evidence for backend logic and preserves a clear architecture for continued refinement.
+
+\textbf{Areas for Improvement.} The next improvement priorities are to increase automated coverage across additional modules, expand performance measurement beyond basic execution results, and complete and validate voice-related workflows more thoroughly.
+
+\section{Conclusion}
+The testing and evaluation phase shows that AutoReturn satisfies a substantial portion of its core technical objectives, especially in integration, orchestration, and intelligent workflow support. However, the results should be read as evidence of a capable academic prototype rather than a fully polished production system. The most important next steps are broader verification, deeper performance evaluation, and further refinement of partially mature features.
+
+Even so, the current evidence is strong enough to support the main academic claim of the project: that a unified, AI-assisted communication workspace can be built as a controlled desktop prototype with meaningful automation and measurable backend validation.

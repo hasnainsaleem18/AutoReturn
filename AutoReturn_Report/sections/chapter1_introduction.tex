@@ -1,0 +1,44 @@
+\chapter{Introduction}
+\label{sec:introduction}
+
+\section{Project Overview}
+\textbf{AutoReturn} is an AI-assisted communication automation platform designed to unify Gmail and Slack workflows through an intelligent orchestrator. The system operates as a native desktop application built with \textbf{PySide6} and is currently targeted at Linux and macOS environments, with the architecture designed for broader cross-platform portability.
+
+The project was developed to move beyond simple service aggregation and instead provide practical workflow assistance within one controlled environment. Its final prototype combines message retrieval, summarization, drafting, prioritization, extraction, and policy-based response handling in a way that keeps the user involved in higher-risk decisions.
+
+\section{Motivation}
+Managing multiple applications such as Gmail, Slack, and other desktop tools separately introduces frequent context switching and interrupts workflow continuity. Repetitive communication tasks, including reading, summarizing, prioritizing, and replying, are still handled manually in many daily scenarios, which reduces productivity and increases cognitive load. Notifications are also scattered across multiple platforms, making it difficult to maintain a coherent view of urgent work.
+
+These challenges create a strong need for an intelligent communication environment that can assist with summarization, prioritization, and response preparation while preserving user oversight. At the same time, growing interest in privacy-aware and locally controlled AI systems motivates the development of solutions that do not depend entirely on remote cloud workflows.
+
+\section{Problem Statement}
+The absence of an integrated, AI-assisted communication workspace causes inefficiency, fragmented user experiences, and reduced productivity due to constant context switching between separate messaging and productivity tools.
+
+\section{Proposed Solution}
+\textbf{AutoReturn} introduces a unified intelligent workspace that combines communication unification, intelligent assistance, configurable automation, and an evolving voice interface. The proposed solution is a native desktop system that brings Gmail and Slack workflows into one interface, applies model-assisted support where useful, and preserves user control through configurable policies and review-oriented automation paths.
+
+Rather than treating automation as a fully autonomous replacement for user judgment, the system is designed around controlled assistance. This means that summaries, drafts, classifications, and policy-based actions are made available in a way that supports efficiency while still allowing review, confirmation, and adjustment where needed.
+
+\section{Objectives}
+The main objectives of the project are to provide a unified inbox that aggregates Gmail and Slack communication, generate intelligent summaries and drafts through model-assisted workflows, and extract actionable information such as events, follow-ups, and message categories. The system also aims to support custom priority classification for incoming communication and refine voice interaction through speech capture and command parsing.
+
+A further objective is to maintain a portable desktop architecture that can support broader deployment beyond its initial Linux and macOS focus. The project also seeks to preserve privacy-aware workflow handling through local settings storage, controlled account integration, and user-governed automation behavior.
+
+\section{Research Questions}
+This project addresses the following research questions:
+\begin{enumerate}
+    \item How can model-assisted processing support privacy-aware communication automation?
+    \item What architectural patterns best support multi-platform agent orchestration?
+    \item How can voice-assisted interaction improve productivity in communication workflows?
+    \item What algorithms effectively classify message priority and urgency?
+    \item How can an extensible integration architecture support future platform additions?
+\end{enumerate}
+
+Together, these questions frame the project as both a software-engineering exercise and a workflow-design problem. They guided the choice of architecture, the emphasis on controllable automation, and the final evaluation strategy used in the report.
+
+\section{Scope and Limitations}
+This section defines the practical boundaries of the current project so that the implemented contribution can be distinguished from future expansion. AutoReturn was developed as an academic desktop prototype, and its scope was intentionally focused on the workflows that could be implemented, tested, and documented reliably within the FYP timeline.
+
+The scope of AutoReturn includes Gmail and Slack integration, privacy-aware AI-assisted processing, and native desktop application development through a modular PySide6-based interface. It also covers voice interaction through speech capture, hotkey activation, and command parsing, together with an extensible agent-based architecture that can support additional integrations and workflow features over time.
+
+The current implementation remains focused on Gmail and Slack rather than a broader range of communication platforms. It is initially built for Linux and macOS systems, although the desktop architecture was designed with portability in mind. Model-assisted behavior can vary depending on hardware capability and runtime configuration, and some advanced automation rules still require explicit user configuration to ensure safe and predictable operation.

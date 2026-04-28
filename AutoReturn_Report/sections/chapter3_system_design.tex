@@ -1,0 +1,94 @@
+\chapter{System Analysis and Design}
+\label{sec:system_design}
+
+\section{System Architecture}
+The system follows a modular agent-based design in which platform-specific integrations and shared intelligent services are coordinated through a central orchestration layer. Model-backed services support summarization, drafting, extraction, and tone-aware workflows, while dedicated Gmail and Slack agents handle platform access and message retrieval. Configuration and automation preferences are maintained through persistence services so that the desktop interface can apply user-defined behavior consistently.
+
+The overall application is implemented as a native PySide6 desktop system. Its modular structure was chosen to support extension to future integrations without redesigning the full workflow pipeline.
+
+\section{Core Components}
+\noindent The core components of AutoReturn combine the user-facing desktop workspace with the backend services that coordinate communication retrieval, intelligent assistance, and controlled automation. Together, these components define the functional structure of the system and explain how the major implemented features are organized in practice.
+
+The main feature set centers on a unified inbox that aggregates Gmail and Slack communication into a shared workflow view. The system also provides actionable information extraction, including event detection, calendar conflict checks, and ICS export for time-related communication. An automation policy engine governs DND behavior, allowlists, and draft-only, plain-reply, or auto-reply decisions so that users remain in control of how automation is applied.
+
+These features are delivered through a native PySide6 desktop application whose current deployment focus is Linux and macOS, while retaining a portable architectural structure for broader cross-platform support.
+
+\section{Behavioral Design Patterns}
+This section describes the design-level behavior that governs message analysis, drafting, tone handling, and policy-aware automation. Unlike the core-components view, which identifies the main modules and services, the following patterns explain how those modules are intended to cooperate during practical workflows.
+
+\subsection{Priority Classification Pattern}
+The system implements a custom priority classifier that estimates message urgency from three main signals: message wording, deadline evidence, and sender importance. Instead of treating priority as a simple keyword-matching problem, the design combines these signals into a weighted score:
+\[
+\text{urgency} = (w_k \times \text{keyword}) + (w_d \times \text{deadline}) + (w_s \times \text{sender})
+\]
+Messages with stronger deadline cues, more urgent wording, or higher-priority senders receive higher scores, which are then mapped to practical labels such as high, medium, or low priority. This design is more robust than a purely lexical approach because it can moderate false urgency cues and better reflect context from sender identity and timing information.
+
+\begin{algorithm}[H]
+\caption{Priority Classification in AutoReturn}
+\label{alg:priority_classification}
+\begin{algorithmic}[1]
+\Require Message $m$ with subject, content, sender, and CC metadata
+\Ensure Priority label in $\{\text{High}, \text{Medium}, \text{Low}\}$
+\State Extract combined text from subject and message body
+\State Compute $K \gets$ keyword score using urgency, time-pressure, and action-call terms
+\If{semantic NLP is available}
+    \State Ignore urgency terms that appear in negated contexts such as ``not urgent''
+\EndIf
+\State Compute $D \gets$ deadline score using relative phrases, absolute dates, and short-horizon urgency bonuses
+\State Compute $S \gets$ sender score using priority contacts and reduced-weight CC matches
+\State Compute $\text{urgency} \gets 0.45K + 0.30D + 0.25S$
+\If{$\text{urgency} \geq 6.7$}
+    \State \Return \textbf{High}
+\ElsIf{$\text{urgency} \geq 3.4$}
+    \State \Return \textbf{Medium}
+\Else
+    \State \Return \textbf{Low}
+\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+The implemented engine therefore operates as a four-step classifier: keyword analysis, deadline detection, sender weighting, and final threshold-based labeling. This mirrors the repository implementation more closely than a single descriptive formula because it shows where semantic filtering, deadline bonuses, and sender preferences enter the final score.
+
+\subsection{Intelligent Pipelines}
+The main intelligent workflows are organized as repeatable pipelines rather than isolated features. Summarization begins when a synchronized Gmail or Slack message is cleaned, contextualized, and passed to the configured AI backend for a concise output that can be shown in the inbox. Draft generation follows a similar path, but the output is a candidate response that is then adjusted according to the tone subsystem and current reply policy.
+
+Reply handling depends on the selected automation mode. In draft-only mode, the generated output remains available for review. In plain-reply mode, the user can inspect and approve the message before it is sent. In auto-reply mode, the system still checks DND state, allowlists, and other policy rules before transmission. Event and attachment workflows are also integrated into this layer, allowing the system to detect scheduling information, prepare calendar export artifacts, or search approved directories when a message requests a file. If several file matches are found, the system blocks automatic completion and requires manual confirmation.
+
+\subsection{Tone Preference Pattern}
+The Tone Preference module detects the preferred tone of incoming messages and adjusts draft replies accordingly. In practice, the module combines lexical features, communication cues, priority context, and configurable fallback behavior so that draft rewriting remains conservative when the detected signal is weak.
+In the final design, tone detection is not treated as a single hard-coded classifier. The module evaluates lexical patterns such as politeness, gratitude, slang, and urgency, then combines those cues with message source, sender context, and detected priority. If the signal is strong, the system recommends a formal or informal response tone. If the signal is weak, it falls back to conservative defaults or user-defined preferences rather than forcing aggressive rewriting.
+
+This design is important because tone handling directly affects user trust. A response that is technically correct but socially mismatched can still feel inappropriate. For that reason, the system keeps tone adjustment configurable and review-oriented, especially in workflows where confidence is low or the communication context is mixed.
+
+\begin{algorithm}[H]
+\caption{Tone Preference Detection and Selection}
+\label{alg:tone_preference}
+\begin{algorithmic}[1]
+\Require Incoming message text $t$
+\Ensure Recommended tone and confidence estimate
+\State Tokenize and lemmatize $t$
+\For{each lemma}
+    \State Score lexical polarity from the tone lexicon
+    \If{no direct lexicon score exists and an embedding vector is available}
+        \State Estimate fallback score using similarity to positive and negative tone centroids
+    \EndIf
+    \If{a negation appears in the local context}
+        \State Invert the token score
+    \EndIf
+    \If{an intensifier precedes the token}
+        \State Amplify or reduce the token score
+    \EndIf
+\EndFor
+\State Extract tone features such as formal salutations, casual greetings, slang, politeness, gratitude, urgency, contractions, and regex-based tone patterns
+\State Compute weighted scores for \textbf{Formal} and \textbf{Informal} tone classes
+\State Compute confidence from score dominance and separation between the top classes
+\If{all tone scores are weak or absent}
+    \State Select a conservative default tone
+\Else
+    \State Select the tone with the strongest score
+\EndIf
+\State Return selected tone, tone signal, and confidence
+\end{algorithmic}
+\end{algorithm}
+
+This algorithm reflects the final tone engine more accurately than a purely narrative description. The implementation combines deterministic lexical rules, regex signals, and embedding-based fallback rather than depending on a single black-box classifier, which is why the system can remain explainable while still handling mixed real-world language patterns.

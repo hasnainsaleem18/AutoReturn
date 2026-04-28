@@ -1,0 +1,927 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex)
+ restricted \write18 enabled.
+entering extended mode
+(./thesis.tex
+LaTeX2e <2023-11-01> patch level 1
+L3 programming layer <2024-01-22>
+(./fast-nuces-bs.cls
+Document Class: fast-nuces-bs 2018/05/21 v0.3 FAST-NUCES-BS FYP Thesis Class
+(/usr/share/texlive/texmf-dist/tex/latex/base/book.cls
+Document Class: book 2023/05/17 v1.4n Standard LaTeX document class
+(/usr/share/texlive/texmf-dist/tex/latex/base/bk12.clo))
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/amsfonts.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amstext.sty
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/amscls/amsthm.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/frontendlayer/tikz.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/basiclayer/pgf.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgfrcs.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-common.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-latex.def)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfrcs.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/pgf.revision.tex)))
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/basiclayer/pgfcore.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/trig.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def)))
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/systemlayer/pgfsys.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeyslibraryfiltered
+.code.tex)) (/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgf.cfg)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-pdftex.def
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-common-pdf.de
+f)))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsyssoftpath.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsysprotocol.code.
+tex)) (/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/mathcolor.ltx))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcore.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathutil.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathparser.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.basic.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.trigonomet
+ric.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.random.cod
+e.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.comparison
+.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.base.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.round.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.misc.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.integerari
+thmetics.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathcalc.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfloat.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfint.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepoints.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathconstruct.
+code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathusage.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorescopes.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoregraphicstate.c
+ode.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransformation
+s.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorequick.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreobjects.code.t
+ex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathprocessing
+.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorearrows.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreshade.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreimage.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreexternal.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorelayers.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransparency.c
+ode.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepatterns.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorerdf.code.tex))
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleshapes.code.tex
+) (/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleplot.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-0-65
+.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-1-18
+.sty)) (/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgffor.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgfkeys.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex))
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/math/pgfmath.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgffor.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/tikz.code.tex
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/pgflibraryplothandlers
+.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmodulematrix.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibrarytopaths.code.tex)))
+(/usr/share/texlive/texmf-dist/tex/latex/tocloft/tocloft.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/natbib/natbib.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/emptypage/emptypage.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/eucal.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/soul/soul.sty
+(/usr/share/texlive/texmf-dist/tex/generic/soul/soul-ori.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/infwarerr/infwarerr.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/etexcmds/etexcmds.sty
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty)))
+(/usr/share/texlive/texmf-dist/tex/generic/babel/babel.sty
+(/usr/share/texlive/texmf-dist/tex/generic/babel/txtbabel.def)
+(/usr/share/texlive/texmf-dist/tex/generic/babel-english/english.ldf))
+(/usr/share/texlive/texmf-dist/tex/generic/babel/locale/en/babel-english.tex)
+(/usr/share/texlive/texmf-dist/tex/latex/etoolbox/etoolbox.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/footmisc/footmisc.sty
+(/usr/share/texlive/texmf-dist/tex/latex/bigfoot/perpage.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/base/ifthen.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/ifpdf.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/base/inputenc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/epsfig.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/setspace/setspace.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/geometry/geometry.sty
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/ifvtex.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/hyperref.sty
+(/usr/share/texlive/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+(/usr/share/texlive/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/hycolor/hycolor.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/auxhook/auxhook.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/nameref.sty
+(/usr/share/texlive/texmf-dist/tex/latex/refcount/refcount.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
+(/usr/share/texlive/texmf-dist/tex/latex/kvoptions/kvoptions.sty)))
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/pd1enc.def)
+(/usr/share/texlive/texmf-dist/tex/generic/intcalc/intcalc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/puenc.def)
+(/usr/share/texlive/texmf-dist/tex/latex/url/url.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/bitset/bitset.sty
+(/usr/share/texlive/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/base/atbegshi-ltx.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/hpdftex.def
+(/usr/share/texlive/texmf-dist/tex/latex/base/atveryend-ltx.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+(/usr/share/texlive/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty))))
+(/usr/share/texlive/texmf-dist/tex/latex/blindtext/blindtext.sty
+(/usr/share/texlive/texmf-dist/tex/latex/tools/xspace.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/mathptmx.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/base/fontenc.sty
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/t1ptm.fd))
+(/usr/share/texlive/texmf-dist/tex/latex/lipsum/lipsum.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3packages/l3keys2e/l3keys2e.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3kernel/expl3.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def)))
+(/usr/share/texlive/texmf-dist/tex/latex/lipsum/lipsum.ltd.tex))
+(/usr/share/texlive/texmf-dist/tex/latex/sectsty/sectsty.sty
+
+LaTeX Warning: Command \underbar  has changed.
+               Check if current package is valid.
+
+
+LaTeX Warning: Command \underline  has changed.
+               Check if current package is valid.
+
+) (/usr/share/texlive/texmf-dist/tex/latex/titlesec/titlesec.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/float/float.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/tools/array.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/booktabs/booktabs.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/adjustbox/adjustbox.sty
+(/usr/share/texlive/texmf-dist/tex/latex/xkeyval/xkeyval.sty
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/xkeyval.tex
+(/usr/share/texlive/texmf-dist/tex/generic/xkeyval/xkvutils.tex)))
+(/usr/share/texlive/texmf-dist/tex/latex/adjustbox/adjcalc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/adjustbox/trimclip.sty
+(/usr/share/texlive/texmf-dist/tex/latex/collectbox/collectbox.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/adjustbox/tc-pdftex.def))
+(/usr/share/texlive/texmf-dist/tex/latex/ifoddpage/ifoddpage.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/varwidth/varwidth.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/pdflscape/pdflscape.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pdflscape/pdflscape-nometadata.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/lscape.sty)))
+(/usr/share/texlive/texmf-dist/tex/latex/caption/caption.sty
+(/usr/share/texlive/texmf-dist/tex/latex/caption/caption3.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/caption/subcaption.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/tools/tabularx.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/placeins/placeins.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/rotating.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/algorithms/algorithm.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/algorithmicx/algpseudocode.sty
+(/usr/share/texlive/texmf-dist/tex/latex/algorithmicx/algorithmicx.sty
+Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
+)
+Document Style - pseudocode environments for use with the `algorithmicx' style
+) (./thesis.aux)
+(/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+) (/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+(/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg))
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+(./thesis.out) (./thesis.out)
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/ot1ztmcm.fd)
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/omlztmcm.fd)
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/omsztmcm.fd)
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/omxztmcm.fd)
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/ot1ptm.fd) [1{/var/lib/texmf/fo
+nts/map/pdftex/updmap/pdftex.map}{/usr/share/texlive/texmf-dist/fonts/enc/dvips
+/base/8r.enc} <./ThesisFigs/FASTLogo.jpg>] [2] [3] [4] [1] (./thesis.toc
+[2] [3] [4] [5] [6]
+Underfull \vbox (badness 10000) has occurred while \output is active [7]
+Underfull \vbox (badness 1424) has occurred while \output is active [8]
+Underfull \vbox (badness 1424) has occurred while \output is active [9])
+[10] (./thesis.lof
+Overfull \hbox (0.3262pt too wide) in paragraph at lines 12--12
+ [][] []\T1/ptm/m/n/12 Auto Re-turn Sys-tem Ar-chi-tec-ture show-ing uni-fied i
+n-box, agent-based pipelines, 
+) [11] (./thesis.lot) (./thesis.toc) [0] (./sections/chapter1_introduction.tex
+Chapter 1.
+(/usr/share/texlive/texmf-dist/tex/latex/psnfss/ts1ptm.fd)
+pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has 
+been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.18 
+      [1]
+pdfTeX warning (ext4): destination with the same identifier (name{page.2}) has 
+been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.39 \end{enumerate}
+                     [2]
+pdfTeX warning (ext4): destination with the same identifier (name{page.3}) has 
+been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.66     \item \textbf
+                      {Chapter 6}: Development iterations and progress tracking
+[3]) (./sections/chapter2_literature_review.tex
+pdfTeX warning (ext4): destination with the same identifier (name{page.4}) has 
+been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.1 \chapter
+            {Literature Review} [4]
+Chapter 2.
+
+Package natbib Warning: Citation `ferdium2024' on page 5 undefined on input lin
+e 13.
+
+
+Package natbib Warning: Citation `wavebox2024' on page 5 undefined on input lin
+e 15.
+
+
+Package natbib Warning: Citation `beeper2024' on page 5 undefined on input line
+ 17.
+
+[5]
+
+Package natbib Warning: Citation `shift2024' on page 6 undefined on input line 
+19.
+
+
+Package natbib Warning: Citation `superhuman2024' on page 6 undefined on input 
+line 36.
+
+
+Package natbib Warning: Citation `front2024' on page 6 undefined on input line 
+38.
+
+
+Package natbib Warning: Citation `respond2024' on page 6 undefined on input lin
+e 40.
+
+[6]
+
+Package natbib Warning: Citation `ollama2024' on page 7 undefined on input line
+ 47.
+
+
+Package natbib Warning: Citation `meta2024' on page 7 undefined on input line 4
+9.
+
+
+Package natbib Warning: Citation `alibaba2024' on page 7 undefined on input lin
+e 51.
+
+
+Package natbib Warning: Citation `bentahar2005' on page 7 undefined on input li
+ne 57.
+
+
+Package natbib Warning: Citation `cao2024' on page 7 undefined on input line 60
+.
+
+
+Package natbib Warning: Citation `kumar2015' on page 7 undefined on input line 
+63.
+
+[7]
+
+Package natbib Warning: Citation `technode2022' on page 8 undefined on input li
+ne 70.
+
+[8]) (./sections/chapter3_system_design.tex [9]
+Chapter 3.
+[10] [11] [12] [13]
+Underfull \vbox (badness 10000) has occurred while \output is active [14]
+Overfull \vbox (217.26474pt too high) has occurred while \output is active
+[15])
+Underfull \vbox (badness 10000) has occurred while \output is active [16]
+(./sections/chapter4_system_modeling.tex [17]
+Chapter 4.
+[18] [19 <./Figures/Usecase_Diagram.jpeg>] [20] [21] [22] [23 <./Figures/Comple
+te_Activity_Diagram.png>] [24 <./Figures/Activity_1_Voice_Based_Interaction.png
+>] [25 <./Figures/Activity_2_Email_Message_Automation.png>] [26 <./Figures/Acti
+vity_3_MultiApp_Integration.png>] [27 <./Figures/Component.png>]
+Underfull \vbox (badness 10000) has occurred while \output is active [28 <./Fig
+ures/Architecture2.png>]
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.208 ...t=1.5cm] (messages) at (0,3) {Messages\\i
+                                                  d\\source\\content\\timest...
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.208 ...5cm] (messages) at (0,3) {Messages\\id\\s
+                                                  ource\\content\\timestamp\...
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.208 ...ssages) at (0,3) {Messages\\id\\source\\c
+                                                  ontent\\timestamp\\priority};
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.208 ...t (0,3) {Messages\\id\\source\\content\\t
+                                                  imestamp\\priority};
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.208 ...ssages\\id\\source\\content\\timestamp\\p
+                                                  riority};
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.209 ...ht=1.5cm] (senders) at (-4,0) {Senders\\i
+                                                  d\\name\\email\\importance};
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.209 ....5cm] (senders) at (-4,0) {Senders\\id\\n
+                                                  ame\\email\\importance};
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.209 ...(senders) at (-4,0) {Senders\\id\\name\\e
+                                                  mail\\importance};
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.209 ...s) at (-4,0) {Senders\\id\\name\\email\\i
+                                                  mportance};
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.210 ... height=1.5cm] (tasks) at (4,0) {Tasks\\i
+                                                  d\\message\_id\\descriptio...
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.210 ...ght=1.5cm] (tasks) at (4,0) {Tasks\\id\\m
+                                                  essage\_id\\description\\d...
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.210 ...asks) at (4,0) {Tasks\\id\\message\_id\\d
+                                                  escription\\deadline\\stat...
+
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.210 ...) {Tasks\\id\\message\_id\\description\\d
+                                                  eadline\\status};
+
+! LaTeX Error: Something's wrong--perhaps a missing \item.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.210 ...id\\message\_id\\description\\deadline\\s
+                                                  tatus};
+)
+Underfull \vbox (badness 10000) has occurred while \output is active [29]
+(./sections/chapter5_implementation.tex [30]
+Chapter 5.
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/12 Gmail Au-toma-tion
+
+Underfull \hbox (badness 7777) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/12 Implemented clean OAuth
+
+Underfull \hbox (badness 10000) in paragraph at lines 48--48
+[]|\T1/ptm/m/n/12 Priority Al-go-rithm
+
+Underfull \hbox (badness 2096) in paragraph at lines 48--48
+\T1/ptm/m/n/12 not re-flect ur-gency, sender
+
+Underfull \hbox (badness 4608) in paragraph at lines 48--48
+\T1/ptm/m/n/12 ur-gency, dead-lines, sender
+
+Underfull \hbox (badness 10000) in paragraph at lines 49--49
+[]|\T1/ptm/m/n/12 No dataset ex-isted for
+
+Underfull \hbox (badness 10000) in paragraph at lines 49--49
+\T1/ptm/m/n/12 priority-based key-word
+
+Underfull \hbox (badness 4582) in paragraph at lines 49--49
+\T1/ptm/m/n/12 weights. No source for
+
+Underfull \hbox (badness 10000) in paragraph at lines 49--49
+[]|\T1/ptm/m/n/12 Created de-fault key-word
+
+Underfull \hbox (badness 10000) in paragraph at lines 49--49
+\T1/ptm/m/n/12 Added \T1/ptm/b/n/12 adap-tive learn-ing
+
+Underfull \hbox (badness 10000) in paragraph at lines 49--49
+\T1/ptm/m/n/12 (sys-tem up-dates weights
+
+Underfull \hbox (badness 6284) in paragraph at lines 49--49
+\T1/ptm/m/n/12 over time based on user
+
+Underfull \hbox (badness 10000) in paragraph at lines 50--50
+[]|\T1/ptm/m/n/12 Long emails and nested
+
+Underfull \hbox (badness 4168) in paragraph at lines 50--50
+\T1/ptm/m/n/12 Im-por-tant info was some-
+
+Overfull \hbox (3.90656pt too wide) in paragraph at lines 43--52
+ [][] 
+
+Underfull \vbox (badness 10000) has occurred while \output is active [31]
+Underfull \hbox (badness 10000) in paragraph at lines 61--61
+[]|\T1/ptm/m/n/12 Intelligent Search
+
+Underfull \hbox (badness 10000) in paragraph at lines 61--61
+[]|\T1/ptm/m/n/12 Natural-language queries
+
+Underfull \hbox (badness 1509) in paragraph at lines 61--61
+\T1/ptm/m/n/12 ing sender names or ex-act
+
+Underfull \hbox (badness 10000) in paragraph at lines 61--61
+\T1/ptm/m/n/12 tem con-verts query into
+
+Underfull \hbox (badness 1939) in paragraph at lines 62--62
+\T1/ptm/m/n/12 failed on var-ied real-world
+(/usr/share/texlive/texmf-dist/tex/latex/base/t1cmtt.fd)
+Underfull \hbox (badness 3861) in paragraph at lines 62--62
+[]|\T1/ptm/m/n/12 Switched to a hy-brid de-
+
+Underfull \hbox (badness 10000) in paragraph at lines 62--62
+\T1/ptm/m/n/12 tec-tor (regex + lin-guis-tic
+
+Underfull \hbox (badness 5681) in paragraph at lines 62--62
+\T1/ptm/m/n/12 fea-tures + weighted scor-
+
+Overfull \hbox (12.07353pt too wide) in paragraph at lines 62--62
+\T1/cmtt/m/n/12 tone_detection_rules.json
+
+Underfull \hbox (badness 10000) in paragraph at lines 63--63
+[]|\T1/ptm/m/n/12 Tone Set-tings UI
+
+Underfull \hbox (badness 10000) in paragraph at lines 63--63
+\T1/ptm/m/n/12 sis-tent across OS/themes.
+
+Underfull \hbox (badness 10000) in paragraph at lines 63--63
+\T1/ptm/m/n/12 Du-pli-cate UI code paths
+
+Underfull \hbox (badness 4752) in paragraph at lines 63--63
+[]|\T1/ptm/m/n/12 Consolidated to one Tone
+
+Underfull \hbox (badness 10000) in paragraph at lines 63--63
+\T1/ptm/m/n/12 Set-tings im-ple-men-ta-tion.
+
+Underfull \hbox (badness 2302) in paragraph at lines 63--63
+\T1/ptm/m/n/12 Aligned lay-out/styling with
+
+Underfull \hbox (badness 5147) in paragraph at lines 63--63
+\T1/ptm/m/n/12 ex-ist-ing Set-tings tabs and
+
+Underfull \hbox (badness 1418) in paragraph at lines 64--64
+[]|\T1/ptm/m/n/12 Added safer worker life-cy-
+
+Underfull \hbox (badness 3668) in paragraph at lines 64--64
+\T1/ptm/m/n/12 cle han-dling and syn-chro-
+
+Underfull \hbox (badness 2229) in paragraph at lines 64--64
+\T1/ptm/m/n/12 nized crit-i-cal API calls to
+
+Underfull \hbox (badness 10000) in paragraph at lines 65--65
+[]|\T1/ptm/m/n/12 Gmail Threaded
+
+Underfull \hbox (badness 1762) in paragraph at lines 65--65
+\T1/ptm/m/n/12 ply head-ers (\T1/cmtt/m/n/12 In-Reply-To\T1/ptm/m/n/12 ,
+
+Overfull \hbox (3.90656pt too wide) in paragraph at lines 58--67
+ [][] 
+
+Underfull \vbox (badness 10000) has occurred while \output is active [32]
+Overfull \hbox (0.59213pt too wide) in paragraph at lines 75--75
+[]|\T1/ptm/b/n/12 No.| 
+
+Underfull \hbox (badness 10000) in paragraph at lines 76--76
+[]|\T1/ptm/m/n/12 Attachment
+
+Underfull \hbox (badness 2368) in paragraph at lines 76--76
+[]|\T1/ptm/m/n/12 Local file match-ing pro-duced
+
+Underfull \hbox (badness 10000) in paragraph at lines 76--76
+\T1/ptm/m/n/12 con-fi-dence rules, am-bi-gu-ity
+
+Underfull \hbox (badness 1412) in paragraph at lines 76--76
+\T1/ptm/m/n/12 prompt, and "block + re-open
+
+Underfull \hbox (badness 3803) in paragraph at lines 77--77
+[]|\T1/ptm/m/n/12 Ambiguous ur-gency: Sim-ple
+
+Underfull \hbox (badness 5652) in paragraph at lines 77--77
+\T1/ptm/m/n/12 key-word match-ing (like "ur-
+
+Underfull \hbox (badness 3612) in paragraph at lines 77--77
+\T1/ptm/m/n/12 ing Al-go-rithm in the Pri-or-i-
+
+Underfull \hbox (badness 10000) in paragraph at lines 78--78
+[]|\T1/ptm/m/n/12 Asynchronous co-or-di-na-tion:
+
+Underfull \hbox (badness 6910) in paragraph at lines 78--78
+\T1/ptm/m/n/12 and Slack agents si-mul-ta-ne-
+
+Underfull \hbox (badness 2521) in paragraph at lines 78--78
+\T1/ptm/m/n/12 ously caused race con-di-tions,
+
+Underfull \hbox (badness 10000) in paragraph at lines 78--78
+[]|\T1/ptm/m/n/12 Implemented a Back-
+
+Underfull \hbox (badness 10000) in paragraph at lines 78--78
+\T1/ptm/m/n/12 ground Task Queue in
+
+Underfull \hbox (badness 10000) in paragraph at lines 78--78
+\T1/ptm/m/n/12 the Or-ches-tra-tor. Used
+
+Underfull \hbox (badness 10000) in paragraph at lines 78--78
+\T1/cmtt/m/n/12 SummaryGeneratorThread
+
+Underfull \hbox (badness 1960) in paragraph at lines 78--78
+\T1/ptm/m/n/12 and worker sig-nals to en-sure
+
+Underfull \hbox (badness 10000) in paragraph at lines 79--79
+[]|\T1/ptm/m/n/12 Task Clas-si-fi-ca-
+
+Underfull \hbox (badness 7796) in paragraph at lines 79--79
+[]|\T1/ptm/m/n/12 Output in-sta-bil-ity: The AI
+
+Underfull \hbox (badness 2096) in paragraph at lines 79--79
+\T1/ptm/m/n/12 put Parser. Forces LLM to
+
+Underfull \hbox (badness 3590) in paragraph at lines 79--79
+\T1/ptm/m/n/12 fol-low a "Key: Value" for-
+
+Underfull \hbox (badness 3179) in paragraph at lines 80--80
+[]|\T1/ptm/m/n/12 Information loss: Sum-ma-riz-
+
+Underfull \hbox (badness 1394) in paragraph at lines 80--80
+[]|\T1/ptm/m/n/12 Implemented Con-tex-tual Sum-
+
+Overfull \hbox (12.44244pt too wide) in paragraph at lines 73--82
+ [][] 
+
+Underfull \vbox (badness 10000) has occurred while \output is active [33{/usr/s
+hare/texmf/fonts/enc/dvips/cm-super/cm-super-t1.enc}]
+Overfull \vbox (96.89297pt too high) has occurred while \output is active
+[34]
+Overfull \hbox (0.59213pt too wide) in paragraph at lines 89--89
+[]|\T1/ptm/b/n/12 No.| 
+
+Underfull \hbox (badness 10000) in paragraph at lines 90--90
+[]|\T1/ptm/m/n/12 Data nor-mal-iza-tion: Gmail
+
+Underfull \hbox (badness 10000) in paragraph at lines 90--90
+\T1/ptm/m/n/12 dif-fer-ent struc-tures, mak-ing
+
+Underfull \hbox (badness 1769) in paragraph at lines 90--90
+\T1/ptm/m/n/12 it im-pos-si-ble to use a sin-gle
+
+Underfull \hbox (badness 10000) in paragraph at lines 90--90
+[]|\T1/ptm/m/n/12 Created a Uni-fied Mes-sage
+
+Underfull \hbox (badness 7907) in paragraph at lines 90--90
+\T1/ptm/m/n/12 Schema in the Or-ches-tra-tor.
+
+Underfull \hbox (badness 1168) in paragraph at lines 90--90
+\T1/ptm/m/n/12 Raw data from dif-fer-ent plat-
+
+Overfull \hbox (12.44244pt too wide) in paragraph at lines 87--92
+ [][] 
+[35] [36]
+Overfull \hbox (10.04404pt too wide) in paragraph at lines 167--167
+[]            \T1/cmtt/m/n/12 'politeness': sum(1 for t in tokens if t in self.
+formal_words),[] 
+[37]) (./sections/chapter5_iterations.tex [38]
+Chapter 6.
+
+Underfull \vbox (badness 5064) has occurred while \output is active [39]
+[40] [41] [42] [43] [44] [45] [46] [47]) (./sections/chapter6_testing.tex
+[48]
+Chapter 7.
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/b/n/8 Expected Re-
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Verify multi-
+
+Underfull \hbox (badness 3000) in paragraph at lines 27--27
+\T1/ptm/m/n/8 app in-te-gra-tion
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Ensure APIs
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+\T1/ptm/m/n/8 con-nect suc-
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Connect apps
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Unified in-box
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Auto email
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Verify NLP
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Run sum-ma-
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Concise sum-
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Ensure tasks
+
+Underfull \hbox (badness 1226) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Slack + Gmail
+
+Underfull \hbox (badness 1824) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Prioritized task
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Configurable
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Trigger alert
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Notification
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Unified in-box
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Verify dash-
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+\T1/ptm/m/n/8 board merges
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Slack sta-tus
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Check voice-
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+\T1/ptm/m/n/8 based sta-tus
+
+Underfull \hbox (badness 10000) in paragraph at lines 27--27
+[]|\T1/ptm/m/n/8 Say "Mute
+
+Underfull \vbox (badness 10000) has occurred while \output is active [49]
+Underfull \hbox (badness 5359) in paragraph at lines 47--47
+[]|\T1/ptm/b/n/8 Expected Re-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Follow-up
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Ensure re-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Set re-minder,
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Validate emo-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+\T1/ptm/m/n/8 tion/urgency
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 "URGENT!
+
+Underfull \hbox (badness 1163) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Marked as ur-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Ensure ac-tion
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Perform ac-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Accurate
+
+Underfull \hbox (badness 1881) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Check per-mis-
+
+Underfull \hbox (badness 3895) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Revoke Gmail
+
+Underfull \hbox (badness 3942) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Access de-nied
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Offline func-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Validate lim-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+\T1/ptm/m/n/8 ited of-fline
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Cached data
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Disconnect,
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Summary
+
+Underfull \hbox (badness 3482) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Token en-cryp-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Verify se-cure
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Inspect en-
+
+Underfull \hbox (badness 10000) in paragraph at lines 47--47
+[]|\T1/ptm/m/n/8 Encrypted
+
+Underfull \vbox (badness 10000) has occurred while \output is active [50]
+Underfull \vbox (badness 10000) has occurred while \output is active [51]
+[52]
+Overfull \hbox (42.18626pt too wide) in paragraph at lines 113--122
+ [][] 
+[53]) [54] (./sections/chapter6_discussion.tex [55]
+Chapter 8.
+[56] [57] [58] [59] [60] [61] [62] [63])
+(./sections/chapter7_project_management.tex [64] [65]
+Chapter 9.
+
+Overfull \hbox (38.04976pt too wide) in paragraph at lines 7--19
+ [][] 
+[66{/usr/share/texmf/fonts/enc/dvips/cm-super/cm-super-ts1.enc}] [67]
+Underfull \vbox (badness 3492) has occurred while \output is active [68]
+[69] [70]) (./sections/chapter8_business_model.tex [71]
+Chapter 10.
+
+Overfull \hbox (0.39807pt too wide) in paragraph at lines 8--9
+[]\T1/ptm/b/n/12 Pro Tier: \T1/ptm/m/n/12 Un-lim-ited mes-sages, Jira in-te-gra
+-tion, tone pref-er-ence mech-a-nism, auto-replies,
+[72] [73] [74] [75] [76]) [77] (./sections/chapter9_conclusions.tex [78]
+Chapter 11.
+[79] [80] [81] [82] [83] [84]) [85] [86] [87] [88]
+Appendix A.
+
+Underfull \hbox (badness 2165) in paragraph at lines 183--183
+[]|\T1/ptm/m/it/10.95 A Prag-matic and Se-man-tic Uni-fied
+
+Underfull \hbox (badness 6268) in paragraph at lines 184--184
+[]|\T1/ptm/m/n/10.95 Connects LLMs to ex-ter-nal APIs
+
+Underfull \hbox (badness 10000) in paragraph at lines 185--185
+[]|\T1/ptm/m/n/10.95 Kumar, G. V.,
+
+Underfull \hbox (badness 6461) in paragraph at lines 185--185
+\T1/ptm/m/n/10.95 Pen-chala Jayan-thi
+
+Underfull \hbox (badness 5036) in paragraph at lines 185--185
+[]|\T1/ptm/m/n/10.95 Implements real-time speech-to-text
+
+Underfull \hbox (badness 10000) in paragraph at lines 185--185
+\T1/ptm/m/n/10.95 and text-to-speech sys-tem us-ing
+
+Underfull \hbox (badness 2600) in paragraph at lines 186--186
+[]|\T1/ptm/m/it/10.95 Llama 3.1 Model Tech-ni-cal Pa-per\T1/ptm/m/n/10.95 ,
+
+Underfull \hbox (badness 10000) in paragraph at lines 187--187
+[]|\T1/ptm/m/n/10.95 FORGE Frame-
+
+Underfull \hbox (badness 2012) in paragraph at lines 187--187
+[]|\T1/ptm/m/it/10.95 FORGE Frame-work Doc-u-men-ta-tion\T1/ptm/m/n/10.95 ,
+
+Overfull \hbox (46.58566pt too wide) in paragraph at lines 180--189
+ [][] 
+
+Underfull \vbox (badness 10000) has occurred while \output is active [89]
+Overfull \hbox (0.3629pt too wide) in paragraph at lines 195--196
+[]\T1/ptm/b/n/12 Core Frame-work: \T1/ptm/m/n/12 16+ Python mod-ules im-ple-men
+ted with async-first ar-chi-tec-ture, event
+
+Underfull \vbox (badness 10000) has occurred while \output is active [90]
+
+Package natbib Warning: There were undefined citations.
+
+[91] (./thesis.aux) )
+(see the transcript file for additional information)</usr/share/texlive/texmf-d
+ist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></usr/share/texlive/texmf-dist/fo
+nts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmsy10.pfb></usr/share/texmf/fonts/type1/public/cm-super/
+sfrm1200.pfb></usr/share/texmf/fonts/type1/public/cm-super/sftt1200.pfb></usr/s
+hare/texlive/texmf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/share/texlive/tex
+mf-dist/fonts/type1/urw/symbol/usyr.pfb></usr/share/texlive/texmf-dist/fonts/ty
+pe1/urw/times/utmb8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/u
+tmr8a.pfb></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on thesis.pdf (107 pages, 1089238 bytes).
+Transcript written on thesis.log.

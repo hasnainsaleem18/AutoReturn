@@ -1,0 +1,83 @@
+\chapter{Development Iterations}
+\label{sec:iterations}
+
+\section{Introduction}
+This chapter presents the development progress of AutoReturn through the formal milestones used during the FYP lifecycle. The proposal, FYP-I mid, FYP-I final, FYP-II mid, and final thesis stage are treated as iteration checkpoints because each one captured a distinct state of scope, design, implementation, and evaluation.
+
+Using these milestones as iterations makes the development story easier to trace in a way that matches the academic review process. Each stage therefore represents both a technical checkpoint and a documented refinement of project direction.
+
+\section{Iteration Plan}
+\noindent Table~\ref{tab:gantt_iteration_plan} reproduces the same phase plan used in the project presentations. It summarizes the planned progression from initial research to final testing and thesis completion.
+\begin{table}[!htbp]
+\centering
+\small
+\renewcommand{\arraystretch}{1.15}
+\setlength{\tabcolsep}{5pt}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{|p{7.2cm}|p{2.3cm}|p{2.2cm}|p{2.2cm}|}
+\hline
+\textbf{Phase} & \textbf{Duration} & \textbf{Status} & \textbf{Semester} \\ \hline
+Phase 1: Research \& Requirement Analysis & 0--3 Weeks & Completed & Semester 1 \\ \hline
+Phase 2: System Design \& Architecture & 3--6 Weeks & Completed & Semester 1 \\ \hline
+Phase 3: API Research \& Integration Testing & 6--12 Weeks & Completed & Semester 1 \\ \hline
+Phase 4: Backend \& Core System Development & 12--18 Weeks & Completed & Semester 1,2 \\ \hline
+Phase 5: Desktop App (Frontend) & 18--22 Weeks & Completed & Semester 1,2 \\ \hline
+Phase 6: Smart Automation \& Features & 22--26 Weeks & Completed & Semester 1,2 \\ \hline
+Phase 7: Testing, Evaluation \& Finalization & 26--28 Weeks & Completed & Semester 2 \\ \hline
+\end{tabular}
+\end{adjustbox}
+\caption{Iteration Plan}
+\label{tab:gantt_iteration_plan}
+\end{table}
+
+The value of this plan is not only chronological. It also shows how the project evolved from research and design into implementation, integration, evaluation, and final academic consolidation in a structured sequence.
+
+\section{Iteration 1}
+\subsection{Objectives}
+The first iteration corresponded to the proposal stage. Its purpose was to validate the problem area, define the initial project direction, and determine whether operating-system-level workflow automation could be framed as a meaningful academic project.
+
+\subsection{Major Deliverables}
+The main deliverables of this stage were the initial project idea, the early problem statement, and the first scope assumptions.
+
+\subsection{Iteration Outcome}
+Review feedback during this stage showed that the original framing was too broad and not sufficiently grounded in a clear user workflow. As a result, the project direction was refined toward communication-centric workflow assistance. This outcome established the foundation for what later became AutoReturn.
+
+\section{Iteration 2}
+\subsection{Objectives}
+The second iteration corresponds to the FYP-I mid evaluation. The main objective was to convert the corrected idea into a defendable system proposal supported by literature, investigation, modeling, and planning.
+
+\subsection{Major Deliverables}
+The major deliverables included the literature review, comparative investigation, initial use cases and UML artifacts, an early testing plan, and a clearer definition of the unified communication-workspace direction.
+
+\subsection{Iteration Outcome}
+This iteration produced the first academically structured version of the project. The system vision became clearer, but most of the work was still analytical and design-oriented. It also revealed that some early ideas, especially broad voice-first claims and feature breadth, would require later refinement.
+
+\section{Iteration 3}
+\subsection{Objectives}
+The third iteration corresponds to the FYP-I final evaluation. The objective of this phase was to move from conceptual design toward implementation-driven development by formalizing the first core algorithms and workflow pipelines.
+
+\subsection{Major Deliverables}
+Deliverables in this stage included priority-classification logic, summary and draft-generation workflows, plain-text reply and task-classification pipelines, early Gmail integration work, and initial file-lookup and event-driven processing concepts.
+
+\subsection{Iteration Outcome}
+This stage marked the transition from proposal to implementation. The project now had identifiable backend logic and reproducible workflows, even though many features were still incomplete. It also clarified practical challenges such as Gmail automation limitations, dataset quality issues, and model-selection tradeoffs.
+
+\section{Iteration 4}
+\subsection{Objectives}
+The fourth iteration corresponds to the FYP-II mid presentation. The objective of this phase was to expand the working prototype into a broader desktop system with stronger integration support, richer automation controls, and more formal testing evidence.
+
+\subsection{Major Deliverables}
+The main deliverables included the unified inbox and orchestrator-driven flow, Gmail and Slack agent integration, tone support and notification handling, auto-reply and DND behavior, calendar-related support, packaging and website material, and automated testing evidence with 111 tests.
+
+\subsection{Iteration Outcome}
+This iteration reflects the most visible growth in system maturity. The project evolved from isolated intelligent features into a more cohesive desktop workflow assistant. The presentation also documented important engineering improvements, including safer orchestrator behavior, better tone detection, improved attachment handling, and stronger cross-platform normalization.
+
+\section{Iteration 5}
+\subsection{Objectives}
+The final iteration focused on consolidation and final thesis preparation. Its objective was to align the documentation, implementation, and evaluation with the actual final state of the project.
+
+\subsection{Major Deliverables}
+The major deliverables of this stage were final report refinement, chapter restructuring, removal of outdated claims, correction of testing and architecture descriptions, and alignment of modeling, implementation, and discussion with the completed prototype.
+
+\subsection{Iteration Outcome}
+This iteration transformed the project from a broad collection of implemented features into a more disciplined academic submission. The system was presented as a controlled prototype with verifiable scope, documented design decisions, and more defensible testing and discussion sections.
